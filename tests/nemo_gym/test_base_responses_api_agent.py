@@ -7,11 +7,11 @@ from nemo_gym.base_responses_api_agent import (
 
 class TestBaseResponsesAPIAgent:
     def test_BaseResponsesAPIAgent(self) -> None:
-        config = BaseResponsesAPIAgentConfig(host="", port=0)
+        config = BaseResponsesAPIAgentConfig(host="", port=0, entrypoint="")
         BaseResponsesAPIAgent(config=config)
 
     def test_SimpleResponsesAPIAgent(self) -> None:
-        config = BaseResponsesAPIAgentConfig(host="", port=0)
+        config = BaseResponsesAPIAgentConfig(host="", port=0, entrypoint="")
 
         class TestSimpleResponsesAPIAgent(SimpleResponsesAPIAgent):
             async def responses(self, body=...):

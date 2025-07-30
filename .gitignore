@@ -176,3 +176,9 @@ temp*
 
 # Gradio
 *.gradio
+
+# Hydra outputs
+outputs
+
+# Environment with sensitive information like API keys
+env.yaml

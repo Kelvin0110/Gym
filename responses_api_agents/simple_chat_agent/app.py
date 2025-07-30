@@ -9,6 +9,12 @@ from nemo_gym.openai_utils import (
     NeMoGymResponse,
 )
 
+import anthropic
+
+print(
+    f"This simple chat agent has an extra dependency on the `anthropic` library as a demonstration, found at: {anthropic.__file__}"
+)
+
 
 class SimpleChatAgentConfig(BaseResponsesAPIAgentConfig):
     openai_base_url: str
@@ -34,21 +40,4 @@ class SimpleChatAgent(SimpleResponsesAPIAgent):
 
 
 if __name__ == "__main__":
-    """
-    Test
-    ```bash
-    curl -X POST http://0.0.0.0:8080/v1/responses \
-        -H "Content-Type: application/json" \
-        -d '{"input": [{"role": "user", "content": "hello"}]}'
-    ```
-    """
-    config = SimpleChatAgentConfig(
-        host="0.0.0.0",
-        port=8080,
-        openai_base_url="https://api.openai.com/v1",
-        openai_api_key=None,
-        openai_model_name="gpt-4.1-2025-04-14",
-    )
-    agent = SimpleChatAgent(config=config)
-
-    agent.run_webserver()
+    SimpleChatAgent.run_webserver()
