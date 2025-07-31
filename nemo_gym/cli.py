@@ -1,12 +1,12 @@
+from typing import Dict
+
 from os import environ
 
 from pathlib import Path
 
-
 from subprocess import Popen
 
 import asyncio
-from asyncio import Future
 
 import shlex
 
@@ -51,7 +51,7 @@ def run():  # pragma: no cover
     escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
 
     # We always run the head server in this `run` command.
-    HeadServer.run_webserver()
+    head_server_thread = HeadServer.run_webserver()
 
     top_level_paths = [
         k
@@ -59,6 +59,7 @@ def run():  # pragma: no cover
         if k not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS
     ]
 
+    processes: Dict[str, Popen] = dict()
     for top_level_path in top_level_paths:
         server_config_dict = global_config_dict[top_level_path]
         first_key = list(server_config_dict)[0]
@@ -77,16 +78,32 @@ def run():  # pragma: no cover
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
 
-        _run_command(command, dir_path)
+        process = _run_command(command, dir_path)
+        processes[top_level_path] = process
 
     async def sleep():
-        await Future()
+        # Indefinitely
+        while True:
+            if not head_server_thread.is_alive():
+                raise RuntimeError("Head server finished unexpectedly!")
+
+            for process_name, process in processes.items():
+                if process.poll() is not None:
+                    raise RuntimeError(
+                        f"Process `{process_name}` finished unexpectedly!"
+                    )
+
+            await asyncio.sleep(60)  # Check every 60s.
 
     try:
         asyncio.run(sleep())
     except KeyboardInterrupt:
         pass
     finally:
+        for process_name, process in processes.items():
+            print(f"Killing `{process_name}`")
+            process.kill()
+
         print("NeMo Gym finished!")
 
 

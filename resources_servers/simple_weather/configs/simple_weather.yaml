@@ -1,0 +1,4 @@
+my_simple_weather_server:
+  resources_servers:
+    simple_weather:
+      entrypoint: app.py

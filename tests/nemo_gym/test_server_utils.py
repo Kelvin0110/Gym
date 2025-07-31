@@ -11,7 +11,7 @@ from nemo_gym.server_utils import (
     BaseServer,
 )
 
-from pytest import MonkeyPatch
+from pytest import MonkeyPatch, raises
 from unittest.mock import MagicMock, AsyncMock
 
 
@@ -86,7 +86,11 @@ class TestServerUtils:
 
         # Override OmegaConf.load to avoid file reads.
         omegaconf_load_mock = MagicMock()
-        omegaconf_load_mock.return_value = DictConfig({})
+        omegaconf_load_mock.side_effect = (
+            lambda path: DictConfig({})
+            if "env" not in str(path)
+            else DictConfig({"extra_dot_env_key": 2})
+        )
         monkeypatch.setattr(
             nemo_gym.server_utils.OmegaConf, "load", omegaconf_load_mock
         )
@@ -132,6 +136,167 @@ class TestServerUtils:
             "a": {"b": {"c": {"host": "127.0.0.1", "port": 12345}}},
             "head_server": {"host": "127.0.0.1", "port": 11000},
         } == global_config_dict
+
+    def test_get_global_config_dict_server_refs_sanity(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        # Clear any lingering env vars.
+        monkeypatch.delenv(NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME, raising=False)
+        monkeypatch.setattr(nemo_gym.server_utils, "_GLOBAL_CONFIG_DICT", None)
+
+        # Explicitly handle any local .env.yaml files. Either read or don't read.
+        exists_mock = MagicMock()
+        exists_mock.return_value = False
+        monkeypatch.setattr(nemo_gym.server_utils.Path, "exists", exists_mock)
+
+        # Fix the port returned
+        find_open_port_mock = MagicMock()
+        find_open_port_mock.return_value = 12345
+        monkeypatch.setattr(
+            nemo_gym.server_utils, "find_open_port", find_open_port_mock
+        )
+
+        # Override the hydra main wrapper call. At runtime, this will use sys.argv.
+        # Here we assume that the user sets sys.argv correctly (we are not trying to test Hydra) and just return some DictConfig for our test.
+        hydra_main_mock = MagicMock()
+
+        def hydra_main_wrapper(fn):
+            config_dict = DictConfig(
+                {
+                    "agent_name": {
+                        "responses_api_agents": {
+                            "agent_type": {
+                                "d": {
+                                    "type": "resources_servers",
+                                    "name": "resources_name",
+                                },
+                                "e": 2,
+                            }
+                        }
+                    },
+                    "resources_name": {"resources_servers": {"c": {}}},
+                }
+            )
+            return lambda: fn(config_dict)
+
+        hydra_main_mock.return_value = hydra_main_wrapper
+        monkeypatch.setattr(nemo_gym.server_utils.hydra, "main", hydra_main_mock)
+
+        global_config_dict = get_global_config_dict()
+        assert {
+            "agent_name": {
+                "responses_api_agents": {
+                    "agent_type": {
+                        "d": {
+                            "type": "resources_servers",
+                            "name": "resources_name",
+                        },
+                        "e": 2,
+                        "host": "127.0.0.1",
+                        "port": 12345,
+                    }
+                }
+            },
+            "resources_name": {
+                "resources_servers": {"c": {"host": "127.0.0.1", "port": 12345}}
+            },
+            "head_server": {"host": "127.0.0.1", "port": 11000},
+        } == global_config_dict
+
+    def test_get_global_config_dict_server_refs_errors_on_missing(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        # Clear any lingering env vars.
+        monkeypatch.delenv(NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME, raising=False)
+        monkeypatch.setattr(nemo_gym.server_utils, "_GLOBAL_CONFIG_DICT", None)
+
+        # Explicitly handle any local .env.yaml files. Either read or don't read.
+        exists_mock = MagicMock()
+        exists_mock.return_value = False
+        monkeypatch.setattr(nemo_gym.server_utils.Path, "exists", exists_mock)
+
+        # Fix the port returned
+        find_open_port_mock = MagicMock()
+        find_open_port_mock.return_value = 12345
+        monkeypatch.setattr(
+            nemo_gym.server_utils, "find_open_port", find_open_port_mock
+        )
+
+        # Override the hydra main wrapper call. At runtime, this will use sys.argv.
+        # Here we assume that the user sets sys.argv correctly (we are not trying to test Hydra) and just return some DictConfig for our test.
+        hydra_main_mock = MagicMock()
+
+        # Test errors on missing
+        def hydra_main_wrapper(fn):
+            config_dict = DictConfig(
+                {
+                    "agent_name": {
+                        "responses_api_agents": {
+                            "agent_type": {
+                                "d": {
+                                    "type": "resources_servers",
+                                    "name": "resources_name",
+                                }
+                            }
+                        }
+                    },
+                }
+            )
+            return lambda: fn(config_dict)
+
+        hydra_main_mock.return_value = hydra_main_wrapper
+        monkeypatch.setattr(nemo_gym.server_utils.hydra, "main", hydra_main_mock)
+
+        with raises(AssertionError):
+            get_global_config_dict()
+
+    def test_get_global_config_dict_server_refs_errors_on_wrong_type(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        # Clear any lingering env vars.
+        monkeypatch.delenv(NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME, raising=False)
+        monkeypatch.setattr(nemo_gym.server_utils, "_GLOBAL_CONFIG_DICT", None)
+
+        # Explicitly handle any local .env.yaml files. Either read or don't read.
+        exists_mock = MagicMock()
+        exists_mock.return_value = False
+        monkeypatch.setattr(nemo_gym.server_utils.Path, "exists", exists_mock)
+
+        # Fix the port returned
+        find_open_port_mock = MagicMock()
+        find_open_port_mock.return_value = 12345
+        monkeypatch.setattr(
+            nemo_gym.server_utils, "find_open_port", find_open_port_mock
+        )
+
+        # Override the hydra main wrapper call. At runtime, this will use sys.argv.
+        # Here we assume that the user sets sys.argv correctly (we are not trying to test Hydra) and just return some DictConfig for our test.
+        hydra_main_mock = MagicMock()
+
+        # Test errors on missing
+        def hydra_main_wrapper(fn):
+            config_dict = DictConfig(
+                {
+                    "agent_name": {
+                        "responses_api_agents": {
+                            "agent_type": {
+                                "d": {
+                                    "type": "resources_servers",
+                                    "name": "resources_name",
+                                }
+                            }
+                        }
+                    },
+                    "resources_name": {"responses_api_models": {"c": {}}},
+                }
+            )
+            return lambda: fn(config_dict)
+
+        hydra_main_mock.return_value = hydra_main_wrapper
+        monkeypatch.setattr(nemo_gym.server_utils.hydra, "main", hydra_main_mock)
+
+        with raises(AssertionError):
+            get_global_config_dict()
 
     def test_get_first_server_config_dict(self) -> None:
         global_config_dict = DictConfig(

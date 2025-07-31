@@ -1,8 +1,11 @@
+from typing import List, Union
+
 from openai import AsyncOpenAI
+from openai.types.responses.response_input_param import FunctionCallOutput
 from openai.types.responses.response_create_params import (
     ResponseCreateParamsNonStreaming,
 )
-from openai.types.responses import Response
+from openai.types.responses import Response, ResponseOutputItem
 
 from nemo_gym.server_utils import GLOBAL_HTTPX_CLIENT
 
@@ -11,8 +14,11 @@ class NeMoGymResponseCreateParamsNonStreaming(ResponseCreateParamsNonStreaming):
     pass
 
 
+NeMoGymResponseOutputItem = Union[FunctionCallOutput, ResponseOutputItem]
+
+
 class NeMoGymResponse(Response):
-    pass
+    output: List[NeMoGymResponseOutputItem]
 
 
 class NeMoGymAsyncOpenAI(AsyncOpenAI):

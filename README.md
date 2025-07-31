@@ -35,7 +35,11 @@ my_gpt4p1_simple_chat_agent:
 
 Run server. `ng_run` or `nemo_gym_run` stands for `Nemo Gym Run`. Nemo Gym will run the file at the entrypoint you specify and will use the configs you set under config_paths. The config resolution order is earlier config paths < later config paths < env.yaml < command line args.
 ```bash
-ng_run '+config_paths=[responses_api_agents/simple_chat_agent/configs/gpt4p1.yaml]'
+config_paths=(
+    "responses_api_agents/simple_chat_agent/configs/gpt4p1.yaml,"
+    "resources_servers/simple_weather/configs/simple_weather.yaml"
+)
+ng_run "+config_paths=[$config_paths]"
 ```
 Take a look at the `responses_api_agents/simple_chat_agent/configs/gpt4p1.yaml` for more information!
 
