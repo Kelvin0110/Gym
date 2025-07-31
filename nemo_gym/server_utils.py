@@ -1,4 +1,4 @@
-from typing import Any, List, Type
+from typing import Any, List, Type, Literal, Optional, Union
 
 from abc import abstractmethod
 
@@ -17,7 +17,7 @@ import hydra
 
 from omegaconf import DictConfig, OmegaConf, open_dict
 
-from pydantic import BaseModel, TypeAdapter, ConfigDict
+from pydantic import BaseModel, TypeAdapter, ConfigDict, ValidationError
 
 from httpx import Limits, AsyncClient, AsyncHTTPTransport, Response
 from httpx._types import (
@@ -70,6 +70,23 @@ DEFAULT_HEAD_SERVER_PORT = 11000
 
 
 def get_global_config_dict() -> DictConfig:
+    """
+    This function provides a handle to the global configuration dict `global_config_dict`. We try to have one source of truth for everything in NeMo gym.
+    This config is resolved once and only once, immediately on a run command.
+
+    On first initialization, the global config dict will be loaded from the following sources in order of priority (later items are higher priority):
+    1. Configuration yamls specified in `config_paths` parameter.
+    2. Configuration (usually sensitive values like API keys, etc) from a local `.env.yaml` file.
+    3. Command line argument configuration.
+
+    Validation is performed on the passed in configs:
+    1. If a host or port is not provided for a server, defaults will be provided. Ports are resolved by the OS.
+    2. If there are server reference configs, the respective server names and types will be validated against the remainder of the config.
+
+    Then, the global config dict will be cached and reused.
+
+    If this function is run by a child server of the main proc, that child will have been spun up with an environment variable with key NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME. The config dict will be read directly off this variable, cached, and returned with no additional validation.
+    """
     global _GLOBAL_CONFIG_DICT
     if _GLOBAL_CONFIG_DICT is not None:
         return _GLOBAL_CONFIG_DICT
@@ -98,13 +115,8 @@ def get_global_config_dict() -> DictConfig:
     config_paths = global_config_dict.get(CONFIG_PATHS_KEY_NAME) or []
     config_paths = ta.validate_python(config_paths)
 
-    dotenv_path = Path(PARENT_DIR) / "env.yaml"
-    if dotenv_path.exists():
-        # We append here since OmegaConf.merge merges left to right, with later configs overriding previous configs.
-        config_paths.append(dotenv_path)
-
+    extra_configs: List[DictConfig] = []
     if config_paths:
-        extra_configs: List[DictConfig] = []
         for config_path in config_paths:
             config_path = Path(config_path)
             # Assume relative to the parent dir
@@ -114,20 +126,58 @@ def get_global_config_dict() -> DictConfig:
             extra_config = OmegaConf.load(config_path)
             extra_configs.append(extra_config)
 
-        # global_config_dict is the last config arg here since we want command line args to override everything else.
-        global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
+    dotenv_path = Path(PARENT_DIR) / "env.yaml"
+    if dotenv_path.exists():
+        dotenv_extra_config = OmegaConf.load(dotenv_path)
+        # For every top level key in dotenv_extra_config, we need to check if it's relevant to any of the existing top level keys
+        all_dotenv_extra_keys = set(dotenv_extra_config.keys()) - set(
+            NEMO_GYM_RESERVED_TOP_LEVEL_KEYS
+        )
+        for extra_config in extra_configs:
+            all_dotenv_extra_keys -= set(extra_config.keys())
+        all_dotenv_extra_keys -= set(global_config_dict.keys())
+
+        for k in all_dotenv_extra_keys:
+            dotenv_extra_config.pop(k)
+
+        extra_configs.append(dotenv_extra_config)
+
+    # global_config_dict is the last config arg here since we want command line args to override everything else.
+    global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
+
+    # Get the non-reserved top level items
+    non_reserved_items = [
+        (key, v)
+        for key, v in global_config_dict.items()
+        if key not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS
+    ]
+
+    # Do one pass to get the available servers and server types.
+    server_refs: List[ServerRef] = []
+    for server_name, server_type_config_dict in non_reserved_items:
+        server_ref = is_server_ref(
+            {"type": list(server_type_config_dict)[0], "name": server_name}
+        )
+        if server_ref:
+            server_refs.append(server_ref)
 
     default_host = global_config_dict.get(DEFAULT_HOST_KEY_NAME) or "127.0.0.1"
-    for key, server_type_config_dict in global_config_dict.items():
-        if key in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS:
-            continue
-
+    for _, server_type_config_dict in non_reserved_items:
         server_type_config_dict: DictConfig
         for server_config_dict in server_type_config_dict.values():
             server_config_dict: DictConfig
 
             for server_instance_config_dict in server_config_dict.values():
                 server_instance_config_dict: DictConfig
+
+                for v in server_instance_config_dict.values():
+                    maybe_server_ref = is_server_ref(v)
+                    if not maybe_server_ref:
+                        continue
+
+                    assert maybe_server_ref in server_refs, (
+                        f"Could not find {maybe_server_ref} in the list of available servers: {server_refs}"
+                    )
 
                 # Populate the host and port values if they are not present in the config.
                 with open_dict(server_instance_config_dict):
@@ -163,6 +213,32 @@ def find_open_port() -> int:  # pragma: no cover
     with socket() as s:
         s.bind(("", 0))  # Bind to a free port provided by the host.
         return s.getsockname()[1]  # Return the port number assigned.
+
+
+class ModelServerRef(BaseModel):
+    type: Literal["responses_api_models"]
+    name: str
+
+
+class ResourcesServerRef(BaseModel):
+    type: Literal["resources_servers"]
+    name: str
+
+
+class AgentServerRef(BaseModel):
+    type: Literal["responses_api_agents"]
+    name: str
+
+
+ServerRef = Union[ModelServerRef, ResourcesServerRef, AgentServerRef]
+ServerRefTypeAdapter = TypeAdapter(ServerRef)
+
+
+def is_server_ref(config_dict: DictConfig) -> Optional[ServerRef]:
+    try:
+        return ServerRefTypeAdapter.validate_python(config_dict)
+    except ValidationError:
+        return None
 
 
 class BaseServerConfig(BaseModel):
@@ -329,7 +405,7 @@ class HeadServer(SimpleServer):
         return app
 
     @classmethod
-    def run_webserver(cls) -> None:  # pragma: no cover
+    def run_webserver(cls) -> Thread:  # pragma: no cover
         config = ServerClient.load_head_server_config()
         server = cls(config=config)
 
@@ -344,6 +420,8 @@ class HeadServer(SimpleServer):
 
         thread = Thread(target=server.run, daemon=True)
         thread.start()
+
+        return thread
 
     async def global_config_dict_yaml(self) -> str:
         return OmegaConf.to_yaml(get_global_config_dict())
