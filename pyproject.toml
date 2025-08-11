@@ -69,10 +69,15 @@ dependencies = [
     # Updated Tue Aug 05, 2025
     # License: Apache 2.0 https://github.com/mlflow/mlflow/blob/1510ed1bc92d3a4258973005d64f64a43136e251/LICENSE.txt
     "mlflow==3.2.0",
-]
 
-[dependency-groups]
-dev = [
+
+    ########################################
+    # Dev dependencies
+    # 
+    # We include these in the regular dependencies to enable a more intuitive user experience using requirements.txt files for server dependencies.
+    # This is a limitation of the requirements.txt flow and eventually we may move to pyproject.toml + uv sync or something.
+    ########################################
+
     # Ruff: Used for Python code formatting and linting.
     # Updated: Fri Jul 25, 2025
     # License: MIT https://github.com/astral-sh/ruff/blob/21ac16db85452c2c196d3b9cc61fb27b7b81f3f7/LICENSE
