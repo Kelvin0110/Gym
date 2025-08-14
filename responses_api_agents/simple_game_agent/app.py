@@ -167,7 +167,7 @@ class TextGameAgent(SimpleResponsesAPIAgent):
                             "default": body.scale
                         }
                     },
-                    "required": [],
+                    "required": ["clues", "scale"],
                     "additionalProperties": False,
                 },
                 "strict": True,
@@ -181,7 +181,8 @@ class TextGameAgent(SimpleResponsesAPIAgent):
                     "properties": {
                         "game_state": {
                             "type": "object",
-                            "description": "Current game state from previous function calls"
+                            "description": "Current game state from previous function calls",
+                            "additionalProperties": False,
                         },
                         "move": {
                             "type": "string",
@@ -191,7 +192,7 @@ class TextGameAgent(SimpleResponsesAPIAgent):
                     "required": ["game_state", "move"],
                     "additionalProperties": False,
                 },
-                "strict": True,
+                "strict": False,
             }
         ]
 
