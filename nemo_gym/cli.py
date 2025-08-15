@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from os import environ, makedirs
 from os.path import exists
@@ -49,8 +49,13 @@ class RunConfig(BaseModel):
     entrypoint: str
 
 
-def run():  # pragma: no cover
-    global_config_dict = get_global_config_dict()
+def run(
+    dotenv_path: Optional[Path] = None,
+    initial_global_config_dict: Optional[DictConfig] = None,
+):  # pragma: no cover
+    global_config_dict = get_global_config_dict(
+        dotenv_path=dotenv_path, initial_global_config_dict=initial_global_config_dict
+    )
 
     # Assume Nemo Gym Run is for a single agent.
     escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
