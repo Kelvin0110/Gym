@@ -1,0 +1,7 @@
+simple_agent_chat_completions:
+  responses_api_agents:
+    simple_agent_chat_completions:
+      entrypoint: app.py
+      model_server:
+        type: responses_api_models
+        name: openai_model

@@ -444,7 +444,7 @@ Spin up your agent. For this example, we will use the multineedle resources serv
 ```bash
 config_paths="responses_api_agents/simple_agent/configs/simple_agent.yaml,\
 responses_api_models/openai_model/configs/openai_model.yaml,\
-resources_servers/simple_weather/configs/simple_weather.yaml"
+resources_servers/multineedle/configs/multineedle.yaml"
 ng_run "+config_paths=[$config_paths]" \
     +simple_agent.responses_api_agents.simple_agent.resources_server.name=multineedle
 ```

@@ -73,7 +73,10 @@ NEMO_GYM_RESERVED_TOP_LEVEL_KEYS = [
 DEFAULT_HEAD_SERVER_PORT = 11000
 
 
-def get_global_config_dict() -> DictConfig:
+def get_global_config_dict(
+    dotenv_path: Optional[Path] = None,
+    initial_global_config_dict: Optional[DictConfig] = None,
+) -> DictConfig:
     """
     This function provides a handle to the global configuration dict `global_config_dict`. We try to have one source of truth for everything in NeMo gym.
     This config is resolved once and only once, immediately on a run command.
@@ -114,9 +117,14 @@ def get_global_config_dict() -> DictConfig:
     inner_hydra_wrapper()
 
     global_config_dict: DictConfig = config_list[0]
+    # Command line overrides function input.
+    initial_global_config_dict = OmegaConf.create(initial_global_config_dict or dict())
+    global_config_dict: DictConfig = OmegaConf.merge(
+        initial_global_config_dict, global_config_dict
+    )
 
     # Load the env.yaml config. We load it early so that people can use it to conveniently store config paths.
-    dotenv_path = Path(PARENT_DIR) / "env.yaml"
+    dotenv_path = dotenv_path or Path(PARENT_DIR) / "env.yaml"
     dotenv_extra_config = DictConfig({})
     if dotenv_path.exists():
         dotenv_extra_config = OmegaConf.load(dotenv_path)
