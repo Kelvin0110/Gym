@@ -1,26 +1,127 @@
-from typing import List, Union, NotRequired, Required, Literal, Optional
+from typing import (
+    Dict,
+    List,
+    Union,
+    Required,
+    Literal,
+    Optional,
+    TypeAlias,
+)
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from openai import AsyncOpenAI
+from openai.types.responses import (
+    ResponseOutputMessage,
+    ResponseFunctionToolCall,
+    ResponseOutputText,
+    ResponseOutputTextParam,
+    ResponseInputTextParam,
+    EasyInputMessageParam,
+    ResponseFunctionToolCallParam,
+    FunctionToolParam,
+    ResponseOutputRefusalParam,
+)
+from openai.types.responses.response_output_text_param import Annotation, Logprob
 from openai.types.responses.response_create_params import (
-    ResponseCreateParamsNonStreaming,
     ToolParam,
+    ResponseIncludable,
+    Metadata,
+    ResponsesModel,
+    ResponsePromptParam,
+    Reasoning,
+    ResponseTextConfigParam,
+    ToolChoice,
+)
+from openai.types.responses.response_input_param import (
+    Message,
+)
+from openai.types.responses.response_reasoning_item import (
+    Summary,
+    ResponseReasoningItem,
 )
 from openai.types.shared.chat_model import ChatModel
 from openai.types.chat.completion_create_params import (
-    CompletionCreateParamsNonStreaming,
     ChatCompletionMessageParam,
+    ChatCompletionAudioParam,
+    ChatCompletionPredictionContentParam,
+    ReasoningEffort,
+    ResponseFormat,
+    ChatCompletionStreamOptionsParam,
+    ChatCompletionToolChoiceOptionParam,
+    WebSearchOptions,
 )
-from openai.types.chat import ChatCompletion
-from openai.types.responses import Response, ResponseOutputItem
+from openai.types.chat.chat_completion_message import FunctionCall
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionToolParam,
+    ChatCompletionMessage,
+    ChatCompletionUserMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionDeveloperMessageParam,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageToolCallParam,
+    ChatCompletionMessageToolCall,
+    ChatCompletionContentPartTextParam,
+    ChatCompletionToolMessageParam,
+)
+from openai.types.chat.completion_create_params import Function
+from openai.types.chat.chat_completion import Choice
+from openai.types.responses import (
+    Response,
+    ResponseOutputItem,
+)
+
+from openai.types.shared_params import FunctionDefinition
 
 from nemo_gym.server_utils import GLOBAL_HTTPX_CLIENT
 
 
-class NeMoGymResponseCreateParamsNonStreaming(ResponseCreateParamsNonStreaming):
+class NeMoGymSummary(Summary):
+    pass
+
+
+class NeMoGymResponseReasoningItemParam(BaseModel):
+    id: str
     # Override the Iterable to avoid lazy iterators in Pydantic validation.
-    tools: NotRequired[List[ToolParam]]
+    summary: List[NeMoGymSummary]
+    type: Literal["reasoning"]
+    encrypted_content: str = None
+    status: Literal["in_progress", "completed", "incomplete"]
+
+
+class NeMoGymResponseReasoningItem(ResponseReasoningItem):
+    pass
+
+
+class NeMoGymResponseOutputTextParam(BaseModel):
+    # Override the Iterable to avoid lazy iterators in Pydantic validation.
+    annotations: List[Annotation]
+    text: str
+    type: Literal["output_text"]
+    logprobs: Optional[List[Logprob]] = None
+
+
+NeMoGymContent: TypeAlias = Union[
+    NeMoGymResponseOutputTextParam, ResponseOutputRefusalParam
+]
+
+
+class NeMoGymResponseOutputMessageParam(BaseModel):
+    id: str
+    # Override the Iterable to avoid lazy iterators in Pydantic validation.
+    content: List[NeMoGymContent]
+    role: Literal["assistant"]
+    status: Literal["in_progress", "completed", "incomplete"]
+    type: Literal["message"]
+
+
+class NeMoGymEasyInputMessageParam(EasyInputMessageParam):
+    pass
+
+
+class NeMoGymMessage(Message):
+    pass
 
 
 class NeMoGymFunctionCallOutput(BaseModel):
@@ -52,21 +153,188 @@ class NeMoGymFunctionCallOutput(BaseModel):
     """
 
 
-NeMoGymResponseOutputItem = Union[NeMoGymFunctionCallOutput, ResponseOutputItem]
+class NeMoGymResponseFunctionToolCallParam(ResponseFunctionToolCallParam):
+    pass
+
+
+NeMoGymResponseInputItemParam = Union[
+    NeMoGymEasyInputMessageParam,
+    NeMoGymMessage,
+    NeMoGymResponseOutputMessageParam,
+    NeMoGymResponseFunctionToolCallParam,
+    NeMoGymFunctionCallOutput,
+    NeMoGymResponseReasoningItemParam,
+]
+NeMoGymResponseInputParam: TypeAlias = List[NeMoGymResponseInputItemParam]
+
+
+class NeMoGymResponseCreateParamsNonStreaming(BaseModel):
+    """
+    This class is a copy of openai.types.responses.response_create_params.ResponseCreateParamsNonStreaming
+    We make a copy of it here since ResponseCreateParamsNonStreaming is a TypedDict with no strict validation.
+    We need to do server side validation here.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    background: Optional[bool] = None
+    include: Optional[List[ResponseIncludable]] = None
+    input: Union[str, NeMoGymResponseInputParam]
+    instructions: Optional[str] = None
+    max_output_tokens: Optional[int] = None
+    max_tool_calls: Optional[int] = None
+    metadata: Optional[Metadata] = None
+    model: Optional[ResponsesModel] = None
+    parallel_tool_calls: Optional[bool] = None
+    previous_response_id: Optional[str] = None
+    prompt: Optional[ResponsePromptParam] = None
+    reasoning: Optional[Reasoning] = None
+    service_tier: Optional[Literal["auto", "default", "flex", "scale", "priority"]] = (
+        None
+    )
+    store: Optional[bool] = None
+    temperature: Optional[float] = None
+    text: Optional[ResponseTextConfigParam] = None
+    tool_choice: Optional[ToolChoice] = None
+    # Override the Iterable to avoid lazy iterators in Pydantic validation.
+    tools: List[ToolParam] = Field(default_factory=list)
+    top_logprobs: Optional[int] = None
+    top_p: Optional[float] = None
+    truncation: Optional[Literal["auto", "disabled"]] = None
+    user: str = ""
+    stream: Optional[Literal[False]] = None
+
+
+NeMoGymResponseOutputItem = Union[
+    NeMoGymMessage, NeMoGymFunctionCallOutput, ResponseOutputItem
+]
 
 
 class NeMoGymResponse(Response):
     output: List[NeMoGymResponseOutputItem]
 
 
-class NeMoGymChatCompletionCreateParamsNonStreaming(
-    CompletionCreateParamsNonStreaming, total=False
-):
-    messages: Required[List[ChatCompletionMessageParam]]
-    model: NotRequired[Union[str, ChatModel]]
+class NeMoGymResponseOutputMessage(ResponseOutputMessage):
+    pass
 
 
-class NeMoGymChatCompletionResponse(ChatCompletion):
+class NeMoGymResponseFunctionToolCall(ResponseFunctionToolCall):
+    name: str
+    arguments: str
+    call_id: str
+
+
+class NeMoGymResponseOutputText(ResponseOutputText):
+    pass
+
+
+class NeMoGymResponseOutputTextParam(ResponseOutputTextParam):
+    pass
+
+
+class NeMoGymResponseInputTextParam(ResponseInputTextParam):
+    pass
+
+
+class NeMoGymFunctionDefinition(FunctionDefinition):
+    pass
+
+
+class NeMoGymChatCompletionToolParam(ChatCompletionToolParam):
+    function: Required[NeMoGymFunctionDefinition]
+
+
+class NeMoGymFunctionCall(FunctionCall):
+    pass
+
+
+class NeMoGymChatCompletionCreateParamsNonStreaming(BaseModel):
+    messages: List[ChatCompletionMessageParam]
+    model: Optional[Union[str, ChatModel]] = None
+    audio: Optional[ChatCompletionAudioParam] = None
+    frequency_penalty: Optional[float] = None
+    logit_bias: Optional[Dict[str, int]] = None
+    logprobs: Optional[bool] = None
+    max_completion_tokens: Optional[int] = None
+    max_tokens: Optional[int] = None
+    metadata: Optional[Metadata] = None
+    modalities: Optional[List[Literal["text", "audio"]]] = None
+    n: Optional[int] = None
+    parallel_tool_calls: bool = True
+    prediction: Optional[ChatCompletionPredictionContentParam] = None
+    presence_penalty: Optional[float] = None
+    reasoning_effort: Optional[ReasoningEffort] = None
+    response_format: Optional[ResponseFormat] = None
+    seed: Optional[int] = None
+    service_tier: Optional[Literal["auto", "default", "flex", "scale", "priority"]] = (
+        None
+    )
+    stop: Union[Optional[str], List[str], None] = None
+    store: Optional[bool] = None
+    stream_options: Optional[ChatCompletionStreamOptionsParam] = None
+    temperature: Optional[float] = None
+    tool_choice: Optional[ChatCompletionToolChoiceOptionParam] = None
+    tools: Optional[List[NeMoGymChatCompletionToolParam]] = None
+    top_logprobs: Optional[int] = None
+    top_p: Optional[float] = None
+    user: str = ""
+    web_search_options: Optional[WebSearchOptions] = None
+    stream: Optional[Literal[False]] = None
+
+    # Disallow deprecated args
+    # function_call: FunctionCall
+    # functions: Iterable[Function]
+
+
+class NeMoGymChatCompletionMessage(ChatCompletionMessage):
+    pass
+
+
+class NeMoGymChatCompletion(ChatCompletion):
+    pass
+
+
+class NeMoGymChatCompletionUserMessageParam(ChatCompletionUserMessageParam):
+    pass
+
+
+class NeMoGymChatCompletionSystemMessageParam(ChatCompletionSystemMessageParam):
+    pass
+
+
+class NeMoGymChatCompletionDeveloperMessageParam(ChatCompletionDeveloperMessageParam):
+    pass
+
+
+class NeMoGymChatCompletionAssistantMessageParam(ChatCompletionAssistantMessageParam):
+    pass
+
+
+class NeMoGymChatCompletionMessageToolCallParam(ChatCompletionMessageToolCallParam):
+    pass
+
+
+class NeMoGymChatCompletionMessageToolCall(ChatCompletionMessageToolCall):
+    pass
+
+
+class NeMoGymChatCompletionToolMessageParam(ChatCompletionToolMessageParam):
+    pass
+
+
+class NeMoGymChatCompletionContentPartTextParam(ChatCompletionContentPartTextParam):
+    pass
+
+
+class NeMoGymChoice(Choice):
+    pass
+
+
+class NeMoGymFunction(Function):
+    pass
+
+
+class NeMoGymFunctionToolParam(FunctionToolParam):
     pass
 
 

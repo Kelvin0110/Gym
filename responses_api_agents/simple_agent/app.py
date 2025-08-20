@@ -1,12 +1,11 @@
+from typing import List
+
 import json
 
 from pydantic import ConfigDict
 
 from openai.types.responses import ResponseFunctionToolCall
-from openai.types.responses.response_input_param import (
-    FunctionCallOutput,
-    EasyInputMessageParam,
-)
+from openai.types.responses.response_input_param import FunctionCallOutput
 
 from nemo_gym.base_resources_server import (
     BaseVerifyRequest,
@@ -49,19 +48,12 @@ class SimpleAgent(SimpleResponsesAPIAgent):
     async def responses(
         self, body: NeMoGymResponseCreateParamsNonStreaming = Body()
     ) -> NeMoGymResponse:
-        if isinstance(body["input"], str):
-            body["input"] = [
-                EasyInputMessageParam(
-                    content=body["input"],
-                    role="user",
-                    type="message",
-                )
-            ]
+        body_dict = body.model_dump(exclude_unset=True)
 
         new_outputs = []
         while True:
-            new_body: NeMoGymResponseCreateParamsNonStreaming = body.copy()
-            new_body["input"] = body["input"] + new_outputs
+            new_body: NeMoGymResponseCreateParamsNonStreaming = body_dict.copy()
+            new_body["input"] = body.input + new_outputs
 
             model_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
@@ -72,23 +64,26 @@ class SimpleAgent(SimpleResponsesAPIAgent):
 
             output = model_response.output
             new_outputs.extend((o.model_dump() for o in output))
-            if output[-1].type != "function_call":
+
+            all_fn_calls: List[ResponseFunctionToolCall] = [
+                o for o in output if o.type == "function_call"
+            ]
+            if not all_fn_calls:
                 break
 
-            output_function_call: ResponseFunctionToolCall = output[-1]
+            for output_function_call in all_fn_calls:
+                api_response = await self.server_client.post(
+                    server_name=self.config.resources_server.name,
+                    url_path=f"/{output_function_call.name}",
+                    json=json.loads(output_function_call.arguments),
+                )
 
-            api_response = await self.server_client.post(
-                server_name=self.config.resources_server.name,
-                url_path=f"/{output_function_call.name}",
-                json=json.loads(output_function_call.arguments),
-            )
-
-            tool_response = FunctionCallOutput(
-                type="function_call_output",
-                call_id=output_function_call.call_id,
-                output=json.dumps(api_response.json()),
-            )
-            new_outputs.append(tool_response)
+                tool_response = FunctionCallOutput(
+                    type="function_call_output",
+                    call_id=output_function_call.call_id,
+                    output=json.dumps(api_response.json()),
+                )
+                new_outputs.append(tool_response)
 
         final_response_dict = model_response.model_dump()
         final_response_dict["output"] = new_outputs
