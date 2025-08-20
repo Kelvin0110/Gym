@@ -211,7 +211,7 @@ def build_jsonl_dataset_viewer(config: JsonlDatasetViewerConfig) -> Blocks:
     def select_item(value: int):
         d = data[value]
         return extra_info_to_messages(d.model_dump()) + trajectory_to_messages(
-            d.responses_create_params, d.response.model_dump()
+            d.responses_create_params.model_dump(), d.response.model_dump()
         )
 
     CSS = """

@@ -350,7 +350,7 @@ class ServerClient(BaseModel):
         content: RequestContent | None = None,
         data: RequestData | None = None,
         files: RequestFiles | None = None,
-        json: Any | None = None,
+        json: Any | BaseModel | None = None,
         params: QueryParamTypes | None = None,
         headers: HeaderTypes | None = None,
         **kwargs,
@@ -374,7 +374,9 @@ class ServerClient(BaseModel):
             content=content,
             data=data,
             files=files,
-            json=json,
+            json=json.model_dump(exclude_unset=True)
+            if isinstance(json, BaseModel)
+            else json,
             params=params,
             headers=headers,
             **kwargs,

@@ -6,7 +6,7 @@ from nemo_gym.base_responses_api_model import (
 from nemo_gym.server_utils import ServerClient
 from nemo_gym.openai_utils import (
     NeMoGymResponseCreateParamsNonStreaming,
-    NeMoGymChatCompletionResponse,
+    NeMoGymChatCompletion,
     NeMoGymResponse,
 )
 
@@ -28,10 +28,10 @@ class TestBaseResponsesAPIModel:
         class TestSimpleResponsesAPIModel(SimpleResponsesAPIModel):
             async def chat_completions(
                 self, request: NeMoGymResponseCreateParamsNonStreaming
-            ) -> NeMoGymChatCompletionResponse:
+            ) -> NeMoGymChatCompletion:
                 raise NotImplementedError
 
-            async def model_responses(
+            async def responses(
                 self, request: NeMoGymResponseCreateParamsNonStreaming
             ) -> NeMoGymResponse:
                 raise NotImplementedError

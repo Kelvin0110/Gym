@@ -7,7 +7,7 @@ from nemo_gym.openai_utils import (
     NeMoGymResponseCreateParamsNonStreaming,
     NeMoGymResponse,
     NeMoGymChatCompletionCreateParamsNonStreaming,
-    NeMoGymChatCompletionResponse,
+    NeMoGymChatCompletion,
 )
 
 from responses_api_agents.simple_agent.app import (
@@ -34,7 +34,9 @@ class SimpleAgentChatCompletions(SimpleAgent):
     async def responses(
         self, body: NeMoGymResponseCreateParamsNonStreaming = Body()
     ) -> NeMoGymResponse:
-        cc_body: NeMoGymChatCompletionCreateParamsNonStreaming = body.copy()
+        cc_body: NeMoGymChatCompletionCreateParamsNonStreaming = body.model_dump(
+            exclude_unset=True
+        )
         assert not cc_body.get("tools"), "Tools are not supported currently!"
         cc_body["messages"] = cc_body.pop("input")
 
@@ -43,16 +45,14 @@ class SimpleAgentChatCompletions(SimpleAgent):
             url_path="/v1/chat/completions",
             json=cc_body,
         )
-        model_response = NeMoGymChatCompletionResponse.model_validate(
-            model_response.json()
-        )
+        model_response = NeMoGymChatCompletion.model_validate(model_response.json())
 
         message = model_response.choices[0].message
 
         return NeMoGymResponse(
             id=model_response.id,
             created_at=0.0,
-            model=body.get("model", ""),
+            model=cc_body.get("model", ""),
             object="response",
             output=[
                 ResponseOutputMessage(
@@ -69,8 +69,8 @@ class SimpleAgentChatCompletions(SimpleAgent):
                     type="message",
                 )
             ],
-            parallel_tool_calls=body.get("parallel_tool_calls", False),
-            temperature=body.get("temperature", None),
+            parallel_tool_calls=cc_body.get("parallel_tool_calls", True),
+            temperature=cc_body.get("temperature", None),
             tool_choice="auto",
             tools=[],
         )

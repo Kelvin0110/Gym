@@ -6,7 +6,7 @@ from nemo_gym.openai_utils import (
     NeMoGymResponseCreateParamsNonStreaming,
     NeMoGymResponse,
     NeMoGymChatCompletionCreateParamsNonStreaming,
-    NeMoGymChatCompletionResponse,
+    NeMoGymChatCompletion,
 )
 
 
@@ -24,18 +24,18 @@ class SimpleResponsesAPIModel(BaseResponsesAPIModel, SimpleServer):
 
         app.post("/v1/chat/completions")(self.chat_completions)
 
-        app.post("/v1/responses")(self.model_responses)
+        app.post("/v1/responses")(self.responses)
 
         return app
 
     @abstractmethod
     async def chat_completions(
         self, body: NeMoGymChatCompletionCreateParamsNonStreaming = Body()
-    ) -> NeMoGymChatCompletionResponse:
+    ) -> NeMoGymChatCompletion:
         pass
 
     @abstractmethod
-    async def model_responses(
+    async def responses(
         self, body: NeMoGymResponseCreateParamsNonStreaming = Body()
     ) -> NeMoGymResponse:
         pass

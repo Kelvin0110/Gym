@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from nemo_gym.openai_utils import NeMoGymResponse, NeMoGymChatCompletionResponse
+from nemo_gym.openai_utils import NeMoGymResponse, NeMoGymChatCompletion
 from nemo_gym.server_utils import ServerClient
 
 from app import SimpleModelServer, SimpleModelServerConfig
@@ -16,7 +16,7 @@ class TestApp:
             port=8081,
             openai_base_url="https://api.openai.com/v1",
             openai_api_key="dummy_key",
-            openai_model_name="dummy_model",
+            openai_model="dummy_model",
             entrypoint="",
         )
         return SimpleModelServer(
@@ -53,7 +53,7 @@ class TestApp:
         async def mock_create_chat(**kwargs):
             nonlocal called_args_chat
             called_args_chat = kwargs
-            return NeMoGymChatCompletionResponse(**mock_chat_data)
+            return NeMoGymChatCompletion(**mock_chat_data)
 
         mock_chat = AsyncMock(side_effect=mock_create_chat)
 
