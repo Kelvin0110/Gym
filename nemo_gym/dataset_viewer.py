@@ -127,7 +127,7 @@ def trajectory_to_messages(create_params: dict, response: dict) -> List[ChatMess
 
     sampling_params = create_params.copy()
     sampling_params.pop("input")
-    sampling_params.pop("tools")
+    sampling_params.pop("tools", None)
     messages.append(
         ChatMessage(
             content=f"""```json
