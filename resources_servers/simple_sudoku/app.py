@@ -51,14 +51,14 @@ class SudokuRunRequest(BaseRunRequest):
 
 
 class SudokuVerifyRequest(SudokuRunRequest, BaseVerifyRequest):
-    pass
+    reward: float = 0.0
+    total_moves: int = 0
+    is_complete: bool = False
 
 
 class SudokuVerifyResponse(BaseVerifyResponse):
-    is_complete: bool
-    accuracy: float
-    total_moves: int
-    correct_moves: int
+    total_moves: int = 0
+    is_complete: bool = False
 
 
 class SudokuResourcesServer(SimpleResourcesServer):
@@ -185,54 +185,7 @@ class SudokuResourcesServer(SimpleResourcesServer):
             )
 
     async def verify(self, body: SudokuVerifyRequest) -> SudokuVerifyResponse:
-        # Parse the response to extract final game state
-        final_game_state = None
-        
-        # Look for the last make_move call in the response output
-        for output in reversed(body.response.output):
-            if output.type == "function_call" and output.name == "make_move":
-                # This should contain the final game state
-                break
-            elif output.type == "function_call_output":
-                try:
-                    function_output = json.loads(output.output)
-                    if "game_state" in function_output:
-                        final_game_state = function_output["game_state"]
-                        break
-                except:
-                    continue
-
-        if final_game_state is None:
-            # Fallback: assume puzzle not completed
-            return SudokuVerifyResponse(
-                **body.model_dump(),
-                reward=0.0,
-                is_complete=False,
-                accuracy=0.0,
-                total_moves=0,
-                correct_moves=0
-            )
-
-        is_complete = self._is_puzzle_complete(final_game_state["current_board"])
-        total_moves = final_game_state.get("moves_made", 0)
-        correct_moves = final_game_state.get("correct_moves", 0)
-        
-        accuracy = correct_moves / max(total_moves, 1)
-        
-        # Reward based on completion and accuracy
-        if is_complete:
-            reward = 1.0
-        else:
-            reward = accuracy * 0.5  # Partial credit for correct moves
-        
-        return SudokuVerifyResponse(
-            **body.model_dump(),
-            reward=reward,
-            is_complete=is_complete,
-            accuracy=accuracy,
-            total_moves=total_moves,
-            correct_moves=correct_moves
-        )
+        return SudokuVerifyResponse(**body.model_dump())
 
     def _get_instructions(self, scale: int) -> str:
         prompt = (
