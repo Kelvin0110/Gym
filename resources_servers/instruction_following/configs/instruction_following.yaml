@@ -1,0 +1,4 @@
+instruction_following:
+  resources_servers:
+    instruction_following:
+      entrypoint: app.py
