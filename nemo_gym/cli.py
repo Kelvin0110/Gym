@@ -9,6 +9,8 @@ from glob import glob
 
 from subprocess import Popen
 
+from threading import Thread
+
 import json
 
 import asyncio
@@ -65,83 +67,103 @@ class TestConfig(RunConfig):
         return super().model_post_init(context)
 
 
-def run(
-    dotenv_path: Optional[Path] = None,
-    initial_global_config_dict: Optional[DictConfig] = None,
-):  # pragma: no cover
-    global_config_dict = get_global_config_dict(
-        dotenv_path=dotenv_path, initial_global_config_dict=initial_global_config_dict
-    )
+class RunHelper:  # pragma: no cover
+    _head_server_thread: Thread
+    _processes: Dict[str, Popen]
 
-    # Assume Nemo Gym Run is for a single agent.
-    escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
+    def start(
+        self,
+        dotenv_path: Optional[Path] = None,
+        initial_global_config_dict: Optional[DictConfig] = None,
+    ) -> None:
+        global_config_dict = get_global_config_dict(
+            dotenv_path=dotenv_path,
+            initial_global_config_dict=initial_global_config_dict,
+        )
 
-    # We always run the head server in this `run` command.
-    head_server_thread = HeadServer.run_webserver()
+        # Assume Nemo Gym Run is for a single agent.
+        escaped_config_dict_yaml_str = shlex.quote(
+            OmegaConf.to_yaml(global_config_dict)
+        )
 
-    top_level_paths = [
-        k
-        for k in global_config_dict.keys()
-        if k not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS
-    ]
+        # We always run the head server in this `run` command.
+        self._head_server_thread = HeadServer.run_webserver()
 
-    processes: Dict[str, Popen] = dict()
-    for top_level_path in top_level_paths:
-        server_config_dict = global_config_dict[top_level_path]
-        if not isinstance(server_config_dict, DictConfig):
-            continue
+        top_level_paths = [
+            k
+            for k in global_config_dict.keys()
+            if k not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS
+        ]
 
-        first_key = list(server_config_dict)[0]
-        server_config_dict = server_config_dict[first_key]
-        if not isinstance(server_config_dict, DictConfig):
-            continue
-        second_key = list(server_config_dict)[0]
-        server_config_dict = server_config_dict[second_key]
-        if not isinstance(server_config_dict, DictConfig):
-            continue
+        processes: Dict[str, Popen] = dict()
+        for top_level_path in top_level_paths:
+            server_config_dict = global_config_dict[top_level_path]
+            if not isinstance(server_config_dict, DictConfig):
+                continue
 
-        if "entrypoint" not in server_config_dict:
-            continue
+            first_key = list(server_config_dict)[0]
+            server_config_dict = server_config_dict[first_key]
+            if not isinstance(server_config_dict, DictConfig):
+                continue
+            second_key = list(server_config_dict)[0]
+            server_config_dict = server_config_dict[second_key]
+            if not isinstance(server_config_dict, DictConfig):
+                continue
 
-        # TODO: This currently only handles relative entrypoints. Later on we can resolve the absolute path.
-        entrypoint_fpath = Path(server_config_dict.entrypoint)
-        assert not entrypoint_fpath.is_absolute()
+            if "entrypoint" not in server_config_dict:
+                continue
 
-        dir_path = Path(first_key, second_key)
+            # TODO: This currently only handles relative entrypoints. Later on we can resolve the absolute path.
+            entrypoint_fpath = Path(server_config_dict.entrypoint)
+            assert not entrypoint_fpath.is_absolute()
 
-        command = f"""{_setup_env_command(dir_path)} \\
+            dir_path = Path(first_key, second_key)
+
+            command = f"""{_setup_env_command(dir_path)} \\
     && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
 
-        process = _run_command(command, dir_path)
-        processes[top_level_path] = process
+            process = _run_command(command, dir_path)
+            processes[top_level_path] = process
 
-    async def sleep():
-        # Indefinitely
-        while True:
-            if not head_server_thread.is_alive():
-                raise RuntimeError("Head server finished unexpectedly!")
+        self._processes = processes
 
-            for process_name, process in processes.items():
-                if process.poll() is not None:
-                    raise RuntimeError(
-                        f"Process `{process_name}` finished unexpectedly!"
-                    )
+    def poll(self) -> None:
+        if not self._head_server_thread.is_alive():
+            raise RuntimeError("Head server finished unexpectedly!")
 
-            await asyncio.sleep(60)  # Check every 60s.
+        for process_name, process in self._processes.items():
+            if process.poll() is not None:
+                raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
 
-    try:
-        asyncio.run(sleep())
-    except KeyboardInterrupt:
-        pass
-    finally:
-        for process_name, process in processes.items():
-            print(f"Killing `{process_name}`")
-            process.kill()
-            process.wait()
+    def run_forever(self) -> None:
+        async def sleep():
+            # Indefinitely
+            while True:
+                self.poll()
+                await asyncio.sleep(60)  # Check every 60s.
 
-        print("NeMo Gym finished!")
+        try:
+            asyncio.run(sleep())
+        except KeyboardInterrupt:
+            pass
+        finally:
+            for process_name, process in self._processes.items():
+                print(f"Killing `{process_name}`")
+                process.kill()
+                process.wait()
+
+            print("NeMo Gym finished!")
+
+
+def run(
+    dotenv_path: Optional[Path] = None,
+    initial_global_config_dict: Optional[DictConfig] = None,
+):  # pragma: no cover
+    rh = RunHelper()
+    rh.start()
+    rh.run_forever()
 
 
 def _validate_data_single(test_config: TestConfig) -> None:  # pragma: no cover
