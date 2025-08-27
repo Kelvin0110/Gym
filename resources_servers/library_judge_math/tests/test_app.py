@@ -4,10 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from math_verify.errors import TimeoutException
 from openai.types.responses import (
-    ResponseOutputMessage,
     ResponseOutputRefusal,
-    ResponseOutputText,
-    ResponseReasoningItem,
 )
 from pydantic import ValidationError
 from pytest import approx, fixture, raises
@@ -22,6 +19,9 @@ from nemo_gym.openai_utils import (
     NeMoGymResponse,
     NeMoGymResponseCreateParamsNonStreaming,
     NeMoGymResponseOutputItem,
+    NeMoGymResponseOutputMessage,
+    NeMoGymResponseOutputText,
+    NeMoGymResponseReasoningItem,
 )
 from nemo_gym.config_types import ModelServerRef
 from nemo_gym.server_utils import ServerClient
@@ -101,11 +101,11 @@ class TestApp:
 
     def _create_response_output_message(
         self, message_text: str
-    ) -> ResponseOutputMessage:
-        return ResponseOutputMessage(
+    ) -> NeMoGymResponseOutputMessage:
+        return NeMoGymResponseOutputMessage(
             id=f"ID for {message_text}",
             content=[
-                ResponseOutputText(
+                NeMoGymResponseOutputText(
                     annotations=[], text=message_text, type="output_text"
                 )
             ],
@@ -183,9 +183,11 @@ class TestApp:
 
         second_model_response = first_model_response.model_copy(deep=True)
         second_model_response.output = second_model_response.output + [
-            ResponseReasoningItem(id="extra_reasoning", summary=[], type="reasoning"),
+            NeMoGymResponseReasoningItem(
+                id="extra_reasoning", summary=[], type="reasoning"
+            ),
             self._create_response_output_message(" + x$"),
-            ResponseOutputMessage(
+            NeMoGymResponseOutputMessage(
                 id="refusal_finish",
                 content=[
                     ResponseOutputRefusal(refusal="no response", type="refusal"),
@@ -540,7 +542,7 @@ class TestApp:
                 "invalid_response", "invalid_1", "invalid_2"
             )
 
-        reasoning_item = ResponseReasoningItem(
+        reasoning_item = NeMoGymResponseReasoningItem(
             id="reasoning_item", summary=[], type="reasoning"
         )
         response_mock.return_value = self._create_response(
@@ -554,7 +556,7 @@ class TestApp:
             reasoning_item,
         )
 
-        refusal_item = ResponseOutputMessage(
+        refusal_item = NeMoGymResponseOutputMessage(
             id="refusal_item",
             content=[
                 ResponseOutputRefusal(refusal="I refuse", type="refusal"),

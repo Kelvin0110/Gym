@@ -8,6 +8,8 @@ from typing import (
     TypeAlias,
 )
 
+from typing_extensions import TypedDict
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from openai import AsyncOpenAI
@@ -15,11 +17,11 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseFunctionToolCall,
     ResponseOutputText,
-    ResponseOutputTextParam,
     ResponseInputTextParam,
     ResponseFunctionToolCallParam,
     FunctionToolParam,
     ResponseOutputRefusalParam,
+    ResponseOutputRefusal,
 )
 from openai.types.responses.response_output_text_param import Annotation, Logprob
 from openai.types.responses.response_create_params import (
@@ -49,7 +51,6 @@ from openai.types.chat.completion_create_params import (
     ChatCompletionToolChoiceOptionParam,
     WebSearchOptions,
 )
-from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionToolParam,
@@ -70,12 +71,33 @@ from openai.types.chat.completion_create_params import Function
 from openai.types.chat.chat_completion import Choice
 from openai.types.responses import (
     Response,
-    ResponseOutputItem,
 )
 
 from openai.types.shared_params import FunctionDefinition
 
 from nemo_gym.server_utils import GLOBAL_HTTPX_CLIENT
+
+
+########################################
+# Training-specific
+########################################
+
+
+class TokenIDLogProbMixin(BaseModel):
+    prompt_token_ids: List[int]
+    generation_token_ids: List[int]
+    generation_log_probs: List[float]
+
+
+class TokenIDLogProbTypedDictMixin(TypedDict):
+    prompt_token_ids: List[int]
+    generation_token_ids: List[int]
+    generation_log_probs: List[float]
+
+
+########################################
+# Responses API inputs
+########################################
 
 
 class NeMoGymSummary(Summary):
@@ -89,10 +111,6 @@ class NeMoGymResponseReasoningItemParam(BaseModel):
     type: Literal["reasoning"]
     encrypted_content: str = None
     status: Literal["in_progress", "completed", "incomplete"]
-
-
-class NeMoGymResponseReasoningItem(ResponseReasoningItem):
-    pass
 
 
 class NeMoGymResponseOutputTextParam(BaseModel):
@@ -163,6 +181,34 @@ class NeMoGymResponseFunctionToolCallParam(ResponseFunctionToolCallParam):
     pass
 
 
+class NeMoGymEasyInputMessageForTrainingParam(
+    NeMoGymEasyInputMessageParam, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymMessageForTraining(NeMoGymMessage, TokenIDLogProbMixin):
+    pass
+
+
+class NeMoGymResponseOutputMessageForTrainingParam(
+    NeMoGymResponseOutputMessageParam, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymResponseFunctionToolCallForTrainingParam(
+    NeMoGymResponseFunctionToolCallParam, TokenIDLogProbTypedDictMixin
+):
+    pass
+
+
+class NeMoGymResponseReasoningItemForTrainingParam(
+    NeMoGymResponseReasoningItemParam, TokenIDLogProbMixin
+):
+    pass
+
+
 NeMoGymResponseInputItemParam = Union[
     NeMoGymEasyInputMessageParam,
     NeMoGymMessage,
@@ -170,6 +216,12 @@ NeMoGymResponseInputItemParam = Union[
     NeMoGymResponseFunctionToolCallParam,
     NeMoGymFunctionCallOutput,
     NeMoGymResponseReasoningItemParam,
+    # For training:
+    NeMoGymEasyInputMessageForTrainingParam,
+    NeMoGymMessageForTraining,
+    NeMoGymResponseOutputMessageForTrainingParam,
+    NeMoGymResponseFunctionToolCallForTrainingParam,
+    NeMoGymResponseReasoningItemForTrainingParam,
 ]
 NeMoGymResponseInputParam: TypeAlias = List[NeMoGymResponseInputItemParam]
 
@@ -211,8 +263,78 @@ class NeMoGymResponseCreateParamsNonStreaming(BaseModel):
     stream: Optional[Literal[False]] = None
 
 
+########################################
+# Responses API outputs
+########################################
+
+
+class NeMoGymResponseReasoningItem(ResponseReasoningItem):
+    pass
+
+
+class NeMoGymResponseOutputText(ResponseOutputText):
+    pass
+
+
+class NeMoGymResponseOutputMessage(ResponseOutputMessage):
+    content: List[Union[NeMoGymResponseOutputText, ResponseOutputRefusal]]
+
+
+class NeMoGymResponseFunctionToolCall(ResponseFunctionToolCall):
+    pass
+
+
+class NeMoGymMessageForTraining(NeMoGymMessage, TokenIDLogProbMixin):
+    pass
+
+
+class NeMoGymFunctionCallOutputForTraining(
+    NeMoGymFunctionCallOutput, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymResponseOutputMessageForTraining(
+    NeMoGymResponseOutputMessage, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymResponseFunctionToolCallForTraining(
+    NeMoGymResponseFunctionToolCall, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymResponseReasoningItemForTraining(
+    NeMoGymResponseReasoningItem, TokenIDLogProbMixin
+):
+    pass
+
+
 NeMoGymResponseOutputItem = Union[
-    NeMoGymMessage, NeMoGymFunctionCallOutput, ResponseOutputItem
+    NeMoGymMessage,
+    NeMoGymFunctionCallOutput,
+    # From ResponseOutputItem:
+    NeMoGymResponseOutputMessage,
+    NeMoGymResponseFunctionToolCall,
+    NeMoGymResponseReasoningItem,
+    # The items below are not supported by NeMo Gym:
+    # ResponseFileSearchToolCall,
+    # ResponseFunctionWebSearch,
+    # ResponseComputerToolCall,
+    # ImageGenerationCall,
+    # ResponseCodeInterpreterToolCall,
+    # LocalShellCall,
+    # McpCall,
+    # McpListTools,
+    # McpApprovalRequest,
+    # Training:
+    NeMoGymMessageForTraining,
+    NeMoGymFunctionCallOutputForTraining,
+    NeMoGymResponseOutputMessageForTraining,
+    NeMoGymResponseFunctionToolCallForTraining,
+    NeMoGymResponseReasoningItemForTraining,
 ]
 
 
@@ -220,26 +342,46 @@ class NeMoGymResponse(Response):
     output: List[NeMoGymResponseOutputItem]
 
 
-class NeMoGymResponseOutputMessage(ResponseOutputMessage):
-    pass
-
-
-class NeMoGymResponseFunctionToolCall(ResponseFunctionToolCall):
-    name: str
-    arguments: str
-    call_id: str
-
-
-class NeMoGymResponseOutputText(ResponseOutputText):
-    pass
-
-
-class NeMoGymResponseOutputTextParam(ResponseOutputTextParam):
-    pass
-
-
 class NeMoGymResponseInputTextParam(ResponseInputTextParam):
     pass
+
+
+########################################
+# Chat Completion API outputs
+########################################
+
+
+class NeMoGymFunction(Function):
+    pass
+
+
+class NeMoGymChatCompletionMessageToolCall(ChatCompletionMessageToolCall):
+    function: NeMoGymFunction
+
+
+class NeMoGymChatCompletionMessage(ChatCompletionMessage):
+    tool_calls: Optional[List[NeMoGymChatCompletionMessageToolCall]] = None
+
+
+class NeMoGymChatCompletionMessageForTraining(
+    NeMoGymChatCompletionMessage, TokenIDLogProbMixin
+):
+    pass
+
+
+class NeMoGymChoice(Choice):
+    message: Union[
+        NeMoGymChatCompletionMessage, NeMoGymChatCompletionMessageForTraining
+    ]
+
+
+class NeMoGymChatCompletion(ChatCompletion):
+    choices: List[NeMoGymChoice]
+
+
+########################################
+# Chat Completion API inputs
+########################################
 
 
 class NeMoGymFunctionDefinition(FunctionDefinition):
@@ -248,18 +390,6 @@ class NeMoGymFunctionDefinition(FunctionDefinition):
 
 class NeMoGymChatCompletionToolParam(ChatCompletionToolParam):
     function: Required[NeMoGymFunctionDefinition]
-
-
-class NeMoGymFunctionCall(FunctionCall):
-    pass
-
-
-class NeMoGymChatCompletionMessage(ChatCompletionMessage):
-    pass
-
-
-class NeMoGymChatCompletion(ChatCompletion):
-    pass
 
 
 class NeMoGymChatCompletionContentPartTextParam(ChatCompletionContentPartTextParam):
@@ -291,21 +421,15 @@ class NeMoGymChatCompletionAssistantMessageParam(ChatCompletionAssistantMessageP
     tool_calls: List[NeMoGymChatCompletionMessageToolCallParam]
 
 
-class NeMoGymChatCompletionMessageToolCall(ChatCompletionMessageToolCall):
+class NeMoGymChatCompletionAssistantMessageForTrainingParam(
+    NeMoGymChatCompletionAssistantMessageParam, TokenIDLogProbTypedDictMixin
+):
     pass
 
 
 class NeMoGymChatCompletionToolMessageParam(ChatCompletionToolMessageParam):
     # Override the iterable which is annoying to work with.
     content: Required[Union[str, List[NeMoGymChatCompletionContentPartTextParam]]]
-
-
-class NeMoGymChoice(Choice):
-    pass
-
-
-class NeMoGymFunction(Function):
-    pass
 
 
 class NeMoGymFunctionToolParam(FunctionToolParam):
@@ -320,6 +444,8 @@ NeMoGymChatCompletionMessageParam: TypeAlias = Union[
     NeMoGymChatCompletionToolMessageParam,
     # Don't add deprecated.
     # NeMoGymChatCompletionFunctionMessageParam,
+    # Training:
+    NeMoGymChatCompletionAssistantMessageForTrainingParam,
 ]
 
 
@@ -359,6 +485,11 @@ class NeMoGymChatCompletionCreateParamsNonStreaming(BaseModel):
     # Disallow deprecated args
     # function_call: FunctionCall
     # functions: Iterable[Function]
+
+
+########################################
+# Clients
+########################################
 
 
 class NeMoGymAsyncOpenAI(AsyncOpenAI):

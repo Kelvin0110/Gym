@@ -2,6 +2,9 @@ import re
 from typing import List, Tuple
 from time import time
 from uuid import uuid4
+
+from openai import BaseModel as OpenAIBaseModel
+
 from nemo_gym.base_responses_api_model import (
     BaseResponsesAPIModelConfig,
     SimpleResponsesAPIModel,
@@ -41,6 +44,11 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     model: str
 
 
+# This needs to be OpenAI BaseModel since it is casted to below by the OpenAI client.
+class VLLMTokenizeResponse(OpenAIBaseModel):
+    tokens: List[int]
+
+
 class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
@@ -68,8 +76,20 @@ class VLLMModel(SimpleResponsesAPIModel):
         )
 
         choice = chat_completion_response.choices[0]
+        message = choice.message
 
         response_output = self._converter.postprocess_chat_response(choice)
+        response_output_dicts = [item.model_dump() for item in response_output]
+
+        last_response_output_item = response_output_dicts[-1]
+        if hasattr(message, "prompt_token_ids"):
+            last_response_output_item.update(
+                dict(
+                    prompt_token_ids=message.prompt_token_ids,
+                    generation_token_ids=message.generation_token_ids,
+                    generation_log_probs=message.generation_log_probs,
+                )
+            )
 
         # Chat Completion -> Response
         return NeMoGymResponse(
@@ -77,7 +97,7 @@ class VLLMModel(SimpleResponsesAPIModel):
             created_at=int(time()),
             model=body.model,
             object="response",
-            output=[item.model_dump() for item in response_output],
+            output=response_output_dicts,
             tool_choice=body.tool_choice if "tool_choice" in body else "auto",
             parallel_tool_calls=body.parallel_tool_calls,
             tools=body.tools,
@@ -103,8 +123,43 @@ class VLLMModel(SimpleResponsesAPIModel):
     ) -> NeMoGymChatCompletion:
         body_dict = body.model_dump(exclude_unset=True)
         body_dict.setdefault("model", self.config.model)
-        openai_response = await self._client.chat.completions.create(**body_dict)
-        return NeMoGymChatCompletion(**openai_response.model_dump())
+
+        openai_response = await self._client.chat.completions.create(
+            **body_dict,
+            logprobs=True,
+            # The extra body below is VLLM specific to get the generation log probs associated with generation token IDs.
+            extra_body={
+                "return_tokens_as_token_ids": True,
+            },
+        )
+        openai_response: NeMoGymChatCompletion
+
+        log_probs = openai_response.choices[0].logprobs.content
+        generation_token_ids = []
+        generation_log_probs = []
+        for log_prob in log_probs:
+            # Looks like `"token_id:151667"`
+            generation_token_ids.append(int(log_prob.token.removeprefix("token_id:")))
+            generation_log_probs.append(log_prob.logprob)
+
+        # The base url has /v1 at the end but vLLM's tokenize endpoint does not have v1, hence the ..
+        # I can't believe the path is resolved correctly LOL
+        tokenize_response = await self._client.post(
+            "../tokenize",
+            cast_to=VLLMTokenizeResponse,
+            body=body_dict,
+        )
+
+        chat_completion_dict = openai_response.model_dump()
+        message_dict = chat_completion_dict["choices"][0]["message"]
+        message_dict.update(
+            dict(
+                prompt_token_ids=tokenize_response.tokens,
+                generation_token_ids=generation_token_ids,
+                generation_log_probs=generation_log_probs,
+            )
+        )
+        return NeMoGymChatCompletion(**chat_completion_dict)
 
 
 class VLLMConverter:

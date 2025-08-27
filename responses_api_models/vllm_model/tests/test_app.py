@@ -35,7 +35,6 @@ from nemo_gym.openai_utils import (
     NeMoGymFunction,
     NeMoGymMessage,
     NeMoGymSummary,
-    NeMoGymFunctionCall,
     NeMoGymEasyInputMessageParam,
     NeMoGymFunctionCallOutput,
     NeMoGymFunctionToolParam,
@@ -355,7 +354,7 @@ PARAMETERIZE_DATA = [
                     message=NeMoGymChatCompletionMessage(
                         role="assistant",
                         content="Getting the weather for San Francisco, CA..",
-                        function_call=NeMoGymFunctionCall(
+                        function_call=NeMoGymFunction(
                             arguments='{"city":"San Francisco"}',
                             name="get_weather",
                         ),
