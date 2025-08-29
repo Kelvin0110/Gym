@@ -19,6 +19,7 @@ ng_download_dataset_to_gitlab \
 
 2. Create a larger jsonl (the reference dataset just has 1 data point as reference for how the system prompt, tool definition should look like). Below generates 5 examples. Currently the game parameters , board size & number of clues are selected randomly in a reasonable range (4 & 9 for board size and btw (6,12) for board of sizse 4 and (16, 48) for board size 9. In the future we could replace this with a parameter of how tough we want the game)
 
+Run below from the `simple_sudoku/` folder
 ```
 python generate_sudoku_jsonl.py ../../data/simple_sudoku.jsonl 5 ../../data/sudoku_batch.jsonl
 ```
@@ -33,7 +34,7 @@ ng_run "+config_paths=[responses_api_agents/simple_game_agent/configs/simple_gam
 3. Start trajectory collection
 
 ```
-ng_collect_traj +agent_name=simple_game_agent +input_jsonl_fpath=data/sudoku_batch.jsonl +output_jtssonl_fpath=results/sudoku_output.jsonl
+ng_collect_traj +agent_name=simple_game_agent +input_jsonl_fpath=data/sudoku_batch.jsonl +output_jsonl_fpath=results/sudoku_output.jsonl
 ```
 
 ---
