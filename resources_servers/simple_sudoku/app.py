@@ -114,7 +114,7 @@ class SudokuResourcesServer(SimpleResourcesServer):
                 game_state=game_state,
                 board_text=self._render_board(current_board, scale),
                 is_complete=False,
-                move_reward=-0.1,
+                move_reward=0.0,  # Changed from -0.1
             )
 
         # Validate bounds
@@ -125,7 +125,7 @@ class SudokuResourcesServer(SimpleResourcesServer):
                 game_state=game_state,
                 board_text=self._render_board(current_board, scale),
                 is_complete=False,
-                move_reward=-0.1,
+                move_reward=0.0,  # Changed from -0.1
             )
 
         row_idx, col_idx = row - 1, col - 1
@@ -138,7 +138,7 @@ class SudokuResourcesServer(SimpleResourcesServer):
                 game_state=game_state,
                 board_text=self._render_board(current_board, scale),
                 is_complete=False,
-                move_reward=-0.1,
+                move_reward=0.0,  # Changed from -0.1
             )
 
         # Check if move is correct
@@ -149,13 +149,14 @@ class SudokuResourcesServer(SimpleResourcesServer):
 
             # Check if puzzle is complete
             is_complete = self._is_puzzle_complete(current_board)
-            reward = (
-                1.0 / game_state["initial_empty_count"]
-            )  # Reward proportional to contribution
+            # reward = (
+            #     1.0 / game_state["initial_empty_count"]
+            # )  # Remove incremental reward - set to 0
+            reward = 0.0  # No reward for individual moves
 
             if is_complete:
                 message = f"Correct move! R{row} C{col} = {guess_num}. Congratulations! Puzzle completed!"
-                reward += 1.0  # Bonus for completion
+                reward = 1.0  # Only give reward when puzzle is completed
             else:
                 message = f"Correct move! R{row} C{col} = {guess_num}"
 
@@ -168,14 +169,14 @@ class SudokuResourcesServer(SimpleResourcesServer):
                 move_reward=reward,
             )
         else:
-            # Incorrect move
+            # Incorrect move - change penalty to 0 as well
             return MakeMoveResponse(
                 success=False,
                 message=f"Incorrect move: R{row} C{col} = {guess_num} violates Sudoku rules",
                 game_state=game_state,
                 board_text=self._render_board(current_board, scale),
                 is_complete=False,
-                move_reward=-0.1,
+                move_reward=0.0,  # No penalty - changed from -0.1
             )
 
     async def verify(self, body: SudokuVerifyRequest) -> SudokuVerifyResponse:
