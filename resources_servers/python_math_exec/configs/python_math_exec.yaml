@@ -1,0 +1,5 @@
+python_math_exec:
+  resources_servers:
+    python_math_exec:
+      entrypoint: app.py
+      max_execution_time: 10
