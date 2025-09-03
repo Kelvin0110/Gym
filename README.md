@@ -483,7 +483,9 @@ ng_prepare_data "+config_paths=[${multineedle_config_paths}]" \
 ng_collect_rollouts +agent_name=multineedle_simple_agent \
     +input_jsonl_fpath=resources_servers/multineedle/data/example.jsonl \
     +output_jsonl_fpath=resources_servers/multineedle/data/example_rollouts.jsonl \
-    +limit=null
+    +limit=null \
+    +num_repeats=null \
+    +num_samples_in_parallel=null
 ```
 
 
@@ -550,7 +552,9 @@ Run rollout collection.
 ng_collect_rollouts +agent_name=simple_agent \
     +input_jsonl_fpath=data/multineedle_benchmark.jsonl \
     +output_jsonl_fpath=results/multineedle_rollout_collection.jsonl \
-    +limit=null
+    +limit=null \
+    +num_repeats=null \
+    +num_samples_in_parallel=null
 ```
 
 View the rollouts just collected!
