@@ -6,7 +6,10 @@ from collections import Counter
 
 from itertools import chain, repeat
 
+from contextlib import nullcontext
+
 import asyncio
+from asyncio import Semaphore
 
 from tqdm.asyncio import tqdm
 
@@ -21,6 +24,7 @@ class RolloutCollectionConfig(BaseModel):
     output_jsonl_fpath: str
     limit: Optional[int] = None
     num_repeats: Optional[int] = None
+    num_samples_in_parallel: Optional[int] = None
 
 
 async def _collect_rollouts(config: RolloutCollectionConfig):  # pragma: no cover
@@ -43,10 +47,18 @@ async def _collect_rollouts(config: RolloutCollectionConfig):  # pragma: no cove
         )
 
     server_client = ServerClient.load_from_global_config()
-    tasks = [
-        server_client.post(server_name=config.agent_name, url_path="/run", json=d)
-        for d in rows
-    ]
+
+    semaphore = nullcontext()
+    if config.num_samples_in_parallel:
+        semaphore = Semaphore(config.num_samples_in_parallel)
+
+    async def _post_coroutine(row: dict):
+        async with semaphore:
+            return await server_client.post(
+                server_name=config.agent_name, url_path="/run", json=row
+            )
+
+    tasks = list(map(_post_coroutine, rows))
 
     metrics = Counter()
     pbar = tqdm.as_completed(tasks, desc="Collecting rollouts")
