@@ -15,20 +15,23 @@ offline_search_simple_agent:
       datasets:
       - name: train
         type: train
-        jsonl_fpath: resources_servers/offline_search/data/train.jsonl
+        jsonl_fpath: resources_servers/offline_search/data/MCQA_syn_gpqa_1_2_difficulty_filtered/train.jsonl
+        gitlab_identifier:
+          dataset_name: offline_search_MCQA_syn_hle
+          version: 0.0.1
+          artifact_fpath: train.jsonl
+        license: Apache 2.0
+      - name: train
+        type: train
+        jsonl_fpath: resources_servers/offline_search/data/MCQA_syn_hle/train.jsonl
         gitlab_identifier:
           dataset_name: offline_search
           version: 0.0.1
           artifact_fpath: train.jsonl
         license: Apache 2.0
-      - name: validation
-        type: validation
-        jsonl_fpath: resources_servers/offline_search/data/validation.jsonl
-        gitlab_identifier:
-          dataset_name: offline_search
-          version: 0.0.1
-          artifact_fpath: validation.jsonl
-        license: Apache 2.0
-      - name: example
+      - name: example_MCQA_syn_gpqa_1_2
         type: example
-        jsonl_fpath: resources_servers/offline_search/data/example.jsonl
+        jsonl_fpath: resources_servers/offline_search/data/MCQA_syn_gpqa_1_2_difficulty_filtered/examples.jsonl
+      - name: example_MCQA_syn_hle
+        type: example
+        jsonl_fpath: resources_servers/offline_search/data/MCQA_syn_hle/examples.jsonl

@@ -86,15 +86,19 @@ if __name__ == "__main__":
 
 
 '''
-
-
-ng_collect_rollouts +agent_name=simple_agent \
-    +input_jsonl_fpath=resources_servers/offline_search/data/MCQA_syn_gpqa_1_2_difficulty_filtered_responses_api.jsonl \
+ng_collect_rollouts +agent_name=offline_search_simple_agent \
+    +input_jsonl_fpath=resources_servers/offline_search/data/MCQA_syn_gpqa_1_2_difficulty_filtered/examples.jsonl \
     +output_jsonl_fpath=resources_servers/offline_search/results/MCQA_syn_gpqa_1_2_difficulty_filtered_trajectory_collection.jsonl \
     +limit=5
 
 ng_upload_dataset_to_gitlab \
-    +dataset_name=search_STEM_syn_gpqa_v1_2_difficulty_filtered \
+    +dataset_name=offline_search_MCQA_syn_gpqa_1_2 \
     +version=0.0.1 \
-    +input_jsonl_fpath=data/MCQA_syn_gpqa_1_2_difficulty_filtered_responses_api.jsonl
+    +input_jsonl_fpath=/lustre/fsw/portfolios/llmservice/users/rgala/repos/nemo-gym/resources_servers/offline_search/data/MCQA_syn_gpqa_1_2_difficulty_filtered/train.jsonl
+
+ng_upload_dataset_to_gitlab \
+    +dataset_name=offline_search_MCQA_syn_hle \
+    +version=0.0.1 \
+    +input_jsonl_fpath=/lustre/fsw/portfolios/llmservice/users/rgala/repos/nemo-gym/resources_servers/offline_search/data/MCQA_syn_hle/train.jsonl
+
 '''

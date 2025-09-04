@@ -88,10 +88,10 @@ TODOs:
  - [done]test with ng collect
  - write README:
     - [done] write tests for server
-    - collect examples.json (start from train as we will have two)
-    - create updated config with the two datasets
-    - run ng_prepare_data
-    - run example_rollouts. 
+    - [done] collect examples.json (start from train as we will have two)
+    - [done] create updated config with the two datasets
+    - [done] run ng_prepare_data
+    - [done] run example_rollouts. 
     - check on git commit.
 - Get reward profiling numbers
 I think this should maybe take an hour to run and create?
