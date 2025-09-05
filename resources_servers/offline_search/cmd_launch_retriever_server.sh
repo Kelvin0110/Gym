@@ -1,7 +1,6 @@
 #!/bin/bash
 
-cd /lustre/fsw/portfolios/llmservice/users/rgala/repos/ASearcher
-source .venv/bin/activate
+source /lustre/fsw/portfolios/llmservice/users/rgala/repos/ASearcher/.venv/bin/activate
 
 
 #These indices and corpus are on dfw 
