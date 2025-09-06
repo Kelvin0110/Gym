@@ -80,7 +80,7 @@ def _setup_env_command(dir_path: Path, head_server_deps: Optional[str] = None) -
         install_cmd += f" --constraint <(cat << 'EOF'\n{head_server_deps}\nEOF\n)"
 
     return f"""cd {dir_path} \\
-    && uv venv --allow-existing \\
+    && uv venv --allow-existing --python python3.12 \\
     && source .venv/bin/activate \\
     && {install_cmd} \\
    """
