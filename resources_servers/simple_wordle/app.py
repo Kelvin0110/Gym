@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import random
 import re
-from typing import List, Tuple, Optional, Any, Dict
+from typing import List, Tuple, Any, Dict
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -24,7 +24,6 @@ from nemo_gym.base_resources_server import (
     BaseResourcesServerConfig,
     BaseRunRequest,
     BaseVerifyRequest,
-    BaseVerifyResponse,
     BaseVerifyResponse,
 )
 
