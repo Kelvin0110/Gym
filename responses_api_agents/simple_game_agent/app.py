@@ -89,18 +89,20 @@ class SimpleGameAgent(SimpleResponsesAPIAgent):
         conversation.append(initial_message)
 
         # ... and also to input_messages (for the saved trajectory)
-        input_messages.append({
-            "role": "user",
-            "type": "message",
-            "content": initial_message["content"],
-        })
+        input_messages.append(
+            {
+                "role": "user",
+                "type": "message",
+                "content": initial_message["content"],
+            }
+        )
 
         # Game loop
         while True:
             new_body = body.copy()
             new_body["input"] = conversation
 
-            #! This is so that the model only performs one move at a time. Without this them model can perform multiple moves and then our env would have to be made changed to handle that complexity. 
+            #! This is so that the model only performs one move at a time. Without this them model can perform multiple moves and then our env would have to be made changed to handle that complexity.
             new_body["parallel_tool_calls"] = False
             new_body["max_tool_calls"] = 1
 
@@ -152,7 +154,10 @@ class SimpleGameAgent(SimpleResponsesAPIAgent):
             #     "content": env_text,
             # })
 
-            if move_data.get("is_complete", False) or moves_made >= self.config.max_moves:
+            if (
+                move_data.get("is_complete", False)
+                or moves_made >= self.config.max_moves
+            ):
                 is_complete = move_data.get("is_complete", False)
                 break
 
@@ -163,8 +168,10 @@ class SimpleGameAgent(SimpleResponsesAPIAgent):
 
         # FINAL: AIME-style
         final_response_dict = model_response.model_dump()
-        final_response_dict["output"] = new_outputs            # assistant + tools only
-        final_response_dict["input"] = input_messages          # initial board + all env feedback, in order
+        final_response_dict["output"] = new_outputs  # assistant + tools only
+        final_response_dict["input"] = (
+            input_messages  # initial board + all env feedback, in order
+        )
         return final_response_dict
 
     async def run(
