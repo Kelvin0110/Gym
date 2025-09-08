@@ -162,9 +162,24 @@ Example output: "My final verdict is different [[A!=B]]"."""
             test_response = asyncio.run(self.server_client.post(
                 server_name="math_judge",
                 url_path="/v1/responses",
-                json=test_request.model_copy(deep=True),
+                json=test_request,
             ))
             print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response = {test_response}", flush=True)
+
+            test_request = {
+                "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                "input": [{"role": "user", "content": "hi"}],
+                "max_tokens": 512,
+                "temperature": 0.6,
+                "top_p": 1.0,
+            }
+            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test request 2 = {test_request}", flush=True)
+            test_response = asyncio.run(self.server_client.post(
+                server_name="math_judge",
+                url_path="/v1/responses",
+                json=test_request,
+            ))
+            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response 2 = {test_response}", flush=True)
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
