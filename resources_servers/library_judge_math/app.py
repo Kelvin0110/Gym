@@ -154,7 +154,7 @@ Example output: "My final verdict is different [[A!=B]]"."""
             test_request = {
                 "model": judge_model_name,
                 "input": [{"role": "user", "content": "hi"}],
-                "max_tokens": 512,
+                "max_output_tokens": 512,
                 "temperature": 0.6,
                 "top_p": 1.0,
             }
@@ -170,10 +170,11 @@ Example output: "My final verdict is different [[A!=B]]"."""
             except Exception as e:
                 print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test exception = {e}", flush=True)
 
+        if False:
             test_request = {
                 "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
                 "input": [{"role": "user", "content": "hi"}],
-                "max_tokens": 512,
+                "max_output_tokens": 512,
                 "temperature": 0.6,
                 "top_p": 1.0,
             }
