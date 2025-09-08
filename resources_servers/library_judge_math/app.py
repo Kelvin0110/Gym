@@ -166,6 +166,7 @@ Example output: "My final verdict is different [[A!=B]]"."""
                     json=test_request,
                 ))
                 print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response = {test_response}", flush=True)
+                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response payload = {test_response.json()}", flush=True)
             except Exception as e:
                 print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test exception = {e}", flush=True)
 
@@ -184,6 +185,7 @@ Example output: "My final verdict is different [[A!=B]]"."""
                     json=test_request,
                 ))
                 print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response 2 = {test_response}", flush=True)
+                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response 2 payload = {test_response.json()}", flush=True)
             except Exception as e:
                 print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test exception = {e}", flush=True)
 
