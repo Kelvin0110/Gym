@@ -87,7 +87,6 @@ class ServerInstance(BaseModel):
 class RunHelper:  # pragma: no cover
     _head_server_thread: Thread
     _processes: Dict[str, Popen]
-    _server_instances: List[ServerInstance]
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
@@ -154,13 +153,11 @@ class RunHelper:  # pragma: no cover
             )
 
         self._processes = processes
-        self._server_instances = server_instances
 
-        # TODO: Server block summaries may get cut off/interleaved by other process output(s)
         self.display_server_instance_info()
 
-    def display_server_instance_info(self) -> None:
-        if not getattr(self, "_server_instances", None):
+    def display_server_instance_info(self, server_instances: List[ServerInstance]) -> None:
+        if not server_instances:
             print("No server instances to display.")
             return
 
@@ -172,7 +169,7 @@ class RunHelper:  # pragma: no cover
 {"#" * 100}
 """)
 
-        for i, inst in enumerate(self._server_instances, 1):
+        for i, inst in enumerate(server_instances, 1):
             print(f"[{i}] {inst.process_name} ({inst.server_type}/{inst.name})")
             pprint(inst.model_dump())
         print(f"{'#' * 100}\n")
