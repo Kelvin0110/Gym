@@ -35,7 +35,11 @@ from nemo_gym.global_config import (
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
-from nemo_gym.server_utils import HeadServer
+from nemo_gym.server_utils import (
+    DYNAMIC_KEY_NAME,
+    HEAD_SERVER_KEY_NAME,
+    HeadServer,
+)
 
 
 def _setup_env_command(dir_path: Path) -> str:  # pragma: no cover
@@ -88,6 +92,37 @@ class RunHelper:  # pragma: no cover
     _head_server_thread: Thread
     _processes: Dict[str, Popen]
     _server_instances: List[ServerInstance]
+
+    def parse_from_dynamic_or_defaults(
+        self,
+        initial_global_config: dict,
+        head_server_host: Optional[str] = None,
+        head_server_port: Optional[int] = None,
+        policy_model_name: Optional[str] = None,
+        policy_base_url: Optional[str] = None,
+        policy_api_key: Optional[str] = None,
+    ) -> dict:
+        dynamic_cfg = initial_global_config.get(DYNAMIC_KEY_NAME, None)
+        if not dynamic_cfg:
+            print(f"DEBUG: RunHelper: warning: no dynamic config, using provided defaults...", flush=True)
+            initial_global_config[HEAD_SERVER_KEY_NAME] = {
+                "host": head_server_host,
+                "port": head_server_port,
+            }
+            initial_global_config["policy_model_name"] = self.cfg["model_name"]
+            initial_global_config["policy_api_key"] = "dummy_key"  # No key necessary for training.
+            initial_global_config["policy_base_url"] = self.nemo_rl_openai_base_url
+            return initial_global_config
+        print(f"DEBUG: RunHelper: using dynamic config...", flush=True)
+        initial_global_config[HEAD_SERVER_KEY_NAME] = {
+            "host": dynamic_cfg["head_server"]["host"],
+            "port": dynamic_cfg["head_server"]["port"],
+        }
+        initial_global_config["policy_model_name"] = dynamic_cfg["policy"]["model_name"]
+        initial_global_config["policy_api_key"] = "dummy_key"
+        initial_global_config["policy_base_url"] = dynamic_cfg["policy"]["generation_base_url"]
+        # TODO(peter): rest of dynamic config.
+        return initial_global_config
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
