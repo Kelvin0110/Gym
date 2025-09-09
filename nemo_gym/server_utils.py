@@ -163,6 +163,19 @@ class ServerClient(BaseModel):
 ServerStatus = Union[Literal["success"], Literal["connection_error"], Literal["timeout"], Literal["unknown_error"]]
 
 
+def poll_for_status_using_config(config: BaseServerConfig) -> ServerStatus:
+    try:
+        requests.get(f"{config.host}:{config.port}", timeout=5)
+        # We don't check the status code since there may not be a route at /
+        return "success"
+    except requests.exceptions.ConnectionError:
+        return "connection_error"
+    except requests.exceptions.Timeout:
+        return "timeout"
+    except Exception:
+        return "unknown_error"
+
+
 class BaseServer(BaseModel):
     """
     All instances of BaseServer are queryable using ServerClient.
@@ -180,19 +193,6 @@ class BaseServer(BaseModel):
         server_config = server_config_cls.model_validate(server_config_dict)
 
         return server_config
-
-    @staticmethod
-    def poll_for_status_using_config(config: BaseRunServerConfig) -> ServerStatus:
-        try:
-            requests.get(f"{config.host}:{config.port}", timeout=5)
-            # We don't check the status code since there may not be a route at /
-            return "success"
-        except requests.exceptions.ConnectionError:
-            return "connection_error"
-        except requests.exceptions.Timeout:
-            return "timeout"
-        except Exception:
-            return "unknown_error"
 
 
 class SimpleServer(BaseServer):

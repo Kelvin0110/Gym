@@ -35,7 +35,7 @@ from nemo_gym.global_config import (
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
-from nemo_gym.server_utils import HeadServer
+from nemo_gym.server_utils import BaseServerConfig, HeadServer, ServerStatus, poll_for_status_using_config
 
 
 def _setup_env_command(dir_path: Path) -> str:  # pragma: no cover
@@ -71,7 +71,7 @@ class TestConfig(RunConfig):
         return super().model_post_init(context)
 
 
-class ServerInstance(BaseModel):
+class ServerInstanceDisplayConfig(BaseModel):
     process_name: str
     server_type: str
     name: str
@@ -87,6 +87,7 @@ class ServerInstance(BaseModel):
 class RunHelper:  # pragma: no cover
     _head_server_thread: Thread
     _processes: Dict[str, Popen]
+    _server_instance_display_configs: List[ServerInstanceDisplayConfig]
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
@@ -99,8 +100,8 @@ class RunHelper:  # pragma: no cover
 
         top_level_paths = [k for k in global_config_dict.keys() if k not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS]
 
-        processes: Dict[str, Popen] = dict()
-        server_instances: List[ServerInstance] = []
+        self._processes: Dict[str, Popen] = dict()
+        self._server_instance_display_configs: List[ServerInstanceDisplayConfig] = []
 
         # TODO there is a better way to resolve this that uses nemo_gym/global_config.py::ServerInstanceConfig
         for top_level_path in top_level_paths:
@@ -132,13 +133,13 @@ class RunHelper:  # pragma: no cover
     python {str(entrypoint_fpath)}"""
 
             process = _run_command(command, dir_path)
-            processes[top_level_path] = process
+            self._processes[top_level_path] = process
 
             host = server_config_dict.get("host")
             port = server_config_dict.get("port")
 
-            server_instances.append(
-                ServerInstance(
+            self._server_instance_display_configs.append(
+                ServerInstanceDisplayConfig(
                     process_name=top_level_path,
                     server_type=first_key,
                     name=second_key,
@@ -152,12 +153,12 @@ class RunHelper:  # pragma: no cover
                 )
             )
 
-        self._processes = processes
+        self.check_http_server_runtime()
 
         self.display_server_instance_info()
 
-    def display_server_instance_info(self, server_instances: List[ServerInstance]) -> None:
-        if not server_instances:
+    def display_server_instance_info(self) -> None:
+        if not self._server_instance_display_configs:
             print("No server instances to display.")
             return
 
@@ -169,7 +170,7 @@ class RunHelper:  # pragma: no cover
 {"#" * 100}
 """)
 
-        for i, inst in enumerate(server_instances, 1):
+        for i, inst in enumerate(self._server_instance_display_configs, 1):
             print(f"[{i}] {inst.process_name} ({inst.server_type}/{inst.name})")
             pprint(inst.model_dump())
         print(f"{'#' * 100}\n")
@@ -200,6 +201,19 @@ class RunHelper:  # pragma: no cover
                 process.wait()
 
             print("NeMo Gym finished!")
+
+    def check_http_server_statuses(self) -> List[ServerStatus]:
+        statuses = []
+        for server_instance_display_config in self._server_instance_display_configs:
+            status = poll_for_status_using_config(
+                config=BaseServerConfig(
+                    host=server_instance_display_config.host,
+                    port=server_instance_display_config.port,
+                ),
+            )
+            statuses.append(status)
+
+        return statuses
 
 
 def run(
