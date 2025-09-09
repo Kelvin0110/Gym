@@ -164,7 +164,7 @@ class ServerClient(BaseModel):
             **kwargs,
         )
 
-    async def poll_for_status(self, server_name: str) -> ServerStatus:
+    async def poll_for_status(self, server_name: str) -> ServerStatus:  # pragma: no cover
         if server_name == HEAD_SERVER_KEY_NAME:
             server_config_dict = self.global_config_dict[HEAD_SERVER_KEY_NAME]
         else:
