@@ -35,7 +35,7 @@ from nemo_gym.global_config import (
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
-from nemo_gym.server_utils import BaseServerConfig, HeadServer, ServerStatus, poll_for_status_using_config
+from nemo_gym.server_utils import HEAD_SERVER_KEY_NAME, HeadServer, ServerClient, ServerStatus
 
 
 def _setup_env_command(dir_path: Path) -> str:  # pragma: no cover
@@ -88,6 +88,7 @@ class RunHelper:  # pragma: no cover
     _head_server_thread: Thread
     _processes: Dict[str, Popen]
     _server_instance_display_configs: List[ServerInstanceDisplayConfig]
+    _server_client: ServerClient
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
@@ -153,7 +154,21 @@ class RunHelper:  # pragma: no cover
                 )
             )
 
-        self.check_http_server_runtime()
+        self._server_client = ServerClient(
+            head_server_config=ServerClient.load_head_server_config(),
+            global_config_dict=global_config_dict,
+        )
+
+        async def wait_for_head_server():
+            status = await self._server_client.poll_for_status(HEAD_SERVER_KEY_NAME)
+            if status == "success":
+                return
+
+            print(f"Head server is not up yet (status `{status}`). Sleeping 3s")
+            asyncio.sleep(3)
+
+        print("Waiting for head server to spin up")
+        asyncio.run(wait_for_head_server())
 
         self.display_server_instance_info()
 
@@ -185,10 +200,24 @@ class RunHelper:  # pragma: no cover
 
     def run_forever(self) -> None:
         async def sleep():
+            all_spun_up = False
+            sleep_interval = 3
+
             # Indefinitely
             while True:
                 self.poll()
-                await asyncio.sleep(60)  # Check every 60s.
+                statuses = await self.check_http_server_statuses()
+
+                num_spun_up = sum(s == "success" for s in statuses)
+                if not all_spun_up and len(statuses) != num_spun_up:
+                    print(
+                        f"{num_spun_up} / {len(statuses)} servers ready. Waiting for servers to spin up. Sleeping {sleep_interval}s..."
+                    )
+                else:
+                    all_spun_up = True
+                    sleep_interval = 60  # Check every 60s after spinup.
+
+                await asyncio.sleep(sleep_interval)
 
         try:
             asyncio.run(sleep())
@@ -202,17 +231,14 @@ class RunHelper:  # pragma: no cover
 
             print("NeMo Gym finished!")
 
-    def check_http_server_statuses(self) -> List[ServerStatus]:
-        statuses = []
+    async def check_http_server_statuses(self) -> List[ServerStatus]:
+        tasks = []
         for server_instance_display_config in self._server_instance_display_configs:
-            status = poll_for_status_using_config(
-                config=BaseServerConfig(
-                    host=server_instance_display_config.host,
-                    port=server_instance_display_config.port,
-                ),
-            )
-            statuses.append(status)
+            name = server_instance_display_config.config_path
+            task = self._server_client.poll_for_status(name)
+            tasks.append(task)
 
+        statuses = await asyncio.gather(*tasks)
         return statuses
 
 
