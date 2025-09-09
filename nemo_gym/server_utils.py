@@ -182,7 +182,7 @@ class BaseServer(BaseModel):
         return server_config
 
     @staticmethod
-    def poll_for_status(config: BaseRunServerConfig) -> ServerStatus:
+    def poll_for_status_using_config(config: BaseRunServerConfig) -> ServerStatus:
         try:
             requests.get(f"{config.host}:{config.port}", timeout=5)
             # We don't check the status code since there may not be a route at /
