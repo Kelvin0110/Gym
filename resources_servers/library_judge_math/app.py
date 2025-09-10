@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import contextlib
 import logging
 from io import StringIO
@@ -22,7 +21,6 @@ from math_verify import grader
 from math_verify.errors import TimeoutException
 from math_verify.metric import math_metric
 from math_verify.parser import ExprExtractionConfig, LatexExtractionConfig
-from openai import OpenAI
 from pydantic import BaseModel
 
 from nemo_gym.base_resources_server import (
@@ -37,9 +35,6 @@ from nemo_gym.openai_utils import (
     NeMoGymEasyInputMessage,
     NeMoGymResponse,
     NeMoGymResponseCreateParamsNonStreaming,
-)
-from nemo_gym.server_utils import (
-    get_global_config_dict,
 )
 
 
@@ -111,86 +106,6 @@ Example output: "My final verdict is different [[A!=B]]"."""
                 LatexExtractionConfig(),
             ),
         )
-
-        global_cfg = get_global_config_dict()
-        dynamic_cfg = global_cfg.get("dynamic", dict())
-        print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: global cfg  = {global_cfg}", flush=True)
-        print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: dynamic cfg = {dynamic_cfg}", flush=True)
-
-        if False:
-            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: judge init: ...", flush=True)
-            judge_model_name = None
-            judge_base_url = None
-            judge_client = None
-            self._judge_model_name = None
-            self._judge_client = None
-            for _, judge in dynamic_cfg.get("judges", dict()).items():
-                # TODO(peter): select judge by provided "capability".
-                judge_model_name = judge["model_name"]
-                judge_base_url = judge["generation_base_url"]
-                judge_client = OpenAI(
-                    base_url=judge_base_url,
-                    api_key="dummy_key",
-                )
-                # judge_models = judge_client.models.list()
-                self._judge_model_name = judge_model_name
-                self._judge_client = judge_client
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: judge init: ok", flush=True)
-                break
-
-        if False:
-        # if self._judge_client is not None:
-            test_request = {
-                "model": judge_model_name,
-                "messages": [{"role": "user", "content": "hi"}],
-                "max_tokens": 512,
-                "temperature": 0.6,
-                "top_p": 1.0,
-            }
-            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/chat/completions test request = {test_request}", flush=True)
-            test_response = judge_client.chat.completions.create(
-                **test_request
-            )
-            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/chat/completions test response = {test_response}", flush=True)
-
-            test_request = {
-                "model": judge_model_name,
-                "input": [{"role": "user", "content": "hi"}],
-                "max_output_tokens": 512,
-                "temperature": 0.6,
-                "top_p": 1.0,
-            }
-            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test request = {test_request}", flush=True)
-            try:
-                test_response = asyncio.run(self.server_client.post(
-                    server_name="math_judge",
-                    url_path="/v1/responses",
-                    json=test_request,
-                ))
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response = {test_response}", flush=True)
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response payload = {test_response.json()}", flush=True)
-            except Exception as e:
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test exception = {e}", flush=True)
-
-        if False:
-            test_request = {
-                "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-                "input": [{"role": "user", "content": "hi"}],
-                "max_output_tokens": 512,
-                "temperature": 0.6,
-                "top_p": 1.0,
-            }
-            print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test request 2 = {test_request}", flush=True)
-            try:
-                test_response = asyncio.run(self.server_client.post(
-                    server_name="math_judge",
-                    url_path="/v1/responses",
-                    json=test_request,
-                ))
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response 2 = {test_response}", flush=True)
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test response 2 payload = {test_response.json()}", flush=True)
-            except Exception as e:
-                print(f"DEBUG: LibraryJudgeMathResourcesServer.model_post_init: /v1/responses test exception = {e}", flush=True)
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -334,11 +249,6 @@ Example output: "My final verdict is different [[A!=B]]"."""
 
         judge_name = config.judge_model_server.name
         # print(f"DEBUG: LibraryJudgeMathResourcesServer._generate_judge_evaluation: judge name = {repr(judge_name)} payload = {responses_create_params}", flush=True)
-        response = await self.server_client.post(
-            server_name=judge_name,
-            url_path="/v1/responses",
-            json=responses_create_params,
-        )
         try:
             response = await self.server_client.post(
                 server_name=judge_name,
