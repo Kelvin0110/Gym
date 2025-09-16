@@ -47,6 +47,7 @@ class AviaryAgentRunRequest(BaseRunRequest):
     responses_create_params: NeMoGymResponseCreateParamsNonStreaming = Field(
         default_factory=lambda: NeMoGymResponseCreateParamsNonStreaming(input=[])
     )
+    max_steps: int | None = None
 
 
 class AviaryAgent(SimpleResponsesAPIAgent):
@@ -73,7 +74,12 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         env_id = seed_session_response.env_id
         model_response: NeMoGymResponse | None = None
 
+        steps = 0
         while True:
+            if req.max_steps is not None and steps >= req.max_steps:
+                break
+            steps += 1
+
             # Sample action from model
             raw_model_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
@@ -88,6 +94,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                     f"Received an invalid response from model server: {json.dumps(model_response_json)}"
                 ) from e
 
+            # Parse model response
             model_output = model_response.output
             all_fn_calls: List[NeMoGymResponseFunctionToolCall] = [
                 o for o in model_output if o.type == "function_call"
@@ -95,21 +102,24 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             all_output_messages: List[NeMoGymResponseOutputMessage] = [
                 o for o in model_output if o.type == "message" and o.role == "assistant"
             ]
+            done = False
+
             if not all_fn_calls and all_output_messages:
-                # TODO: why is this the break condition?
-                break
+                # Got non-tool-call outputs, so ask the model to try again.
+                obs = [NeMoGymEasyInputMessage(role="user", content="Please call a tool to proceed.")]
+            else:
+                # Apply action to environment
+                raw_env_response = await self.server_client.post(
+                    server_name=self.config.resources_server.name,
+                    url_path="/step",
+                    json={"action": [c.model_dump(mode="json") for c in all_fn_calls], "env_id": env_id},
+                )
+                env_response = AviaryStepResponse.model_validate(raw_env_response.json())
+                obs = env_response.obs
+                done = env_response.done
 
-            # Apply action to environment
-            raw_env_response = await self.server_client.post(
-                server_name=self.config.resources_server.name,
-                url_path="/step",
-                json={"action": [c.model_dump(mode="json") for c in all_fn_calls], "env_id": env_id},
-            )
-            env_response = AviaryStepResponse.model_validate(raw_env_response.json())
-
-            agent_state = agent_state.model_copy(update={"input": agent_state.input + model_output + env_response.obs})
-
-            if env_response.done:
+            agent_state = agent_state.model_copy(update={"input": agent_state.input + model_output + obs})
+            if done:
                 break
 
         assert model_response is not None
