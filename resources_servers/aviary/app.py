@@ -1,0 +1,111 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import json
+import uuid
+from abc import ABC
+from collections import defaultdict
+from typing import Generic, TypeVar, cast
+
+from aviary.core import (
+    Environment,
+    TaskDataset,
+    Tool,
+    ToolCall,
+    ToolCallFunction,
+    ToolRequestMessage,
+    ToolResponseMessage,
+)
+from fastapi import FastAPI, Request
+from openai.types.responses import FunctionToolParam
+from pydantic import ConfigDict, Field
+
+from nemo_gym.base_resources_server import SimpleResourcesServer
+from nemo_gym.integrations.aviary import (
+    AviaryAgentVerifyRequest,
+    AviaryAgentVerifyResponse,
+    AviaryResourcesServerConfig,
+    AviarySeedSessionRequest,
+    AviarySeedSessionResponse,
+    AviaryStepRequest,
+    AviaryStepResponse,
+)
+from nemo_gym.openai_utils import NeMoGymEasyInputMessage, NeMoGymFunctionCallOutput
+
+
+TEnv = TypeVar("TEnv", bound=Environment)
+TDataset = TypeVar("TDataset", bound=TaskDataset)
+
+
+def tool_to_function_tool_param(tool: Tool) -> FunctionToolParam:
+    tool_dump = tool.info.model_dump()
+    tool_dump["parameters"].setdefault("additionalProperties", False)
+    return FunctionToolParam(type="function", strict=True, **tool_dump)
+
+
+class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    config: AviaryResourcesServerConfig
+    dataset: TDataset
+    env_id_to_env: dict[str, TEnv] = Field(default_factory=dict)
+    env_id_to_total_reward: dict[str, float] = Field(default_factory=lambda: defaultdict(float))
+
+    def setup_webserver(self) -> FastAPI:
+        app = super().setup_webserver()
+        app.post("/step")(self.step)
+        return app
+
+    async def seed_session(self, request: Request, body: AviarySeedSessionRequest) -> AviarySeedSessionResponse:
+        """
+        Wraps creation of the Aviary environment and calling reset().
+        """
+        env_id = str(uuid.uuid4())
+        env = cast(Environment, self.dataset.get_new_env_by_idx(body.task_idx))
+        self.env_id_to_env[env_id] = env
+
+        obs, tools = await env.reset()
+        return AviarySeedSessionResponse(
+            env_id=env_id,
+            obs=[NeMoGymEasyInputMessage.model_validate(o.model_dump()) for o in obs],
+            tools=[tool_to_function_tool_param(t) for t in tools],
+        )
+
+    async def step(self, request: Request, body: AviaryStepRequest) -> AviaryStepResponse:
+        """
+        Wraps calling step().
+        """
+        env = self.env_id_to_env[body.env_id]
+
+        action = ToolRequestMessage(
+            content=None,
+            tool_calls=[
+                ToolCall(id=a.call_id, function=ToolCallFunction(name=a.name, arguments=json.loads(a.arguments)))
+                for a in body.action
+            ],
+        )
+        obs, reward, done, _ = await env.step(action)
+
+        self.env_id_to_total_reward[body.env_id] += reward
+
+        nemo_obs = [
+            NeMoGymFunctionCallOutput(call_id=o.tool_call_id, output=o.content)
+            if isinstance(o, ToolResponseMessage)
+            else NeMoGymEasyInputMessage.model_validate(o.model_dump())
+            for o in obs
+        ]
+
+        return AviaryStepResponse(obs=nemo_obs, reward=reward, done=done)
+
+    async def verify(self, request: Request, body: AviaryAgentVerifyRequest) -> AviaryAgentVerifyResponse:
+        return AviaryAgentVerifyResponse(**body.model_dump(), reward=self.env_id_to_total_reward[body.response.env_id])
