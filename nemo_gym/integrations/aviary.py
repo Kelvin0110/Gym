@@ -1,7 +1,6 @@
-try:
-    import aviary  # noqa: F401
-except ImportError:
-    raise ImportError("Aviary is not installed. Please install it with `pip install fhaviary`")
+"""
+Contains a set of schemas used by both the AviaryResourcesServer and the AviaryAgent.
+"""
 
 from openai.types.responses import FunctionToolParam
 from pydantic import BaseModel, ConfigDict

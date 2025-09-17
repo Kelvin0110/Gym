@@ -19,6 +19,7 @@ from typing import Generic, TypeVar, cast
 
 from aviary.core import (
     Environment,
+    Message,
     TaskDataset,
     Tool,
     ToolCall,
@@ -53,6 +54,26 @@ def tool_to_function_tool_param(tool: Tool) -> FunctionToolParam:
     return FunctionToolParam(type="function", strict=True, **tool_dump)
 
 
+def obs_msg_to_nemo_gym(obs: Message) -> NeMoGymEasyInputMessage:
+    dump = obs.model_dump()
+    if isinstance(dump["content"], list):
+        type_remap = {k: f"input_{k}" for k in ("text", "image", "file", "audio")}
+
+        def fix_content(c: dict) -> dict:
+            if c["type"] == "image_url":
+                return {
+                    "type": "input_image",
+                    "file_id": None,
+                    "detail": "auto",
+                    "image_url": c["image_url"]["url"],
+                }
+            else:
+                return {**c, "type": type_remap.get(c["type"], c["type"])}
+
+        dump["content"] = [fix_content(c) for c in dump["content"]]
+    return NeMoGymEasyInputMessage.model_validate(dump)
+
+
 class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -77,7 +98,7 @@ class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC)
         obs, tools = await env.reset()
         return AviarySeedSessionResponse(
             env_id=env_id,
-            obs=[NeMoGymEasyInputMessage.model_validate(o.model_dump()) for o in obs],
+            obs=[obs_msg_to_nemo_gym(o) for o in obs],
             tools=[tool_to_function_tool_param(t) for t in tools],
         )
 
@@ -101,7 +122,7 @@ class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC)
         nemo_obs = [
             NeMoGymFunctionCallOutput(call_id=o.tool_call_id, output=o.content)
             if isinstance(o, ToolResponseMessage)
-            else NeMoGymEasyInputMessage.model_validate(o.model_dump())
+            else obs_msg_to_nemo_gym(o)
             for o in obs
         ]
 
