@@ -17,6 +17,10 @@ from abc import ABC
 from collections import defaultdict
 from typing import Generic, TypeVar, cast
 
+from fastapi import FastAPI, Request
+from openai.types.responses import FunctionToolParam
+from pydantic import ConfigDict, Field
+
 from aviary.core import (
     Environment,
     Message,
@@ -27,14 +31,12 @@ from aviary.core import (
     ToolRequestMessage,
     ToolResponseMessage,
 )
-from fastapi import FastAPI, Request
-from openai.types.responses import FunctionToolParam
-from pydantic import ConfigDict, Field
-
 from nemo_gym.base_resources_server import SimpleResourcesServer
 from nemo_gym.integrations.aviary import (
     AviaryAgentVerifyRequest,
     AviaryAgentVerifyResponse,
+    AviaryCloseRequest,
+    AviaryCloseResponse,
     AviaryResourcesServerConfig,
     AviarySeedSessionRequest,
     AviarySeedSessionResponse,
@@ -130,3 +132,13 @@ class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC)
 
     async def verify(self, request: Request, body: AviaryAgentVerifyRequest) -> AviaryAgentVerifyResponse:
         return AviaryAgentVerifyResponse(**body.model_dump(), reward=self.env_id_to_total_reward[body.response.env_id])
+
+    async def close(self, request: Request, body: AviaryCloseRequest) -> AviaryCloseResponse:
+        """
+        Closes and deregisters body.env_id.
+        """
+        try:
+            await self.env_id_to_env.pop(body.env_id).close()
+        except Exception as e:
+            return AviaryCloseResponse(message=repr(e), success=False)
+        return AviaryCloseResponse(message="Success", success=True)

@@ -11,18 +11,93 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from unittest.mock import MagicMock
 
+import pytest
+from fastapi import Request
+
+from nemo_gym.integrations.aviary import AviaryCloseRequest, AviarySeedSessionRequest, AviaryStepRequest
+from nemo_gym.openai_utils import NeMoGymResponseFunctionToolCall
 from nemo_gym.server_utils import ServerClient
-from resources_servers.aviary.app import AviaryResourcesServer, AviaryResourcesServerConfig
+from resources_servers.aviary.app import AviaryResourcesServerConfig
+from resources_servers.aviary.gsm8k_app import GSM8kResourcesServer
+from resources_servers.aviary.notebook_app import NotebookResourcesServer
 
 
-class TestApp:
-    def test_sanity(self) -> None:
+class TestGSM8kApp:
+    @pytest.mark.asyncio
+    async def test_server_lifecycle(self) -> None:
+        # Create the server
         config = AviaryResourcesServerConfig(
+            name="",
             host="0.0.0.0",
             port=8080,
             entrypoint="",
-            name="",
         )
-        AviaryResourcesServer(config=config, server_client=MagicMock(spec=ServerClient))
+        server = GSM8kResourcesServer(config=config, server_client=MagicMock(spec=ServerClient))
+
+        # Start an environment
+        mock_request = MagicMock(spec=Request)
+        seed_resp = await server.seed_session(mock_request, AviarySeedSessionRequest(task_idx=0))
+
+        assert seed_resp.obs, "Expected non-empty observations"
+        assert seed_resp.tools, "Expected non-empty tools"
+
+        # Take a step
+        action = AviaryStepRequest(
+            env_id=seed_resp.env_id,
+            action=[
+                NeMoGymResponseFunctionToolCall(
+                    call_id="abc123",
+                    name="calculator",
+                    arguments=json.dumps({"expr": "1 + 1"}),
+                )
+            ],
+        )
+        step_resp = await server.step(mock_request, action)
+
+        assert len(step_resp.obs) == 1, "Expected 1 observation"
+        assert step_resp.obs[0].output == "2"
+
+
+class TestNotebookApp:
+    @pytest.mark.asyncio
+    async def test_server_lifecycle(self) -> None:
+        # Create the server
+        config = AviaryResourcesServerConfig(
+            name="",
+            host="0.0.0.0",
+            port=8080,
+            entrypoint="",
+        )
+        server = NotebookResourcesServer(config=config, server_client=MagicMock(spec=ServerClient))
+
+        # Start an environment
+        # NOTE: this spins up a docker container, so should probably skip in CI
+        mock_request = MagicMock(spec=Request)
+        seed_resp = await server.seed_session(mock_request, AviarySeedSessionRequest(task_idx=0))
+
+        assert seed_resp.obs, "Expected non-empty observations"
+        assert seed_resp.tools, "Expected non-empty tools"
+
+        # Take a step
+        action = AviaryStepRequest(
+            env_id=seed_resp.env_id,
+            action=[
+                NeMoGymResponseFunctionToolCall(
+                    call_id="abc123",
+                    name="submit_solution",
+                    arguments=json.dumps({"solution": "print('Hello, world!')"}),
+                )
+            ],
+        )
+        step_resp = await server.step(mock_request, action)
+
+        assert len(step_resp.obs) == 2, "Expected 2 observations"
+        assert step_resp.done, "Expected done"
+
+        # Close the environment
+        close_resp = await server.close(mock_request, AviaryCloseRequest(env_id=seed_resp.env_id))
+        assert close_resp.success, "Expected success"
+        assert not server.env_id_to_env, "Expected no environments"

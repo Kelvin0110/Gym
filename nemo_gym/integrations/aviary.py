@@ -56,3 +56,12 @@ class AviaryAgentVerifyRequest(BaseVerifyRequest):
 
 class AviaryAgentVerifyResponse(BaseVerifyResponse):
     model_config = ConfigDict(extra="allow")
+
+
+class AviaryCloseRequest(BaseModel):
+    env_id: str
+
+
+class AviaryCloseResponse(BaseModel):
+    message: str
+    success: bool

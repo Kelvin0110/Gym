@@ -8,13 +8,15 @@ from tempfile import mkdtemp
 from typing import cast
 
 import huggingface_hub
-from app import AviaryResourcesServer
-from aviary.core import EvalAnswerMode, Message, Messages, TaskDataset, Tool, eval_answer
-from aviary.envs.notebook import NBEnvironment
-from aviary.envs.notebook.utils import NBLanguage
 from datasets import Dataset, load_dataset
 from pydantic import Field
 from tqdm import tqdm
+
+from aviary.core import EvalAnswerMode, Message, Messages, TaskDataset, Tool, eval_answer
+from aviary.envs.notebook import NBEnvironment
+from aviary.envs.notebook.utils import NBLanguage
+
+from .app import AviaryResourcesServer
 
 
 logger = logging.getLogger(__name__)
