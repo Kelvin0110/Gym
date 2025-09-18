@@ -32,6 +32,15 @@ task = server_client.post(
         question="In triangle $ABC$, $\\sin \\angle A = \\frac{4}{5}$ and $\\angle A < 90^\\circ$. Let $D$ be a point outside triangle $ABC$ such that $\\angle BAD = \\angle DAC$ and $\\angle BDC = 90^\\circ$. Suppose that $AD = 1$ and that $\\frac{BD}{CD} = \\frac{3}{2}$. If $AB + AC$ can be expressed in the form $\\frac{a\\sqrt{b}}{c}$ where $a, b, c$ are pairwise relatively prime integers, find $a + b + c$.",
         expected_answer="34",
     ),
+    # json=ParallelReasoningRunRequest(
+    #     responses_create_params=NeMoGymResponseCreateParamsNonStreaming(    
+    #         input=[
+    #             {"role": "user", "content": "What is 2 + 2 * 8 * 9 * 10 / 4 / 3 + 100?"},
+    #         ]
+    #     ),
+    #     question="What is 2 + 2 * 8 * 9 * 10 / 4 / 3 + 100?",
+    #     expected_answer="222",
+    # ),
 )
 result = run(task)
 print(result)

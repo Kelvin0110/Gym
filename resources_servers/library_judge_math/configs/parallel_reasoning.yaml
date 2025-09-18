@@ -39,5 +39,5 @@ parallel_reasoning_simple_agent:
       - name: example
         type: example
         jsonl_fpath: resources_servers/library_judge_math/data/example.jsonl
-      num_planner: 1
-      num_executor: 2
+      num_planner: 2
+      num_executor: 8

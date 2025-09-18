@@ -1,1 +1,2 @@
 -e nemo-gym[dev] @ ../../
+rich>=13.0.0
