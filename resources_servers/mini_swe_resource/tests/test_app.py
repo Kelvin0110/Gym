@@ -23,6 +23,7 @@ from resources_servers.mini_swe_resource.app import (
 class TestApp:
     def test_sanity(self) -> None:
         config = MiniSweResourceResourcesServerConfig(
+            name="mini_swe_resource",
             host="0.0.0.0",
             port=8080,
             entrypoint="",
