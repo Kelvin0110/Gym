@@ -20,17 +20,19 @@ from openai.types.responses.response_input_text_param import ResponseInputTextPa
 from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_output_text import ResponseOutputText
 
-from nemo_gym.openai_utils import NeMoGymMessage
+from nemo_gym.openai_utils import NeMoGymMessage, NeMoGymResponseOutputMessageForTraining, NeMoGymResponseOutputText
 
 
 @dataclass
 class MiniSWEAgentUtils:
     @staticmethod
-    def chat_cmp_to_responses(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        responses = []
+    def chat_cmp_to_responses(messages: List[Dict[str, Any]], responses: List[Dict[str, Any]]) -> Dict[str, Any]:
+        nemo_gym_responses = []
+        responses_idx = 0
         for message in messages:
             status = "completed"
             msg_type = "message"
+
             role = message["role"]
             content = message["content"]
 
@@ -47,10 +49,17 @@ class MiniSWEAgentUtils:
                     type=msg_type,
                 )
             elif role == "assistant":
-                wrapped_message = ResponseOutputMessage(
+                assistant_response = responses[responses_idx]
+                choice = assistant_response["choices"][0]
+                provider_specific_fields = choice["provider_specific_fields"]
+                prompt_token_ids = provider_specific_fields.get("prompt_token_ids", [])
+                generation_token_ids = provider_specific_fields.get("generation_token_ids", [])
+                generation_log_probs = provider_specific_fields.get("generation_log_probs", [])
+
+                wrapped_message = NeMoGymResponseOutputMessageForTraining(
                     id=f"cht_{str(uuid4())}",
                     content=[
-                        ResponseOutputText(
+                        NeMoGymResponseOutputText(
                             annotations=[],
                             text=content,
                             type="output_text",
@@ -60,11 +69,15 @@ class MiniSWEAgentUtils:
                     role=role,
                     status=status,
                     type=msg_type,
+                    prompt_token_ids=prompt_token_ids,
+                    generation_token_ids=generation_token_ids,
+                    generation_log_probs=generation_log_probs,
                 )
+                responses_idx += 1
 
-            responses.append(wrapped_message.model_dump())
+            nemo_gym_responses.append(wrapped_message.model_dump())
 
-        return responses
+        return nemo_gym_responses
 
     @staticmethod
     def get_default_response_object() -> Dict[str, Any]:
