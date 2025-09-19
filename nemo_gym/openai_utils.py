@@ -15,6 +15,7 @@ from typing import (
     Dict,
     List,
     Literal,
+    NotRequired,
     Optional,
     Required,
     TypeAlias,
@@ -348,7 +349,8 @@ class NeMoGymChatCompletionMessageToolCallParam(ChatCompletionMessageToolCallPar
 class NeMoGymChatCompletionAssistantMessageParam(ChatCompletionAssistantMessageParam):
     # Override the iterable which is annoying to work with.
     content: Union[str, List[ContentArrayOfContentPart], None]
-    tool_calls: List[NeMoGymChatCompletionMessageToolCallParam]
+    # Note: the original ChatCompletionAssistantMessageParam doesn't have it as not required
+    tool_calls: NotRequired[List[NeMoGymChatCompletionMessageToolCallParam]]
 
 
 class NeMoGymChatCompletionAssistantMessageForTrainingParam(

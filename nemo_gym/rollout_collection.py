@@ -71,6 +71,7 @@ async def _collect_rollouts(config: RolloutCollectionConfig):  # pragma: no cove
             metrics += Counter({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
     avg_metrics = {k: v / len(tasks) for k, v in metrics.items()}
+    avg_metrics.setdefault("reward", 0.0)
     print(json.dumps(avg_metrics, indent=4))
 
 
