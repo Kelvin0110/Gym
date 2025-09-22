@@ -39,12 +39,25 @@ DEFAULT_RUN_SWEGYM_RESULT = {
             {"role": "assistant", "content": "I'll help you fix the bug."},
             {"role": "user", "content": "Thank you!"},
         ],
+        "responses": [
+            {
+                "choices": [
+                    {
+                        "provider_specific_fields": {
+                            "prompt_token_ids": [],
+                            "generation_token_ids": [],
+                            "generation_log_probs": []
+                        }
+                    }
+                ]
+            }
+        ],
         "eval_report": {
             "eval_report": {
                 "test_instance_123": {
                     "resolved": True,
                     "tests_status": {
-                        "FAIL_TO_FAIL": {"success": ["test1"], "failure": []},
+                        "FAIL_TO_PASS": {"success": ["test1"], "failure": []},
                         "PASS_TO_PASS": {"success": ["test2"], "failure": []},
                     },
                 }
