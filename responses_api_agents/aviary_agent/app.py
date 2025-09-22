@@ -15,7 +15,6 @@ import json
 import logging
 from typing import List
 
-import httpx
 from pydantic import ConfigDict, Field, ValidationError
 
 from nemo_gym.base_resources_server import BaseRunRequest
@@ -92,15 +91,18 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                     url_path="/v1/responses",
                     json=agent_state,
                 )
-            except httpx.HTTPError as e:
-                logger.warning(f"Error calling /v1/responses: {e}")
+                model_response_json = raw_model_response.json()
+            except json.JSONDecodeError as e:
                 # for now, we break. default reward of 0 will be returned when /verify is called
+                # JSONDecodeError will be thrown if there's an underlying openai error
+                logger.warning(f"Error calling /v1/responses: {e!r}. Response: {raw_model_response.text!r}")
                 break
 
-            model_response_json = raw_model_response.json()
             try:
                 model_response = NeMoGymResponse.model_validate(model_response_json)
             except ValidationError as e:
+                # Maybe this should be handled as above? i.e. if we got an incomplete message back due to
+                # max token limits
                 raise RuntimeError(
                     f"Received an invalid response from model server: {json.dumps(model_response_json)}"
                 ) from e
