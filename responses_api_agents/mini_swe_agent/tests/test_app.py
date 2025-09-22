@@ -46,7 +46,7 @@ DEFAULT_RUN_SWEGYM_RESULT = {
                         "provider_specific_fields": {
                             "prompt_token_ids": [],
                             "generation_token_ids": [],
-                            "generation_log_probs": []
+                            "generation_log_probs": [],
                         }
                     }
                 ]
