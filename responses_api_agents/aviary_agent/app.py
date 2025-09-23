@@ -85,6 +85,8 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         model_response: NeMoGymResponse | None = None
         agent_state_history: list[NeMoGymResponseInput] = []
 
+        total_len: int | None = None
+
         steps = 0
         while True:
             if req.max_steps is not None and steps >= req.max_steps:
@@ -104,7 +106,9 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             except json.JSONDecodeError as e:
                 # JSONDecodeError will be thrown if there's an underlying openai error.
                 # for now, we break. Default reward of 0 will be returned when /verify is called.
-                logger.warning(f"Error calling /v1/responses: {e!r}. Response: {raw_model_response.text!r}")
+                logger.warning(
+                    f"Error calling /v1/responses: {e!r}. Response: {raw_model_response.text!r}. Calculated length: {total_len}."
+                )
                 break
 
             try:
@@ -146,14 +150,14 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             # NOTE: this doesn't count the tool response tokens. Would need to call the tokenizer to properly count
             if model_output and self.config.max_total_sequence_length is not None:
                 # We just need one message that contains token IDs
-                total_len: int | None = None
                 for o in model_output:
                     if hasattr(o, "prompt_token_ids"):
                         total_len = len(o.prompt_token_ids) + len(o.generation_token_ids)
                         break
                 else:
                     logger.warning("No message with token IDs found in model output.")
-                if total_len is not None and total_len > self.config.max_total_sequence_length:
+                    total_len = None
+                if total_len is not None and total_len >= self.config.max_total_sequence_length:
                     break
 
             if done:
