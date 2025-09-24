@@ -24,6 +24,7 @@ from nemo_gym.config_types import ModelServerRef, ResourcesServerRef
 from nemo_gym.integrations.aviary import (
     AviaryAgentVerifyRequest,
     AviaryAgentVerifyResponse,
+    AviaryEnvStateEasyInputMessage,
     AviaryNeMoGymResponse,
     AviarySeedSessionResponse,
     AviaryStepResponse,
@@ -51,6 +52,9 @@ class AviaryAgentConfig(BaseResponsesAPIAgentConfig):
     # exceed the limit. If not set, vLLM will reject the request.
     max_total_sequence_length: int | None = None
 
+    collapse_old_env_states: bool = False
+    old_env_state_message: str = "[Previous environment state - hidden]"
+
 
 class AviaryAgentRunRequest(BaseRunRequest):
     model_config = ConfigDict(extra="allow")
@@ -75,7 +79,15 @@ class AviaryAgent(SimpleResponsesAPIAgent):
 
         Separate method so subclasses can override.
         """
-        return agent_state.model_copy(update={"input": agent_state.input + model_output + obs})
+
+        prev_messages = agent_state.input
+        if self.config.collapse_old_env_states:
+            hidden_message = NeMoGymEasyInputMessage(role="user", content=self.config.old_env_state_message)
+            prev_messages = [
+                hidden_message if isinstance(m, AviaryEnvStateEasyInputMessage) else m for m in prev_messages
+            ]
+
+        return agent_state.model_copy(update={"input": prev_messages + model_output + obs})
 
     async def responses(self, req: AviaryAgentRunRequest) -> AviaryNeMoGymResponse:
         req = req.model_copy(deep=True)
