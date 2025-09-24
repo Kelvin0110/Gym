@@ -49,7 +49,6 @@ class ParallelReasoningConfig(BaseResponsesAPIAgentConfig):
     num_planner: int
     num_executor: int
     keep_executor_prompt: bool = False
-    max_output_tokens: int = 32768
 
 
 class ParallelReasoningRunRequest(BaseRunRequest):
@@ -139,10 +138,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
 
         async def get_planner_response(planner_prompt: str):
             new_body = body.model_copy(
-                update={
-                    "input": [NeMoGymEasyInputMessage(role="user", content=planner_prompt)],
-                    "max_output_tokens": self.config.max_output_tokens,
-                }
+                update={"input": [NeMoGymEasyInputMessage(role="user", content=planner_prompt)]}
             )
             planner_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
@@ -186,10 +182,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             plan = ParallelReasoningUtils.parse_plan(planner_output)[0]
             executor_prompt = ParallelReasoningUtils.construct_executor_prompt(body.input[0].content, plan)
             executor_body = body.model_copy(
-                update={
-                    "input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)],
-                    "max_output_tokens": self.config.max_output_tokens,
-                }
+                update={"input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)]}
             )
             executor_response = await self.server_client.post(
                 server_name=self.config.model_server.name,

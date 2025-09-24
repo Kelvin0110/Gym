@@ -34,7 +34,6 @@ parallel_reasoning_simple_agent:
       num_planner: 2
       num_executor: 8
       keep_executor_prompt: true
-      max_output_tokens: 32768
 library_judge_math_simple_agent:
   responses_api_agents:
     simple_agent:
