@@ -265,7 +265,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             json=body.responses_create_params,
             cookies=cookies,
         )
-        responses = responses.json()
+        responses = await responses.json()
         self.logger.info(f"[green]✅ Generated {len(responses)} total responses[/green]")
 
         planner_responses = []
