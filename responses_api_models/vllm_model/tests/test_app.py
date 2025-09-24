@@ -18,8 +18,10 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch, mark
 
+import nemo_gym.server_utils
 from nemo_gym import PARENT_DIR
 from nemo_gym.openai_utils import (
+    NeMoGymAsyncOpenAI,
     NeMoGymChatCompletion,
     NeMoGymChatCompletionAssistantMessageForTrainingParam,
     NeMoGymChatCompletionAssistantMessageParam,
@@ -658,7 +660,7 @@ PARAMETERIZE_DATA = [
 
 
 class TestApp:
-    def _setup_server(self):
+    def _setup_server(self, monkeypatch: MonkeyPatch):
         config = VLLMModelConfig(
             host="0.0.0.0",
             port=8081,
@@ -669,13 +671,18 @@ class TestApp:
             name="",
             return_token_id_information=False,
         )
+
+        get_global_config_dict_mock = MagicMock()
+        get_global_config_dict_mock.return_value = dict()
+        monkeypatch.setattr(nemo_gym.server_utils, "get_global_config_dict", get_global_config_dict_mock)
+
         return VLLMModel(config=config, server_client=MagicMock(spec=ServerClient))
 
-    async def test_sanity(self) -> None:
-        self._setup_server()
+    async def test_sanity(self, monkeypatch: MonkeyPatch) -> None:
+        self._setup_server(monkeypatch)
 
     def test_responses_multistep(self, monkeypatch: MonkeyPatch):
-        server = self._setup_server()
+        server = self._setup_server(monkeypatch)
         app = server.setup_webserver()
         client = TestClient(app)
 
@@ -880,7 +887,7 @@ class TestApp:
         assert expected_sent_tools == actual_sent_tools
 
     def test_responses_multiturn(self, monkeypatch: MonkeyPatch):
-        server = self._setup_server()
+        server = self._setup_server(monkeypatch)
         app = server.setup_webserver()
         client = TestClient(app)
 
@@ -1018,7 +1025,7 @@ class TestApp:
         assert expected_sent_messages == sent_messages
 
     def test_responses_multistep_multiturn(self, monkeypatch: MonkeyPatch):
-        server = self._setup_server()
+        server = self._setup_server(monkeypatch)
         app = server.setup_webserver()
         client = TestClient(app)
 
@@ -1374,7 +1381,7 @@ class TestApp:
         Test entire pipeline from api endpoint -> final output:
         Response Create Params -> Response
         """
-        server = self._setup_server()
+        server = self._setup_server(monkeypatch)
         app = server.setup_webserver()
         client = TestClient(app)
 
@@ -1424,7 +1431,7 @@ class TestApp:
         Tests conversion from api endpoint -> internal request schema
         Response Params -> Chat Completion Params
         """
-        server = self._setup_server()
+        server = self._setup_server(monkeypatch)
         app = server.setup_webserver()
         client = TestClient(app)
 
@@ -1474,6 +1481,8 @@ class TestApp:
         server = VLLMModel(config=config, server_client=MagicMock(spec=ServerClient))
         app = server.setup_webserver()
 
+        assert len(server._clients) == 2
+
         mock_chat_completion = NeMoGymChatCompletion(
             id="chtcmpl",
             object="chat.completion",
@@ -1504,24 +1513,19 @@ class TestApp:
             input=input_messages,
         )
 
-        assert len(server._clients) == 2
-
         mock_chat_completion_1 = mock_chat_completion.model_copy(deep=True)
         mock_chat_completion_1.choices[0].message.content = "1"
-        mock_method_1 = AsyncMock(return_value=mock_chat_completion_1)
-        monkeypatch.setattr(
-            server._clients[0].chat.completions,
-            "create",
-            mock_method_1,
-        )
+        mock_method_1 = AsyncMock(return_value=mock_chat_completion_1.model_dump())
+        client_1 = MagicMock(spec=NeMoGymAsyncOpenAI)
+        client_1.create_chat_completion = mock_method_1
+
         mock_chat_completion_2 = mock_chat_completion.model_copy(deep=True)
         mock_chat_completion_2.choices[0].message.content = "2"
-        mock_method_2 = AsyncMock(return_value=mock_chat_completion_2)
-        monkeypatch.setattr(
-            server._clients[1].chat.completions,
-            "create",
-            mock_method_2,
-        )
+        mock_method_2 = AsyncMock(return_value=mock_chat_completion_2.model_dump())
+        client_2 = MagicMock(spec=NeMoGymAsyncOpenAI)
+        client_2.create_chat_completion = mock_method_2
+
+        server._clients = [client_1, client_2]
 
         # Test first query by client 1 goes to underlying client 1
         client_1 = TestClient(app)
@@ -2028,3 +2032,115 @@ class TestVLLMConverter:
 
         expected_output = test_data["expected_output_return_token_id_information"]
         assert expected_output == chat_completion_create_params.model_dump()
+
+    def test_whitespace_round_trip_chat_completions(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr("responses_api_models.vllm_model.app.uuid4", lambda: FakeUUID())
+
+        message = NeMoGymChatCompletionMessage(
+            content="<think> \n \n I'm thinking \n \n </think> \n \n I'm chatting! \n \n ",
+            role="assistant",
+            tool_calls=[
+                NeMoGymChatCompletionMessageToolCall(
+                    id="tool call 1",
+                    function=NeMoGymFunction(name="get_weather", arguments='{"city_name": "new york"}'),
+                    type="function",
+                ),
+                NeMoGymChatCompletionMessageToolCall(
+                    id="tool call 2",
+                    function=NeMoGymFunction(name="get_weather", arguments='{"city_name": "boston"}'),
+                    type="function",
+                ),
+            ],
+        )
+        actual_response_output_items = self.converter.postprocess_chat_response(
+            choice=NeMoGymChoice(
+                finish_reason="tool_calls",
+                index=0,
+                message=message,
+            )
+        )
+        expected_response_output_items = [
+            NeMoGymResponseReasoningItem(
+                id="rs_123",
+                summary=[NeMoGymSummary(text=" \n \n I'm thinking \n \n ", type="summary_text")],
+                type="reasoning",
+                encrypted_content=None,
+            ),
+            NeMoGymResponseOutputMessage(
+                id="msg_123",
+                content=[
+                    NeMoGymResponseOutputText(
+                        annotations=[], text=" \n \n I'm chatting! \n \n ", type="output_text", logprobs=None
+                    )
+                ],
+                role="assistant",
+                status="completed",
+                type="message",
+            ),
+            NeMoGymResponseFunctionToolCall(
+                arguments='{"city_name": "new york"}',
+                call_id="tool call 1",
+                name="get_weather",
+                type="function_call",
+                id="tool call 1",
+                status="completed",
+            ),
+            NeMoGymResponseFunctionToolCall(
+                arguments='{"city_name": "boston"}',
+                call_id="tool call 2",
+                name="get_weather",
+                type="function_call",
+                id="tool call 2",
+                status="completed",
+            ),
+        ]
+        assert expected_response_output_items == actual_response_output_items
+
+        chat_completion_create_params = self.converter.responses_to_chat_completion_create_params(
+            responses_create_params=NeMoGymResponseCreateParamsNonStreaming(
+                input=[
+                    NeMoGymEasyInputMessage(
+                        content=" \n \n system \n \n ",
+                        role="system",
+                    ),
+                    NeMoGymEasyInputMessage(
+                        content=" \n \n hello! \n \n ",
+                        role="user",
+                    ),
+                    *actual_response_output_items,
+                ],
+            )
+        )
+        actual_messages = chat_completion_create_params.messages
+
+        expected_messages = [
+            NeMoGymChatCompletionSystemMessageParam(
+                content=" \n \n system \n \n ",
+                role="system",
+            ),
+            NeMoGymChatCompletionUserMessageParam(
+                content=" \n \n hello! \n \n ",
+                role="user",
+            ),
+            NeMoGymChatCompletionAssistantMessageParam(
+                role="assistant",
+                content="<think> \n \n I'm thinking \n \n </think> \n \n I'm chatting! \n \n ",
+                tool_calls=[
+                    NeMoGymChatCompletionMessageToolCallParam(
+                        id="tool call 1",
+                        function=NeMoGymChatCompletionMessageToolCallFunctionParam(
+                            name="get_weather", arguments='{"city_name": "new york"}'
+                        ),
+                        type="function",
+                    ),
+                    NeMoGymChatCompletionMessageToolCallParam(
+                        id="tool call 2",
+                        function=NeMoGymChatCompletionMessageToolCallFunctionParam(
+                            name="get_weather", arguments='{"city_name": "boston"}'
+                        ),
+                        type="function",
+                    ),
+                ],
+            ),
+        ]
+        assert expected_messages == actual_messages

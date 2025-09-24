@@ -38,7 +38,12 @@ from nemo_gym.global_config import (
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
-from nemo_gym.server_utils import HEAD_SERVER_KEY_NAME, HeadServer, ServerClient, ServerStatus
+from nemo_gym.server_utils import (
+    HEAD_SERVER_KEY_NAME,
+    HeadServer,
+    ServerClient,
+    ServerStatus,
+)
 
 
 def _setup_env_command(dir_path: Path) -> str:  # pragma: no cover
@@ -288,6 +293,7 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
             sleep(sleep_interval)
 
     def shutdown(self) -> None:
+        # TODO there is possibly a better way to handle the server shutdowns.
         for process_name, process in self._processes.items():
             print(f"Killing `{process_name}`")
             process.kill()
@@ -308,10 +314,6 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
             # Indefinitely
             while True:
                 self.poll()
-
-                statuses = self.check_http_server_statuses()
-                assert statuses.count("success") == len(statuses), "Found non-success statuses"
-
                 await asyncio.sleep(60)
 
         try:
