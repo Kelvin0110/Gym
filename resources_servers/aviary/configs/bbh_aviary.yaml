@@ -1,7 +1,10 @@
 bbh_aviary_resources_server:
   resources_servers:
     aviary:
-      entrypoint: bbh_app.py
+      entrypoint: client_app.py
+      server_url: ${bbh_server_url}
+      api_key: ${bbh_api_key}
+
 
 bbh_aviary_agent:
   responses_api_agents:
