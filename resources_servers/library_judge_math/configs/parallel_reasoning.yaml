@@ -41,3 +41,5 @@ parallel_reasoning_simple_agent:
         jsonl_fpath: resources_servers/library_judge_math/data/example.jsonl
       num_planner: 2
       num_executor: 8
+      keep_executor_prompt: false
+      max_output_tokens: 32768

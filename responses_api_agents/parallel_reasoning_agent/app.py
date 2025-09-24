@@ -48,6 +48,8 @@ class ParallelReasoningConfig(BaseResponsesAPIAgentConfig):
     max_steps: int = None
     num_planner: int
     num_executor: int
+    keep_executor_prompt: bool = False
+    max_output_tokens: int = 32768
 
 
 class ParallelReasoningRunRequest(BaseRunRequest):
@@ -137,7 +139,10 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
 
         async def get_planner_response(planner_prompt: str):
             new_body = body.model_copy(
-                update={"input": [NeMoGymEasyInputMessage(role="user", content=planner_prompt)]}
+                update={
+                    "input": [NeMoGymEasyInputMessage(role="user", content=planner_prompt)],
+                    "max_output_tokens": self.config.max_output_tokens,
+                }
             )
             planner_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
@@ -145,7 +150,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                 json=new_body,
                 cookies=model_server_cookies,
             )
-            model_response_json = planner_response.json()
+            model_response_json = await planner_response.json()
             planner_cookies = planner_response.cookies
             try:
                 planner_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(model_response_json)
@@ -181,7 +186,10 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             plan = ParallelReasoningUtils.parse_plan(planner_output)[0]
             executor_prompt = ParallelReasoningUtils.construct_executor_prompt(body.input[0].content, plan)
             executor_body = body.model_copy(
-                update={"input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)]}
+                update={
+                    "input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)],
+                    "max_output_tokens": self.config.max_output_tokens,
+                }
             )
             executor_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
@@ -191,14 +199,14 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             )
             executor_cookies = executor_response.cookies
             try:
-                executor_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(executor_response.json())
+                executor_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(await executor_response.json())
                 executor_response_obj.metadata = {
                     "planner_resp_id": planner_response.id,
                     "stage": Stage.EXECUTOR.value,
                 }
             except ValidationError as e:
                 raise RuntimeError(
-                    f"Received an invalid response from model server: {json.dumps(executor_response.json())}"
+                    f"Received an invalid response from model server: {json.dumps(await executor_response.json())}"
                 ) from e
 
             return executor_response_obj, executor_cookies
@@ -241,6 +249,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
     async def run(self, request: Request, body: ParallelReasoningRunRequest) -> ParallelReasoningVerifyResponse:
         self.logger.info("[bold purple]🏃 Starting parallel reasoning run workflow[/bold purple]")
 
+        # Base input
         if isinstance(body.responses_create_params.input, str):
             body.responses_create_params.input = [
                 NeMoGymEasyInputMessage(role="user", content=body.responses_create_params.input)
@@ -271,9 +280,10 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
         planner_responses = []
         executor_responses = []
         for response in responses:
-            if response["metadata"]["stage"] == Stage.PLANNER.value:
+            response = NeMoGymResponse.model_validate(response)
+            if response.metadata["stage"] == Stage.PLANNER.value:
                 planner_responses.append(response)
-            elif response["metadata"]["stage"] == Stage.EXECUTOR.value:
+            elif response.metadata["stage"] == Stage.EXECUTOR.value:
                 executor_responses.append(response)
 
         self.logger.info(
@@ -283,7 +293,9 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
         self.logger.info("[orange3]🔍 Starting verification of executor responses[/orange3]")
         executor_verify_responses = []
         for i, response in enumerate(executor_responses):
-            verify_request = ParallelReasoningVerifyRequest.model_validate(body.model_dump() | {"response": response})
+            verify_request = ParallelReasoningVerifyRequest.model_validate(
+                body.model_dump() | {"response": response.model_dump()}
+            )
             verify_response = await self.server_client.post(
                 server_name=self.config.resources_server.name,
                 url_path="/verify",
@@ -292,7 +304,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             )
             try:
                 executor_verify_response: BaseParallelReasoningVerifyResponse = (
-                    BaseParallelReasoningVerifyResponse.model_validate(verify_response.json())
+                    BaseParallelReasoningVerifyResponse.model_validate(await verify_response.json())
                 )
                 executor_verify_responses.append(executor_verify_response)
                 self.logger.info(
@@ -301,7 +313,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             except ValidationError as e:
                 self.logger.error(f"[red]❌ Verification failed for executor {i + 1}[/red]")
                 raise RuntimeError(
-                    f"Received an invalid response from resources server: {json.dumps(verify_response.json())}"
+                    f"Received an invalid response from resources server: {json.dumps(await verify_response.json())}"
                 ) from e
 
         # Aggregate executor rewards for each planner response group.
@@ -312,7 +324,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             planner_response_group = [
                 resp
                 for resp in executor_verify_responses
-                if resp.response.metadata["planner_resp_id"] == planner_response["id"]
+                if resp.response.metadata["planner_resp_id"] == planner_response.id
             ]
             planner_response_group_rewards = [resp.reward for resp in planner_response_group]
             if planner_response_group_rewards:
@@ -325,12 +337,27 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             )
 
             planner_verify_response = BaseParallelReasoningVerifyResponse.model_validate(
-                body.model_dump() | {"response": planner_response, "reward": planner_reward}
+                body.model_dump() | {"response": planner_response.model_dump(), "reward": planner_reward}
             )
+
+            # Swap parallelizer input with parallelizer prompt
             planner_verify_response.responses_create_params.input[
                 0
             ].content = ParallelReasoningUtils.construct_planner_prompt(body.responses_create_params.input[0].content)
             planner_verify_responses.append(planner_verify_response)
+
+            # Optionally swap executor input with executor prompt
+            if self.config.keep_executor_prompt:
+                planner_output = planner_response.output[0].content[0].text
+                plan = ParallelReasoningUtils.parse_plan(planner_output)[0]
+
+                for i in range(len(executor_verify_responses)):
+                    resp = executor_verify_responses[i]
+                    if not resp.response.metadata["planner_resp_id"] == planner_response.id:
+                        continue
+                    resp.responses_create_params.input[0].content = ParallelReasoningUtils.construct_executor_prompt(
+                        body.responses_create_params.input[0].content, plan
+                    )
 
         verify_responses = planner_verify_responses + executor_verify_responses
         parallel_reasoning_verify_responses = ParallelReasoningVerifyResponse(responses=verify_responses)
