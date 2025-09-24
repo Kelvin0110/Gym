@@ -1,7 +1,7 @@
 import logging
 
 from kestrel.env import DataAnalysisEnv, DatasetConfig, HypothesisDataset
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from resources_servers.aviary.app import AviaryResourcesServer, AviaryResourcesServerConfig
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class BBHConfig(AviaryResourcesServerConfig):
-    dataset: DatasetConfig
+    dataset: DatasetConfig = Field(default_factory=DatasetConfig)
 
 
 class BBHResourcesServer(AviaryResourcesServer[DataAnalysisEnv, HypothesisDataset]):
