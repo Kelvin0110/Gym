@@ -164,6 +164,8 @@ class MiniSWEAgent(SimpleResponsesAPIAgent):
                     env=env,
                     run_golden=run_golden,
                     instance_id=instance_id,
+                    # TODO: add this later
+                    instance_dict=body.model_dump(),
                     responses_create_params=json.dumps(reseponses_create_params_dict),
                     step_timeout=step_timeout,
                     eval_timeout=eval_timeout,

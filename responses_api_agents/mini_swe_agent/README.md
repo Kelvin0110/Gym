@@ -12,6 +12,7 @@ A NeMo Gym responses API agent that integrates the [Mini-SWE-Agent](https://gith
   - [Configuration](#configuration)
     - [Agent Configuration](#agent-configuration)
   - [Usage](#usage)
+    - [Download SWE-Gym Images](#download-swe-gym-images)
     - [Server](#server)
     - [Trajectory Collection Script](#trajectory-collection-script)
   - [Contributing](#contributing)
@@ -97,6 +98,10 @@ mini_swe_main_agent:
 
 
 ## Usage
+
+### Download SWE-Gym Images
+
+For how to download images and convert to .sif, you can refer to https://github.com/NVIDIA/NeMo-Skills/blob/main/nemo_skills/dataset/swe-bench/dump_images.py
 
 ### Server
 
