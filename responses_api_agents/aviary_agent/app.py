@@ -14,6 +14,7 @@
 import json
 import logging
 from collections.abc import Sequence
+from pdb import set_trace
 from typing import List, cast
 
 from pydantic import ConfigDict, Field, ValidationError
@@ -103,7 +104,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             url_path="/seed_session",
             json={"task_idx": req.task_idx},
         )
-        seed_session_response = AviarySeedSessionResponse.model_validate(reset_response.json())
+        seed_session_response = AviarySeedSessionResponse.model_validate(await reset_response.json())
 
         agent_state = body.model_copy(
             update={"input": body.input + seed_session_response.obs, "tools": seed_session_response.tools}
@@ -131,7 +132,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                     url_path="/v1/responses",
                     json=agent_state,
                 )
-                model_response_json = raw_model_response.json()
+                model_response_json = await raw_model_response.json()
             except json.JSONDecodeError as e:
                 # JSONDecodeError will be thrown if there's an underlying openai error.
                 # for now, we break. Default reward of 0 will be returned when /verify is called.
@@ -171,7 +172,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                     url_path="/step",
                     json={"action": [c.model_dump(mode="json") for c in all_fn_calls], "env_id": env_id},
                 )
-                env_response = AviaryStepResponse.model_validate(raw_env_response.json())
+                env_response = AviaryStepResponse.model_validate(await raw_env_response.json())
                 obs = env_response.obs
                 done = env_response.done
 
@@ -183,9 +184,11 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                 tokenize_response = await self.server_client.post(
                     server_name=self.config.model_server.name,
                     url_path="/tokenize",
-                    json=agent_state,
+                    json=agent_state.model_copy(update={"messages": obs}),
                 )
-                total_len: int = len(tokenize_response.json()["tokens"])
+                tokenize_response_json = await tokenize_response.json()
+                set_trace()
+                total_len = len(tokenize_response_json["tokens"])
                 if total_len >= self.config.max_total_sequence_length:
                     break
 
@@ -216,7 +219,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                 server_name=self.config.resources_server.name, url_path="/verify", json=verify_request.model_dump()
             )
 
-            return AviaryAgentVerifyResponse.model_validate(verify_response.json())
+            return AviaryAgentVerifyResponse.model_validate(await verify_response.json())
         except Exception as e:
             logger.exception("Error in run")
             raise e
