@@ -155,3 +155,12 @@ class ParallelReasoningUtils:
             problem=problem, solutions=solutions, numsolutions=len(solutions), max_idx=(len(solutions) - 1)
         )
         return reducer_prompt.strip()
+
+    @staticmethod
+    def parse_reducer(reducer_output: str) -> str:
+        pattern = re.compile(r"Judgment:\s*\[(\d+)\]")
+        matches = pattern.findall(reducer_output)
+        if not matches:
+            return None  # no Judgment found
+        idx = int(matches[-1])  # take the last one
+        return idx

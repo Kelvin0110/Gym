@@ -141,23 +141,30 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             )
             reducer_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
-                url_path="v1/responses",
+                url_path="/v1/responses",
                 json=reducer_body,
                 cookies=executor_cookies,
             )
             reducer_cookies = reducer_response.cookies
             try:
-                reducer_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(await reducer_response.json())
+                reducer_response_obj = await reducer_response.json()
+                self.logger.info(
+                    f"\n\n\n*********************\n{reducer_response_obj['output'][0]['content'][0]['text']}\n*********************\n\n\n"
+                )
+                reducer_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(reducer_response_obj)
                 reducer_response_obj.metadata = {
-                    "executor_resp_ids": [executor_response.id for executor_response in executor_responses],
+                    "executor_resp_ids": json.dumps(
+                        [executor_response.id for executor_response in executor_responses]
+                    ),
                     "stage": Stage.REDUCER.value,
                 }
             except ValidationError as e:
                 raise RuntimeError(
                     f"Received an invalid response from model server: {json.dumps(await reducer_response.json())}"
                 ) from e
+            reducer_responses = [reducer_response_obj]
 
-        return reducer_response_obj, reducer_cookies
+        return reducer_responses, reducer_cookies
 
     async def responses(
         self,
@@ -256,6 +263,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             executor_body = body.model_copy(
                 update={
                     "input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)],
+                    "max_output_tokens": 1024,
                 }
             )
             executor_response = await self.server_client.post(
@@ -304,17 +312,14 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
         # ------ STAGE 3: REDUCER ------- #
         if self.config.use_reducer:
             self.logger.debug("[bold blue]⚡ Starting reducer stage[/bold blue]")
-            if self.config.redcuer_type == "genselect":
-                reducer_responses, all_reducer_cookies = self.get_reducer_response_genselect(
+            if self.config.reducer_type == "genselect":
+                reducer_responses, all_reducer_cookies = await self.get_reducer_response_genselect(
                     body, executor_responses, all_executor_cookies
                 )
+                self.logger.info(f"\n\n\n================\n{reducer_responses}\n===============\n\n\n")
         else:
             reducer_responses = []
             all_reducer_cookies = {}
-        # TODO(jk): appease linter and dispose
-        # reducer_responses = []
-        # all_reducer_cookies = {}
-        # self.logger.debug(f"{reducer_responses} {reducer_body}")
 
         for k, v in (
             *resources_server_cookies.items(),
@@ -480,7 +485,7 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                 # Mostly to backprop on original prompt
                 # TODO(jk): find better way to do this than actually using GPU even with max_output_tokens=1
                 false_tokenize_body = body.responses_create_params
-                false_tokenize_body = false_tokenize_body.model_copy(update={"max_output_tokens": 1})
+                false_tokenize_body = false_tokenize_body.model_copy(update={"max_output_tokens": 16})
                 false_tokenize_response = await self.server_client.post(
                     server_name=self.config.model_server.name,
                     url_path="/v1/responses",
