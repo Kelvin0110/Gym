@@ -4,7 +4,7 @@ SLURM_PARTITION=batch \
 EXP_NAME=penguin_grpo/qwen3_4binstruct/8nodes/grpo-qwen3-4b-instruct-pre-cot \
 NUM_ACTOR_NODES=8 \
 REPO_LOCATION=/lustre/fsw/portfolios/llmservice/users/abhibhag/nemo-rl \
-    ./penguin_submit.sh \
+    penguin_submit.sh \
     --config=examples/penguin/grpo_workbench_qwen3_4binstruct.yaml \
     logger.wandb.project="$USER-nemo-gym-rl-integration"
 
@@ -15,7 +15,7 @@ SLURM_PARTITION=batch \
 EXP_NAME=penguin_grpo/qwen3_4binstruct/8nodes/grpo-qwen3-4b-instruct-pre-cot \
 NUM_ACTOR_NODES=8 \
 REPO_LOCATION=/lustre/fsw/portfolios/llmservice/users/abhibhag/nemo-rl \
-    ./penguin_submit.sh \
+    penguin_submit.sh \
     --config=examples/penguin/grpo_workbench_qwen3_4binstruct.yaml \
     logger.wandb.project="$USER-nemo-gym-rl-integration"
 
@@ -26,6 +26,6 @@ SLURM_PARTITION=batch \
 EXP_NAME=penguin_grpo/qwen3_4binstruct/8nodes/grpo-qwen3-4b-instruct-pre-cot \
 NUM_ACTOR_NODES=8 \
 REPO_LOCATION=/lustre/fsw/portfolios/llmservice/users/abhibhag/nemo-rl \
-    ./penguin_submit.sh \
+    penguin_submit.sh \
     --config=examples/penguin/grpo_workbench_qwen3_4binstruct.yaml \
     logger.wandb.project="$USER-nemo-gym-rl-integration"
