@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import json
 import logging
 from collections.abc import Sequence
@@ -68,15 +69,19 @@ class AviaryAgentRunRequest(BaseRunRequest):
     max_steps: int | None = None
 
 
+lock = asyncio.Lock()
+from pathlib import Path
+
+
 class AviaryAgent(SimpleResponsesAPIAgent):
     config: AviaryAgentConfig
 
     def update_agent_state(
         self,
-        agent_state: NeMoGymResponseInput,
+        agent_state: NeMoGymResponseCreateParamsNonStreaming,
         model_output: list[NeMoGymResponseOutputMessage],
         obs: list[NeMoGymEasyInputMessage | NeMoGymFunctionCallOutput],
-    ) -> NeMoGymResponseInput:
+    ) -> NeMoGymResponseCreateParamsNonStreaming:
         """Update the agent state.
 
         Separate method so subclasses can override.
@@ -120,6 +125,11 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             if req.max_steps is not None and steps >= req.max_steps:
                 break
             steps += 1
+
+            async with lock:
+                dump_path = Path("/home/sid/dump.json")
+                if not dump_path.exists():
+                    dump_path.write_text(json.dumps(agent_state.model_dump(mode="json")))
 
             # Sample action from model
             try:
@@ -177,17 +187,15 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             agent_state = self.update_agent_state(agent_state, model_output, obs)
             agent_state_history.append(cast(NeMoGymResponseInput, agent_state.input))
 
-            # NOTE: this doesn't count the tool response tokens. Would need to call the tokenizer to properly count
-            if model_output and self.config.max_total_sequence_length is not None:
-                # We just need one message that contains token IDs
-                for o in model_output:
-                    if hasattr(o, "prompt_token_ids"):
-                        total_len = len(o.prompt_token_ids) + len(o.generation_token_ids)
-                        break
-                else:
-                    logger.warning("No message with token IDs found in model output.")
-                    total_len = None
-                if total_len is not None and total_len >= self.config.max_total_sequence_length:
+            if self.config.max_total_sequence_length is not None:
+                # NOTE: this assumes vLLM backend.
+                tokenize_response = await self.server_client.post(
+                    server_name=self.config.model_server.name,
+                    url_path="/tokenize",
+                    json=agent_state,
+                )
+                total_len: int = len(tokenize_response.json()["tokens"])
+                if total_len >= self.config.max_total_sequence_length:
                     break
 
             if done:
@@ -208,14 +216,18 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         return output
 
     async def run(self, body: AviaryAgentRunRequest) -> AviaryAgentVerifyResponse:
-        response = await self.responses(body)
+        try:
+            response = await self.responses(body)
 
-        verify_request = AviaryAgentVerifyRequest.model_validate(body.model_dump() | {"response": response})
-        verify_response = await self.server_client.post(
-            server_name=self.config.resources_server.name, url_path="/verify", json=verify_request.model_dump()
-        )
+            verify_request = AviaryAgentVerifyRequest.model_validate(body.model_dump() | {"response": response})
+            verify_response = await self.server_client.post(
+                server_name=self.config.resources_server.name, url_path="/verify", json=verify_request.model_dump()
+            )
 
-        return AviaryAgentVerifyResponse.model_validate(verify_response.json())
+            return AviaryAgentVerifyResponse.model_validate(verify_response.json())
+        except Exception as e:
+            logger.exception("Error in run")
+            raise e
 
 
 if __name__ == "__main__":

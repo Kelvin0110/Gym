@@ -1,7 +1,8 @@
 -e nemo-gym[dev] @ ../../
-fhaviary[gsm8k,notebook,llm]>=0.24.1
+# fhaviary[gsm8k,notebook,llm]>=0.24.3
 tqdm
 datasets
 huggingface-hub
 -e aviary-internal @ /home/sid/dev/aviary-internal/aviary_internal
 -e kestrel @ /home/sid/dev/aviary-internal/envs/kestrel
+-e fhaviary[gsm8k,notebook,llm,server] @ /home/sid/dev/aviary

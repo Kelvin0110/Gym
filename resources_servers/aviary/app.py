@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import logging
 import uuid
 from abc import ABC
 from collections import defaultdict
@@ -46,6 +47,9 @@ from nemo_gym.integrations.aviary import (
     AviaryStepResponse,
 )
 from nemo_gym.openai_utils import NeMoGymEasyInputMessage, NeMoGymFunctionCallOutput
+
+
+logger = logging.getLogger(__name__)
 
 
 TEnv = TypeVar("TEnv", bound=Environment)
@@ -112,25 +116,29 @@ class AviaryResourcesServer(SimpleResourcesServer, Generic[TEnv, TDataset], ABC)
         """
         Wraps calling step().
         """
-        env = self.env_id_to_env[body.env_id]
+        try:
+            env = self.env_id_to_env[body.env_id]
 
-        action = ToolRequestMessage(
-            content=None,
-            tool_calls=[
-                ToolCall(id=a.call_id, function=ToolCallFunction(name=a.name, arguments=json.loads(a.arguments)))
-                for a in body.action
-            ],
-        )
-        obs, reward, done, _ = await env.step(action)
+            action = ToolRequestMessage(
+                content=None,
+                tool_calls=[
+                    ToolCall(id=a.call_id, function=ToolCallFunction(name=a.name, arguments=json.loads(a.arguments)))
+                    for a in body.action
+                ],
+            )
+            obs, reward, done, _ = await env.step(action)
 
-        self.env_id_to_total_reward[body.env_id] += reward
+            self.env_id_to_total_reward[body.env_id] += reward
 
-        nemo_obs = [
-            NeMoGymFunctionCallOutput(call_id=o.tool_call_id, output=o.content)
-            if isinstance(o, ToolResponseMessage)
-            else obs_msg_to_nemo_gym(o)
-            for o in obs
-        ]
+            nemo_obs = [
+                NeMoGymFunctionCallOutput(call_id=o.tool_call_id, output=o.content)
+                if isinstance(o, ToolResponseMessage)
+                else obs_msg_to_nemo_gym(o)
+                for o in obs
+            ]
+        except Exception:
+            logger.exception("Error in step")
+            raise
 
         return AviaryStepResponse(obs=nemo_obs, reward=reward, done=done)
 
