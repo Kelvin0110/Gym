@@ -1,4 +1,4 @@
-arc_agi:
+arc_agi_resources_server:
   resources_servers:
     arc_agi:
       entrypoint: app.py
@@ -6,33 +6,39 @@ arc_agi_simple_agent:
   responses_api_agents:
     simple_agent:
       entrypoint: app.py
-      host: 127.0.0.1
-      port: 15214
       resources_server:
         type: resources_servers
-        name: arc_agi
+        name: arc_agi_resources_server
       model_server:
         type: responses_api_models
         name: policy_model
       datasets:
-      - name: example_1
+      - name: example
         type: example
-        jsonl_fpath: resources_servers/arc_agi/data/example_1.jsonl
+        jsonl_fpath: resources_servers/arc_agi/data/example.jsonl
       - name: training_1
         type: validation
         jsonl_fpath: resources_servers/arc_agi/data/arc_agi_1_training.jsonl
+        gitlab_identifier:
+          dataset_name: arc_agi
+          version: 0.0.1
+          artifact_fpath: arc_agi_1_training.jsonl
+        license: Apache 2.0
       - name: evaluation_1
         type: validation
         jsonl_fpath: resources_servers/arc_agi/data/arc_agi_1_evaluation.jsonl
+        gitlab_identifier:
+          dataset_name: arc_agi
+          version: 0.0.1
+          artifact_fpath: arc_agi_1_evaluation.jsonl
+        license: Apache 2.0
 arc_agi_berman_agent:
   responses_api_agents:
     berman_agent:
       entrypoint: app.py
-      host: 127.0.0.1
-      port: 15215
       resources_server:
         type: resources_servers
-        name: arc_agi
+        name: arc_agi_resources_server
       model_server:
         type: responses_api_models
         name: policy_model
@@ -44,12 +50,22 @@ arc_agi_berman_agent:
       initial_temperature: 0.9
 
       datasets:
-      - name: example_1
+      - name: example
         type: example
-        jsonl_fpath: resources_servers/arc_agi/data/example_1.jsonl
+        jsonl_fpath: resources_servers/arc_agi/data/example.jsonl
       - name: training_1
         type: validation
         jsonl_fpath: resources_servers/arc_agi/data/arc_agi_1_training.jsonl
+        gitlab_identifier:
+          dataset_name: arc_agi
+          version: 0.0.1
+          artifact_fpath: arc_agi_1_training.jsonl
+        license: Apache 2.0
       - name: evaluation_1
         type: validation
         jsonl_fpath: resources_servers/arc_agi/data/arc_agi_1_evaluation.jsonl
+        gitlab_identifier:
+          dataset_name: arc_agi
+          version: 0.0.1
+          artifact_fpath: arc_agi_1_evaluation.jsonl
+        license: Apache 2.0
