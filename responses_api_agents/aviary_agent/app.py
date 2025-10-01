@@ -165,9 +165,10 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                 obs: Sequence[NeMoGymEasyInputMessage | NeMoGymFunctionCallOutput] = [
                     NeMoGymEasyInputMessage(
                         role="user",
-                        content="You either responded with no tool calls or an invalid tool call "
-                        "(invalid tool name and/or arguments). Please call at least one tool to "
-                        "proceed",
+                        content="You did not respond with a valid tool call. "
+                        "This may mean you did not call tools, or you tried to "
+                        "and got the formatting, tool name, or arguments "
+                        "wrong. To proceed, please call at least one tool.",
                     )
                 ]
             else:
