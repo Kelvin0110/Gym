@@ -15,7 +15,7 @@ import asyncio
 import json
 import logging
 from enum import StrEnum
-from typing import Any, List, Literal
+from typing import Any, List, Literal, Optional
 
 from fastapi import Request, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -48,6 +48,7 @@ class ParallelReasoningConfig(BaseResponsesAPIAgentConfig):
     max_steps: int = None
     num_parallelizer: int
     num_executor: int
+    executor_max_output_tokens: Optional[int] = None
     keep_executor_prompt: bool = False
     parallel_type: Literal["planner", "rewriter"] = "planner"
     use_identity_rewrite: bool = False
@@ -98,6 +99,9 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                 )
             if self.config.reduce_across not in ["all"]:
                 raise NotImplementedError(f"'reduce_across' must be one of ['all'], got {self.config.reduce_across}")
+        else:
+            if self.config.return_reducer_only:
+                raise NotImplementedError("'return_reducer_only' must be used with 'use_reducer' !")
 
     def _setup_logger(self):
         # Install rich traceback handler for better error formatting
@@ -148,15 +152,13 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             reducer_cookies = reducer_response.cookies
             try:
                 reducer_response_obj = await reducer_response.json()
-                self.logger.info(
-                    f"\n\n\n*********************\n{reducer_response_obj['output'][0]['content'][0]['text']}\n*********************\n\n\n"
-                )
                 reducer_response_obj: NeMoGymResponse = NeMoGymResponse.model_validate(reducer_response_obj)
                 reducer_response_obj.metadata = {
                     "executor_resp_ids": json.dumps(
                         [executor_response.id for executor_response in executor_responses]
                     ),
                     "stage": Stage.REDUCER.value,
+                    "request": reducer_body.model_dump_json(),
                 }
             except ValidationError as e:
                 raise RuntimeError(
@@ -165,6 +167,45 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             reducer_responses = [reducer_response_obj]
 
         return reducer_responses, reducer_cookies
+
+    async def get_reducer_verify_response_genselect(
+        self,
+        reducer_verify_request: ParallelReasoningVerifyRequest,
+        executor_verify_responses: List[BaseParallelReasoningVerifyResponse],
+    ) -> BaseParallelReasoningVerifyResponse:
+        """
+        Genselect Reducer Reward.
+        We add in the reward calculation in the agent instead of adding a separate resource server as the reward calculation is tied to the executor.
+        """
+        # Check for 'correct' answers in executors
+        executor_rewards = [executor_verify_response.reward for executor_verify_response in executor_verify_responses]
+        executor_max_reward_idxs = [
+            i for (i, reward) in enumerate(executor_rewards) if (reward == max(executor_rewards) and reward > 0)
+        ]
+
+        # Extract genselect answer
+        reducer_text = reducer_verify_request.response.output[0].content[0].text
+        reducer_answer_idx = ParallelReasoningUtils.parse_genselect_reduction(reducer_text)
+
+        if reducer_answer_idx in executor_max_reward_idxs:
+            # Valid selection
+            reducer_reward = 1.0
+        else:
+            # Even if impossible, score is 0.
+            reducer_reward = 0.0
+
+        # Construct verify response
+        verify_request_fields = {
+            "reward": reducer_reward,
+            "allowed_answers": executor_max_reward_idxs,
+            "predicted_answer": reducer_answer_idx,
+        }
+
+        reducer_verify_response = reducer_verify_request.model_dump()
+        reducer_verify_response.update(verify_request_fields)
+        reducer_verify_response = BaseParallelReasoningVerifyResponse.model_validate(reducer_verify_response)
+
+        return reducer_verify_response
 
     async def responses(
         self,
@@ -263,9 +304,11 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
             executor_body = body.model_copy(
                 update={
                     "input": [NeMoGymEasyInputMessage(role="user", content=executor_prompt)],
-                    "max_output_tokens": 1024,
                 }
             )
+            if self.config.executor_max_output_tokens is not None:
+                executor_body.max_output_tokens = self.config.executor_max_output_tokens
+
             executor_response = await self.server_client.post(
                 server_name=self.config.model_server.name,
                 url_path="/v1/responses",
@@ -316,7 +359,6 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                 reducer_responses, all_reducer_cookies = await self.get_reducer_response_genselect(
                     body, executor_responses, all_executor_cookies
                 )
-                self.logger.info(f"\n\n\n================\n{reducer_responses}\n===============\n\n\n")
         else:
             reducer_responses = []
             all_reducer_cookies = {}
@@ -371,12 +413,15 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
 
         parallelizer_responses = []
         executor_responses = []
+        reducer_responses = []
         for response in responses:
             response = NeMoGymResponse.model_validate(response)
             if response.metadata["stage"] == Stage.PARALLELIZER.value:
                 parallelizer_responses.append(response)
             elif response.metadata["stage"] == Stage.EXECUTOR.value:
                 executor_responses.append(response)
+            elif response.metadata["stage"] == Stage.REDUCER.value:
+                reducer_responses.append(response)
 
         self.logger.debug(
             f"[magenta]🧠 Categorized responses:[/magenta] {len(parallelizer_responses)} parallelizers, {len(executor_responses)} executors"
@@ -408,10 +453,25 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                     f"Received an invalid response from resources server: {json.dumps(await verify_response.json())}"
                 ) from e
 
-        # self.logger.debug("[orange3]🔍 Calculate reward of reducer responses[/orange3]")
-        # reducer_verify_responses = []
-        # for i, response in enumerate(reducer_responses):
-        #     verify_request =
+        if self.config.use_reducer:
+            self.logger.debug("[orange3]🔍 Calculate reward of reducer responses[/orange3]")
+            reducer_verify_requests = []
+            for reducer_response in reducer_responses:
+                reducer_response_request = body.model_copy(
+                    update={"responses_create_params": json.loads(reducer_response.metadata.pop("request"))}
+                )
+                verify_request = ParallelReasoningVerifyRequest.model_validate(
+                    reducer_response_request.model_dump() | {"response": reducer_response.model_dump()}
+                )
+                reducer_verify_requests.append(verify_request)
+            if self.config.reducer_type == "genselect":
+                reducer_verify_requests = [
+                    self.get_reducer_verify_response_genselect(request, executor_verify_responses)
+                    for request in reducer_verify_requests
+                ]
+            reducer_verify_responses = await asyncio.gather(*reducer_verify_requests)
+        else:
+            reducer_verify_responses = []
 
         # Aggregate executor rewards for each parallelizer response group.
         # Using the metadata information to aggregate rewards for each parallelizer response
@@ -509,7 +569,10 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                         0
                     ].prompt_token_ids = original_problem_prompt_token_ids
 
-        verify_responses = parallelizer_verify_responses + executor_verify_responses
+        if self.config.return_reducer_only:
+            verify_responses = reducer_verify_responses
+        else:
+            verify_responses = parallelizer_verify_responses + executor_verify_responses + reducer_verify_responses
         parallel_reasoning_verify_responses = ParallelReasoningVerifyResponse(responses=verify_responses)
 
         self.logger.debug("[bold green]🏆 Parallel reasoning run completed successfully![/bold green]")

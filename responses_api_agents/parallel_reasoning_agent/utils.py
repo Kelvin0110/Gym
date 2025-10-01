@@ -157,8 +157,8 @@ class ParallelReasoningUtils:
         return reducer_prompt.strip()
 
     @staticmethod
-    def parse_reducer(reducer_output: str) -> str:
-        pattern = re.compile(r"Judgment:\s*\[(\d+)\]")
+    def parse_genselect_reduction(reducer_output: str) -> str:
+        pattern = re.compile(r"Judgment:\s*(\d+)")
         matches = pattern.findall(reducer_output)
         if not matches:
             return None  # no Judgment found
