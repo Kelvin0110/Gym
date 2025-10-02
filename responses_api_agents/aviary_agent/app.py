@@ -77,6 +77,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         agent_state: NeMoGymResponseCreateParamsNonStreaming,
         model_output: list[NeMoGymResponseOutputMessage],
         obs: list[NeMoGymEasyInputMessage | NeMoGymFunctionCallOutput],
+        successful_transition: bool,
     ) -> NeMoGymResponseCreateParamsNonStreaming:
         """Update the agent state.
 
@@ -84,7 +85,9 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         """
 
         prev_messages = agent_state.input
-        if self.config.collapse_old_env_states:
+        if successful_transition and self.config.collapse_old_env_states:
+            # only collapse if we had a successful transition - otherwise we'd be hiding previous
+            # env state without supplying a new one in obs.
             hidden_message = NeMoGymEasyInputMessage(role="user", content=self.config.old_env_state_message)
             prev_messages = [
                 hidden_message if isinstance(m, AviaryEnvStateEasyInputMessage) else m for m in prev_messages
@@ -116,12 +119,13 @@ class AviaryAgent(SimpleResponsesAPIAgent):
 
         total_len: int | None = None
 
-        steps = 0
+        step = 0
         while True:
-            if self.config.max_steps is not None and steps >= self.config.max_steps:
+            if self.config.max_steps is not None and step >= self.config.max_steps:
                 print("Done, max steps reached", flush=True)
                 break
-            steps += 1
+            step += 1
+            successful_transition = True
 
             # Sample action from model
             try:
@@ -171,6 +175,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                         "wrong. To proceed, please call at least one tool.",
                     )
                 ]
+                successful_transition = False
             else:
                 # Apply action to environment
                 raw_env_response = await self.server_client.post(
@@ -182,7 +187,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                 obs = env_response.obs
                 done = env_response.done
 
-            agent_state = self.update_agent_state(agent_state, model_output, obs)
+            agent_state = self.update_agent_state(agent_state, model_output, obs, successful_transition)
             agent_state_history.append(cast(NeMoGymResponseInput, agent_state.input))
 
             if self.config.max_total_sequence_length is not None:
