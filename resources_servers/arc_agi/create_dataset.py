@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import json
 from pathlib import Path
 
@@ -20,8 +21,8 @@ def format_grid(grid):
     return "\n".join([" ".join(map(str, row)) for row in grid])
 
 
-def create_arc_v2_prompt(task_data, task_id):
-    prompt = f"You are solving ARC-AGI-2 task {task_id}.\n\n"
+def create_arc_prompt(task_data, task_id, version=1):
+    prompt = f"You are solving ARC-AGI{'-' + str(version) if version != 1 else ''} task {task_id}.\n\n"
     prompt += "Here are the training examples that demonstrate the pattern:\n\n"
 
     for i, example in enumerate(task_data["train"]):
@@ -44,14 +45,15 @@ def create_arc_v2_prompt(task_data, task_id):
     return prompt
 
 
-def create_datasets():
-    training_dir = Path("../../ARC-AGI-2/data/training")
-    evaluation_dir = Path("../../ARC-AGI-2/data/evaluation")
+def create_dataset(version=1):
+    data_base = f"../../ARC-AGI{'-' + str(version) if version != 1 else ''}"
+    training_dir = Path(f"{data_base}/data/training")
+    evaluation_dir = Path(f"{data_base}/data/evaluation")
 
     Path("data").mkdir(exist_ok=True)
 
     training_dataset = []
-    print(f"Processing {len(list(training_dir.glob('*.json')))} training tasks...")
+    print(f"Processing {len(list(training_dir.glob('*.json')))} training tasks...")  # 400 tasks
 
     for task_file in sorted(training_dir.glob("*.json")):
         task_id = task_file.stem
@@ -59,8 +61,7 @@ def create_datasets():
         with open(task_file) as f:
             task_data = json.load(f)
 
-        prompt = create_arc_v2_prompt(task_data, task_id)
-
+        prompt = create_arc_prompt(task_data, task_id, version)
         expected_output = task_data["test"][0]["output"]
         test_input = task_data["test"][0]["input"]
 
@@ -74,7 +75,7 @@ def create_datasets():
 
         training_dataset.append(entry)
 
-    training_output_file = Path("data/arc_agi_2_training.jsonl")
+    training_output_file = Path(f"data/arc_agi_{version}_training.jsonl")
     with open(training_output_file, "w") as f:
         for entry in training_dataset:
             f.write(json.dumps(entry) + "\n")
@@ -82,7 +83,7 @@ def create_datasets():
     print(f"Created training dataset with {len(training_dataset)} tasks at {training_output_file}")
 
     evaluation_dataset = []
-    print(f"Processing {len(list(evaluation_dir.glob('*.json')))} evaluation tasks...")
+    print(f"Processing {len(list(evaluation_dir.glob('*.json')))} evaluation tasks...")  # 400 tasks
 
     for task_file in sorted(evaluation_dir.glob("*.json")):
         task_id = task_file.stem
@@ -90,8 +91,7 @@ def create_datasets():
         with open(task_file) as f:
             task_data = json.load(f)
 
-        prompt = create_arc_v2_prompt(task_data, task_id)
-
+        prompt = create_arc_prompt(task_data, task_id, version)
         expected_output = task_data["test"][0]["output"]
         test_input = task_data["test"][0]["input"]
 
@@ -105,14 +105,14 @@ def create_datasets():
 
         evaluation_dataset.append(entry)
 
-    evaluation_output_file = Path("data/arc_agi_2_evaluation.jsonl")
+    evaluation_output_file = Path(f"data/arc_agi_{version}_evaluation.jsonl")
     with open(evaluation_output_file, "w") as f:
         for entry in evaluation_dataset:
             f.write(json.dumps(entry) + "\n")
 
     print(f"Created evaluation dataset with {len(evaluation_dataset)} tasks at {evaluation_output_file}")
 
-    example_output_file = Path("data/example_2.jsonl")
+    example_output_file = Path(f"data/example_{version}.jsonl")
     with open(example_output_file, "w") as f:
         for entry in evaluation_dataset[:5]:
             f.write(json.dumps(entry) + "\n")
@@ -121,4 +121,8 @@ def create_datasets():
 
 
 if __name__ == "__main__":
-    create_datasets()
+    parser = argparse.ArgumentParser(description="Create ARC-AGI dataset")
+    parser.add_argument("--version", type=int, default=1, choices=[1, 2], help="ARC-AGI version (1 or 2)")
+    args = parser.parse_args()
+
+    create_dataset(version=args.version)
