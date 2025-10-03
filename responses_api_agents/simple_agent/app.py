@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import aiohttp
+from http.cookies import SimpleCookie
 import json
 from typing import List
 
-from fastapi import Request, Response
+from fastapi import Request, Response, HTTPException
 from pydantic import ConfigDict, ValidationError
 
 from nemo_gym.base_resources_server import (
@@ -72,8 +74,8 @@ class SimpleAgent(SimpleResponsesAPIAgent):
 
         new_outputs = []
         step = 0
-        model_server_cookies = None  # update the cookies on every model response
-        resources_server_cookies = request.cookies  # update the cookies on every resources server response
+        model_server_cookies = SimpleCookie(request.cookies)  # update the cookies on every model response
+        resources_server_cookies = SimpleCookie(request.cookies)  # update the cookies on every resources server response
 
         while True:
             step += 1
@@ -85,8 +87,10 @@ class SimpleAgent(SimpleResponsesAPIAgent):
                 json=new_body,
                 cookies=model_server_cookies,
             )
+            if model_response.status != 200:
+                raise HTTPException(status_code=model_response.status, detail=await model_response.json(content_type=None))
             model_response_json = await model_response.json()
-            model_server_cookies = model_response.cookies
+            model_server_cookies.load(model_response.cookies.output(header="", sep=";"))
             try:
                 model_response = NeMoGymResponse.model_validate(model_response_json)
             except ValidationError as e:
@@ -111,7 +115,7 @@ class SimpleAgent(SimpleResponsesAPIAgent):
                     json=json.loads(output_function_call.arguments),
                     cookies=resources_server_cookies,
                 )
-                resources_server_cookies = api_response.cookies
+                resources_server_cookies.load(api_response.cookies.output(header="", sep=";"))
 
                 tool_response = NeMoGymFunctionCallOutput(
                     type="function_call_output",
@@ -132,7 +136,7 @@ class SimpleAgent(SimpleResponsesAPIAgent):
         return model_response
 
     async def run(self, request: Request, body: SimpleAgentRunRequest) -> SimpleAgentVerifyResponse:
-        cookies = request.cookies
+        cookies = SimpleCookie(request.cookies)
 
         seed_session_response = await self.server_client.post(
             server_name=self.config.resources_server.name,
@@ -140,7 +144,7 @@ class SimpleAgent(SimpleResponsesAPIAgent):
             json=body.model_dump(),
             cookies=cookies,
         )
-        cookies = seed_session_response.cookies
+        cookies.load(seed_session_response.cookies.output(header="", sep=";"))
 
         response = await self.server_client.post(
             server_name=self.config.name,
@@ -148,7 +152,7 @@ class SimpleAgent(SimpleResponsesAPIAgent):
             json=body.responses_create_params,
             cookies=cookies,
         )
-        cookies = response.cookies
+        cookies.load(response.cookies.output(header="", sep=";"))
 
         verify_request = SimpleAgentVerifyRequest.model_validate(
             body.model_dump() | {"response": await response.json()}
