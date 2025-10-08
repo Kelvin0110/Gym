@@ -62,6 +62,7 @@ class ParallelReasoningConfig(BaseResponsesAPIAgentConfig):
     tournament_group_size: int = 4
     parallelizer_prompt_name: str = None
     executor_prompt_name: str = None
+    parallel_reward_type : Literal["max", "mean"] = "mean"
 
 
 class ParallelReasoningRunRequest(BaseRunRequest):
@@ -659,10 +660,14 @@ class ParallelReasoning(SimpleResponsesAPIAgent):
                 if resp.response.metadata["parallelizer_resp_id"] == parallelizer_response.id
             ]
             parallelizer_response_group_rewards = [resp.reward for resp in parallelizer_response_group]
+            parallel_reward_type = self.config.parallel_reward_type
             if parallelizer_response_group_rewards:
-                parallelizer_reward = sum(parallelizer_response_group_rewards) / len(
-                    parallelizer_response_group_rewards
-                )
+                if parallel_reward_type == "mean":
+                    parallelizer_reward = sum(parallelizer_response_group_rewards) / len(
+                        parallelizer_response_group_rewards
+                    )
+                elif parallel_reward_type == "max":
+                    parallelizer_reward = max(parallelizer_response_group_rewards)
             else:
                 parallelizer_reward = 0.0
 
