@@ -101,13 +101,19 @@ class ParallelReasoningUtils:
                 if wrapper:
                     plans = [line.strip() for line in wrapper.group(1).splitlines() if line.strip()]
             plans = [r.strip() for r in plans if r.strip()]
-            if len(plans) < num_plans:
-                # extend the plans with the last one
+
+            if len(plans) == 0:
+                plans = [""] * num_plans
+            elif len(plans) < num_plans:
+                # Extend with the last plan
                 plans.extend([plans[-1]] * (num_plans - len(plans)))
-            if len(plans) < 1:
-                plans.extend([""] * (num_plans - len(plans)))
+            elif len(plans) > num_plans:
+                # Truncate to num_plans
+                plans = plans[:num_plans]
         else:
             plans = [""] * num_plans
+
+        assert len(plans) == num_plans, f"Expected {num_plans} plans, got {len(plans)}"
         return plans
 
     # ----------- Rewriter ----------- #
