@@ -17,7 +17,7 @@
 python create_dataset.py --task knights_knaves --size 500 --seed 42 --output data/train.jsonl
 
 # Multiple tasks (creates composite dataset with equal weights)
-python create_dataset.py --tasks knights_knaves,syllogisms --size 500 --output data/train.jsonl
+python create_dataset.py --tasks knights_knaves,syllogism --size 500 --output data/train.jsonl
 
 # All tasks in a category
 python create_dataset.py --category logic --size 500 --output data/train.jsonl
@@ -38,7 +38,7 @@ from reasoning_gym.composite import DatasetSpec
 TASK_CATEGORIES = {
     "logic": [
         "knights_knaves",
-        "syllogisms",
+        "syllogism",
         "propositional_logic",
         "zebra_puzzles",
         "aiw",
@@ -63,6 +63,7 @@ TASK_CATEGORIES = {
         "number_format",
         "fraction_simplification",
         "power_function",
+        "gsm_symbolic",
     ],
     "algebra": [
         "simple_equations",
@@ -105,15 +106,63 @@ TASK_CATEGORIES = {
         "number_filtering",
         "word_ladder",
         "string_manipulation",
+        "ransom_note",
+        "string_splitting",
     ],
     "cognition": [
         "figlet_font",
         "needle_haystack",
         "modulo_grid",
-        "number_sequences",
+        "number_sequence",
         "rubiks_cube",
         "color_cube_rotation",
         "rectangle_count",
+    ],
+    "arc": [
+        "arc_1d",
+        "arc_agi",
+        "rearc",
+    ],
+    "code": [
+        "bf",
+        "codeio",
+    ],
+    "games": [
+        "boxnet",
+        "countdown",
+        "emoji_mystery",
+        "futoshiki",
+        "kakurasu",
+        "knight_swap",
+        "mahjong_puzzle",
+        "maze",
+        "mini_sudoku",
+        "n_queens",
+        "puzzle24",
+        "rush_hour",
+        "sokoban",
+        "sudoku",
+        "survo",
+        "tower_of_hanoi",
+        "tsumego",
+    ],
+    "geometry": [
+        "advanced_geometry",
+        "simple_geometry",
+    ],
+    "graphs": [
+        "course_schedule",
+        "family_relationships",
+        "largest_island",
+        "quantum_lock",
+        "shortest_path",
+    ],
+    "induction": [
+        "acre",
+        "list_functions",
+    ],
+    "probability": [
+        "coin_flip",
     ],
 }
 
