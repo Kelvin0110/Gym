@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from typing import List, cast
 
 from pydantic import ConfigDict, Field, ValidationError
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
 from nemo_gym.base_resources_server import BaseRunRequest
 from nemo_gym.base_responses_api_agent import BaseResponsesAPIAgentConfig, SimpleResponsesAPIAgent
@@ -95,6 +96,18 @@ class AviaryAgent(SimpleResponsesAPIAgent):
 
         return agent_state.model_copy(update={"input": prev_messages + model_output + obs})
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential_jitter(initial=5))
+    async def _seed_session(self, task_idx: int) -> AviarySeedSessionResponse:
+        reset_response = await self.server_client.post(
+            server_name=self.config.resources_server.name,
+            url_path="/seed_session",
+            json={"task_idx": task_idx},
+        )
+        seed_session_response = AviarySeedSessionResponse.model_validate(await reset_response.json())
+        if not seed_session_response.obs:
+            raise ValueError("No observations in seed session response")
+        return seed_session_response
+
     async def responses(self, req: AviaryAgentRunRequest) -> AviaryNeMoGymResponse:
         req = req.model_copy(deep=True)
         body = req.responses_create_params
@@ -102,12 +115,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
         if isinstance(body.input, str):
             body.input = [NeMoGymEasyInputMessage(role="user", content=body.input)]
 
-        reset_response = await self.server_client.post(
-            server_name=self.config.resources_server.name,
-            url_path="/seed_session",
-            json={"task_idx": req.task_idx},
-        )
-        seed_session_response = AviarySeedSessionResponse.model_validate(await reset_response.json())
+        seed_session_response = await self._seed_session(req.task_idx)
 
         agent_state = body.model_copy(
             update={"input": body.input + seed_session_response.obs, "tools": seed_session_response.tools}
