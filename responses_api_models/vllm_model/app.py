@@ -60,6 +60,8 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     model: str
     return_token_id_information: bool
 
+    uses_reasoning_parser: bool
+
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
             self.base_url = [self.base_url]
@@ -80,7 +82,9 @@ class VLLMModel(SimpleResponsesAPIModel):
 
         self._session_id_to_client: Dict[str, NeMoGymAsyncOpenAI] = dict()
 
-        self._converter = VLLMConverter(return_token_id_information=self.config.return_token_id_information)
+        self._converter = VLLMConverter(
+            return_token_id_information=self.config.return_token_id_information,
+        )
 
         return super().model_post_init(context)
 
@@ -156,9 +160,20 @@ class VLLMModel(SimpleResponsesAPIModel):
 
         chat_completion_dict = await client.create_chat_completion(**create_params)
         choice_dict = chat_completion_dict["choices"][0]
-        assert not choice_dict["message"].get("reasoning_content"), (
-            "Please do not use a reasoning parser in vLLM! There is one source of truth for handling data (including reasoning), which is NeMo Gym!"
-        )
+        if self.config.uses_reasoning_parser:
+            reasoning_content = choice_dict["message"].get("reasoning_content")
+            if reasoning_content:
+                choice_dict["message"].pop("reasoning_content")
+
+                # We wrap this here in think tags for Gym's sake and to return a valid OpenAI Chat Completions response.
+                choice_dict["message"]["content"] = (
+                    self._converter._wrap_reasoning_in_think_tags([reasoning_content])
+                    + choice_dict["message"]["content"]
+                )
+        else:
+            assert not choice_dict["message"].get("reasoning_content"), (
+                "Please do not use a reasoning parser in vLLM! There is one source of truth for handling data (including reasoning), which is NeMo Gym!"
+            )
 
         if self.config.return_token_id_information:
             log_probs = choice_dict["logprobs"]["content"]
