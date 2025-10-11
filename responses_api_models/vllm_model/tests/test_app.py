@@ -670,6 +670,7 @@ class TestApp:
             entrypoint="",
             name="",
             return_token_id_information=False,
+            uses_reasoning_parser=False,
         )
 
         get_global_config_dict_mock = MagicMock()
@@ -1477,6 +1478,7 @@ class TestApp:
             entrypoint="",
             name="",
             return_token_id_information=False,
+            uses_reasoning_parser=False,
         )
         server = VLLMModel(config=config, server_client=MagicMock(spec=ServerClient))
         app = server.setup_webserver()
