@@ -226,7 +226,7 @@ def create_composite_dataset(task_names: list[str], size: int, seed: int, config
 
     task_counts = {}
     for entry in entries:
-        task = entry["entry"]["metadata"]["source_dataset"]
+        task = entry["metadata"]["source_dataset"]
         task_counts[task] = task_counts.get(task, 0) + 1
 
     print(f"\nGenerated {len(entries)} total entries")

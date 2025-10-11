@@ -31,7 +31,7 @@ class ReasoningGymResourcesServerConfig(BaseResourcesServerConfig):
 
 class ReasoningGymVerifyRequest(BaseVerifyRequest):
     question: str
-    answer: str
+    answer: Optional[str]
     metadata: dict[str, Any]
 
 

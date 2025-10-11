@@ -2,6 +2,7 @@ reasoning_gym_resources_server:
   resources_servers:
     reasoning_gym:
       entrypoint: app.py
+      domain: reasoning
 
 reasoning_gym_simple_agent:
   responses_api_agents:
