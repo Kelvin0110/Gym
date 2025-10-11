@@ -253,9 +253,7 @@ def main():
     task_group.add_argument(
         "--category", type=str, choices=list(TASK_CATEGORIES.keys()), help="Task category (e.g., logic, arithmetic)"
     )
-    task_group.add_argument(
-        "--all-tasks", action="store_true", help="Use all tasks from all categories"
-    )
+    task_group.add_argument("--all-tasks", action="store_true", help="Use all tasks from all categories")
 
     parser.add_argument("--size", type=int, default=500, help="Number of samples to generate (default: 500)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
