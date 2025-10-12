@@ -96,7 +96,7 @@ class WorkbenchResourcesServer(SimpleResourcesServer):
             return WorkbenchResponse(output=result)
         except Exception as e:
             return WorkbenchResponse(
-                output=f"Error executing tool '{function.__name__}': {str(e)}"
+                output=f"Error executing tool '{path}': {str(e)}"
             )  # return error to model so that it can correct itself
 
     async def verify(self, body: WorkbenchVerifyRequest) -> WorkbenchVerifyResponse:
