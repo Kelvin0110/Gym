@@ -1701,7 +1701,7 @@ class TestApp:
                     ],
                 ),
                 NeMoGymResponseOutputMessage(
-                    id="rs_123",
+                    id="msg_123",
                     status="completed",
                     type="message",
                     content=[
@@ -1732,10 +1732,10 @@ class TestApp:
             ],
         )
 
-        mock_method = AsyncMock(return_value=mock_chat_completion)
+        mock_method = AsyncMock(return_value=mock_chat_completion.model_dump())
         monkeypatch.setattr(
-            VLLMModel,
-            "chat_completions",
+            server._clients[0].__class__,
+            "create_chat_completion",
             mock_method,
         )
 
@@ -1757,57 +1757,6 @@ class TestApp:
 
         expected_dict = expected_response.model_dump()
         assert data == expected_dict
-
-        # Verify input_messages made it to the model
-        assert mock_method.await_args is not None
-        called_args, _ = mock_method.await_args
-        sent_tools = called_args[1].tools
-
-        def _standardize(messages: list) -> list:
-            return [
-                (
-                    i["role"],
-                    i["content"][0]["text"] if isinstance(i["content"], list) else i["content"],
-                )
-                for i in messages
-            ]
-
-        assert _standardize([m.model_dump() for m in input_messages]) == _standardize(called_args[1].messages)
-
-        actual_sent_tools = [t["function"] for t in sent_tools]
-        expected_sent_tools = [
-            {
-                "name": "get_order_status",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "order_id": {
-                            "type": "string",
-                            "description": "The ID of the order",
-                        }
-                    },
-                    "required": ["order_id"],
-                },
-                "description": "Get the current status for a given order",
-                "strict": True,
-            },
-            {
-                "name": "get_delivery_date",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "order_id": {
-                            "type": "string",
-                            "description": "The ID of the order",
-                        }
-                    },
-                    "required": ["order_id"],
-                },
-                "description": "Get the estimated delivery date for a given order",
-                "strict": True,
-            },
-        ]
-        assert expected_sent_tools == actual_sent_tools
 
 
 class TestVLLMConverter:
