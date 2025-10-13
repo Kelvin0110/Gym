@@ -1638,10 +1638,27 @@ class TestApp:
                 content=[NeMoGymResponseInputText(text="Check my order status", type="input_text")],
                 status="completed",
             ),
+            NeMoGymResponseReasoningItem(
+                id="rs_123",
+                status="completed",
+                type="reasoning",
+                summary=[
+                    NeMoGymSummary(
+                        type="summary_text",
+                        text="First reasoning item",
+                    )
+                ],
+            ),
             NeMoGymEasyInputMessage(
                 type="message",
                 role="assistant",
                 content=[NeMoGymResponseInputText(text="Sure, one sec.", type="input_text")],
+                status="completed",
+            ),
+            NeMoGymEasyInputMessage(
+                type="message",
+                role="user",
+                content=[NeMoGymResponseInputText(text="cool", type="input_text")],
                 status="completed",
             ),
         ]
@@ -1757,6 +1774,65 @@ class TestApp:
 
         expected_dict = expected_response.model_dump()
         assert data == expected_dict
+
+        expected_messages = [
+            {"content": [{"text": "Check my order status", "type": "text"}], "role": "user"},
+            {
+                "role": "assistant",
+                "content": "Sure, one sec.",
+                "tool_calls": [],
+                "reasoning_content": "First reasoning item",
+            },
+            {"content": [{"text": "cool", "type": "text"}], "role": "user"},
+        ]
+        actual_messages = mock_method.call_args.kwargs["messages"]
+        assert expected_messages == actual_messages
+
+        request_body = NeMoGymResponseCreateParamsNonStreaming(
+            input=input_messages + data["output"],
+            tools=input_tools,
+        )
+
+        response = client.post(
+            "/v1/responses",
+            json=request_body.model_dump(exclude_unset=True, mode="json"),
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+
+        expected_dict = expected_response.model_dump()
+        assert data == expected_dict
+
+        expected_messages = [
+            {"content": [{"text": "Check my order status", "type": "text"}], "role": "user"},
+            {
+                "role": "assistant",
+                "content": "Sure, one sec.",
+                "tool_calls": [],
+                "reasoning_content": "First reasoning item",
+            },
+            {"content": [{"text": "cool", "type": "text"}], "role": "user"},
+            {
+                "role": "assistant",
+                "content": " hello hello",
+                "tool_calls": [
+                    {
+                        "id": "call_123",
+                        "function": {"arguments": '{"order_id": "123"}', "name": "get_order_status"},
+                        "type": "function",
+                    },
+                    {
+                        "id": "call_234",
+                        "function": {"arguments": '{"order_id": "234"}', "name": "get_delivery_date"},
+                        "type": "function",
+                    },
+                ],
+                "reasoning_content": "Gathering order status and delivery info...",
+            },
+        ]
+        actual_messages = mock_method.call_args.kwargs["messages"]
+        assert expected_messages == actual_messages
 
 
 class TestVLLMConverter:
