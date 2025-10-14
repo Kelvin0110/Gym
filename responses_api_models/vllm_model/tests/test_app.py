@@ -1661,6 +1661,18 @@ class TestApp:
                 content=[NeMoGymResponseInputText(text="cool", type="input_text")],
                 status="completed",
             ),
+            NeMoGymEasyInputMessage(
+                type="message",
+                role="assistant",
+                content=[NeMoGymResponseInputText(text="I'm still checking", type="input_text")],
+                status="completed",
+            ),
+            NeMoGymEasyInputMessage(
+                type="message",
+                role="user",
+                content=[NeMoGymResponseInputText(text="ok", type="input_text")],
+                status="completed",
+            ),
         ]
 
         input_tools = [
@@ -1784,6 +1796,12 @@ class TestApp:
                 "reasoning_content": "First reasoning item",
             },
             {"content": [{"text": "cool", "type": "text"}], "role": "user"},
+            {
+                "role": "assistant",
+                "content": "I'm still checking",
+                "tool_calls": [],
+            },
+            {"content": [{"text": "ok", "type": "text"}], "role": "user"},
         ]
         actual_messages = mock_method.call_args.kwargs["messages"]
         assert expected_messages == actual_messages
@@ -1813,6 +1831,12 @@ class TestApp:
                 "reasoning_content": "First reasoning item",
             },
             {"content": [{"text": "cool", "type": "text"}], "role": "user"},
+            {
+                "role": "assistant",
+                "content": "I'm still checking",
+                "tool_calls": [],
+            },
+            {"content": [{"text": "ok", "type": "text"}], "role": "user"},
             {
                 "role": "assistant",
                 "content": " hello hello",
