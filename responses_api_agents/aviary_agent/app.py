@@ -103,6 +103,7 @@ class AviaryAgent(SimpleResponsesAPIAgent):
             url_path="/seed_session",
             json={"task_idx": task_idx},
         )
+        reset_response.raise_for_status()
         seed_session_response = AviarySeedSessionResponse.model_validate(await reset_response.json())
         if not seed_session_response.obs:
             raise ValueError("No observations in seed session response")
