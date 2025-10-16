@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import re
-from typing import Any, Dict
+from typing import Dict
 
 from fastapi import FastAPI
 from sacrebleu.metrics import BLEU
@@ -60,11 +59,6 @@ class TranslationBleuResourcesServer(SimpleResourcesServer):
         "ko": "ko-mecab",
     }
 
-    def model_post_init(self, context: Any) -> None:
-        # TODO can remove this, need to configure BLEU for every request
-        # as it needs a different tokenizer for different languages
-        super().model_post_init(context)
-
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
 
@@ -103,7 +97,6 @@ class TranslationBleuResourcesServer(SimpleResourcesServer):
         # Use effective_order for sentence-level BLEU
         bleu = BLEU(trg_lang=target_lang, effective_order=True, tokenize=tokenize)
 
-        # TODO how to handle multiple sentences? bleu.corpus_score expects a list of pre-split sentences
         bleu_output = bleu.sentence_score(extracted_answer, [ground_truth])
         # TODO Do we want to report any other BLEU outputs?
         bleu_score = bleu_output.score
@@ -112,9 +105,8 @@ class TranslationBleuResourcesServer(SimpleResourcesServer):
         return reward, extracted_answer
 
     def _extract_answer(self, model_response: str) -> str:
-        # TODO is this necessary?
-        # Strip <think> and </think> tags and their content
-        no_think_response = re.sub(r"<think>.*?</think>", "", model_response)
+        # Strip any thinking
+        no_think_response = model_response.split("</think>")[-1]
         no_think_response = no_think_response.strip()
         return no_think_response
 

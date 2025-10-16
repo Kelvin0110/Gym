@@ -1,8 +1,8 @@
 translation_bleu_resources_server:
   resources_servers:
     translation_bleu:
-      domain: translation
       entrypoint: app.py
+      domain: translation
 translation_bleu_simple_agent:
   responses_api_agents:
     simple_agent:
@@ -16,22 +16,22 @@ translation_bleu_simple_agent:
       datasets:
       - name: train
         type: train
-        jsonl_fpath: resources_servers/translation_bleu/data/train.jsonl
+        jsonl_fpath: resources_servers/translation_bleu/data/riva_mt_v3_no_nothink_train.jsonl
         num_repeats: 1
         gitlab_identifier:
-          dataset_name: translation_bleu
-          version: 0.0.1
-          artifact_fpath: train.jsonl
-        license: Apache 2.0
-      - name: validation
-        type: validation
-        jsonl_fpath: resources_servers/translation_bleu/data/validation.jsonl
-        num_repeats: 1
-        gitlab_identifier:
-          dataset_name: translation_bleu
-          version: 0.0.1
-          artifact_fpath: validation.jsonl
-        license: Apache 2.0
+          dataset_name: riva_mt_v3_no_nothink_train
+          version: 0.0.3
+          artifact_fpath: riva_mt_v3_no_nothink_train.jsonl
+        license: NVIDIA Internal Use Only, Do Not Distribute
+      # - name: validation
+      #   type: validation
+      #   jsonl_fpath: resources_servers/translation_bleu/data/validation.jsonl
+      #   num_repeats: 1
+      #   gitlab_identifier:
+      #     dataset_name: translation_bleu
+      #     version: 0.0.1
+      #     artifact_fpath: validation.jsonl
+      #   license: NVIDIA Internal Use Only, Do Not Distribute
       - name: example
         type: example
         jsonl_fpath: resources_servers/translation_bleu/data/example.jsonl
