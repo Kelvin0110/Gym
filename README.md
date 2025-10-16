@@ -884,9 +884,11 @@ It's an analogous story for Responses-compatible APIs.
 # How To: Detailed anatony of a Gym config
 Let's break down the anatomy of a Gym config further and help clarify some things.
 
-TODO: bxyu-nvidia
-
 ```yaml
+# ============================================================================
+# RESOURCES SERVER DEFINITION
+# ============================================================================
+
 # `library_judge_math` here at the top most level is the unique name of your resources server. This must be unique across your config.
 # When you or other servers call this server, they will do so using the ServerClient and its name.
 library_judge_math:
@@ -906,12 +908,12 @@ library_judge_math:
         # `type` specifies what kind of server this points to.
         # Must be one of: responses_api_agents, responses_api_models, or resources_servers.
         type: responses_api_models
-        # `name` is the exact server instance name (from level 1 above)
+        # `name` is the exact server instance name (from level 1 above).
         # The ??? is Hydra syntax for a required but missing field that must be provided at runtime.
         # NeMo Gym will validate that a server with this name and type exists in your config.
         name: ???
       # `domain` is required for categorizing the server for organization and documentation.
-      # Valid values: (see Domain class in nemo_gym.config_types)
+      # Valid values: (see Domain class in nemo_gym.config_types).
       domain: math
       # Below are some custom parameters for this implementation.
       judge_responses_create_params: {
@@ -919,25 +921,68 @@ library_judge_math:
       }
       should_use_judge: false
 
+# ============================================================================
+# AGENT SERVER DEFINITION
+# ============================================================================
+
+# `library_judge_math_simple_agent` is the Level 1 unique name for this agent instance.
 library_judge_math_simple_agent:
+  # `responses_api_agents` indicates this is an agent server that orchestrates models and resources.
   responses_api_agents:
+    # The name of the agent. This maps to the folder `responses_api_agents/simple_agent/`.
     simple_agent:
+      `entrypoint` for the agent implementation.
       entrypoint: app.py
+
+      # Links the agent to a specific resource server instance.
       resources_server:
+        # `type` must be resources_servers.
         type: resources_servers
+        `name` here must match the Level 1 name of resources_servers defined in this config.
         name: library_judge_math
+
+      # Links the agent to a specific model server instance.
       model_server:
+        # `type` must be responses_api_models.
         type: responses_api_models
+        # `name` points to the model server to use.
+        # `policy_model` is a special predefined placeholder referring to the policy model being trained.
+        # This is the default model for NeMo Gym agents.
         name: policy_model
+
+      # `datasets` is a required list parameter for agents that will be used in training.
+      # This defines all datasets (train, validation, example) associated with this agent.
       datasets:
+      # First dataset: training data.
+        # `name` can be any string.
       - name: train
+        # `type` is required and specifies the dataset's purpose.
+        # Valid values:
+        #   - train: Used for training.
+        #   - validation: Used for validation during training.
+        #   - example: Required for PRs for sanity checks.
         type: train
+        # `jsonl_fpath` is required and specifies the local file path to the JSONL dataset.
         jsonl_fpath: resources_servers/library_judge_math/data/dapo17k_bytedtsinghua_train.jsonl
+        # `gitlab_identifier` is required for train and validation datasets.
+        # It specifies the remote dataset location in Gitlab model artifact registry.
+        # Used by ng_download_dataset_from_gitlab to fetch remote data.
         gitlab_identifier:
+          # `dataset_name` is the name of the dataset in Gitlab model registry.
           dataset_name: bytedtsinghua_dapo17k
+          # `version` is the version string in x.x.x format.
+          # This was set when you uploaded the dataset.
           version: 0.0.1
+          # `artifact_fpath` is the path to the specific file within the dataset artifact.
           artifact_fpath: dapo17k_bytedtsinghua_train.jsonl
+
+        # `license` is required for train and validation datasets.
+        # Must accurately represent the data's licensing.
+        # Valid values: (see `license` property in the `DatasetConfig` class in nemo_gym.config_types).
         license: Apache 2.0
+
+      # Second dataset: validation data.
+      # Same structure as train dataset above.
       - name: validation
         type: validation
         jsonl_fpath: resources_servers/library_judge_math/data/aime24_bytedtsinghua_validation.jsonl
@@ -946,6 +991,15 @@ library_judge_math_simple_agent:
           version: 0.0.1
           artifact_fpath: aime24_bytedtsinghua_validation.jsonl
         license: Apache 2.0
+
+      # Third dataset: example data.
+        # `name` can be any string.
+      - name: example
+        # `type` must be example.
+        type: example
+        # `jsonl_fpath` - same as above.
+        # Note: This file must be committed to git.
+        jsonl_fpath: resources_servers/library_judge_math/data/example.jsonl
 ```
 
 
