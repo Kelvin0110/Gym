@@ -66,7 +66,7 @@ def extract_config_metadata(yaml_path: Path) -> tuple[str, str, list[str]]:
             if k1.endswith("_simple_agent") and isinstance(v1, dict):
                 v2 = v1.get("responses_api_agents")
                 if isinstance(v2, dict):
-                    # Look for any agent key, not just "simple_agent"
+                    # Look for any agent key
                     for agent_key, v3 in v2.items():
                         if isinstance(v3, dict):
                             datasets = v3.get("datasets")
