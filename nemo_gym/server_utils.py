@@ -81,6 +81,7 @@ def get_global_aiohttp_client(
         global_config_dict_parser_cls=global_config_dict_parser_cls,
     )
     cfg = GlobalAIOHTTPAsyncClientConfig.model_validate(global_config_dict)
+    print(f"DEBUG: get_global_aiohttp_client: config = {cfg}", flush=True)
 
     return set_global_aiohttp_client(cfg)
 

@@ -95,7 +95,13 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
         server_client = self.setup_server_client(head_server_config)
 
         async def _post_subroutine(row: Dict) -> Dict:
-            res = await server_client.post(server_name=row.pop("agent_ref")["name"], url_path="/run", json=row)
+            # FIXME(pjin): HACK.
+            # agent_ref = row.pop("agent_ref")
+            agent_ref = {
+                "name": "equivalence_llm_judge_simple_agent",
+                "type": "responses_api_agents",
+            }
+            res = await server_client.post(server_name=agent_ref["name"], url_path="/run", json=row)
             return await res.json()
 
         return await tqdm.gather(*map(_post_subroutine, examples), desc="Collecting rollouts", miniters=10)

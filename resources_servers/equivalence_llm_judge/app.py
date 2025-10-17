@@ -20,7 +20,11 @@ The judge prompt is fully configurable via server config.
 # limitations under the License.
 from __future__ import annotations
 
+import asyncio
+import json
+import os
 import re
+# import uuid
 from typing import Any, Optional
 
 from fastapi import FastAPI
@@ -38,6 +42,9 @@ from nemo_gym.openai_utils import (
     NeMoGymEasyInputMessage,
     NeMoGymResponse,
     NeMoGymResponseCreateParamsNonStreaming,
+)
+from nemo_gym.server_utils import (
+    get_global_config_dict,
 )
 
 
@@ -58,7 +65,8 @@ class LLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
 
     judge_system_message: Optional[str] = None
-    judge_prompt_template: str
+    judge_prompt_template: Optional[str] = None
+    judge_prompt_template_file: Optional[str] = None
     judge_equal_label: str = "[[A=B]]"
     judge_not_equal_label: str = "[[A!=B]]"
     # Optional regex to extract the question from the last user message.
@@ -220,20 +228,34 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
 
     config: LLMJudgeResourcesServerConfig
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._log_lock = asyncio.Lock()
+
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
         return app
 
     async def verify(self, body: LLMJudgeVerifyRequest) -> LLMJudgeVerifyResponse:
+        prompt_uid = body.uuid
+        model_responses_create_params_dict = body.responses_create_params.model_dump()
+        model_response_dict = body.response.model_dump()
+
         expected = _extract_expected_answer(body) or ""
         question = _extract_question_text(body.responses_create_params, self.config.question_extract_regex)
         generated = _extract_last_assistant_text(body, self.config.response_extract_regex)
 
         # Run judge twice to mitigate positional or presentation bias by swapping orders.
         first_equal, first_eval = await self._generate_judge_evaluation(
-            question=question, expected_answer=expected, generated_answer=generated
+            question=question,
+            expected_answer=expected,
+            generated_answer=generated,
+            model_responses_create_params_dict=model_responses_create_params_dict,
+            model_response_dict=model_response_dict,
+            prompt_uid=prompt_uid,
         )
-        if not first_equal:
+        if False:
+        # if not first_equal:
             reward = 0.0
             payload = body.model_dump()
             # Avoid duplicate field when constructing response
@@ -243,7 +265,8 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
             )
 
         # If first pass says equal, optionally confirm with a second pass (swap answers).
-        if not self.config.check_twice_swap:
+        if False:
+        # if not self.config.check_twice_swap:
             payload = body.model_dump()
             payload.pop("expected_answer", None)
             return LLMJudgeVerifyResponse(
@@ -251,11 +274,20 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
             )
 
         second_equal, second_eval = await self._generate_judge_evaluation(
-            question=question, expected_answer=generated, generated_answer=expected
+            question=question,
+            expected_answer=generated,
+            generated_answer=expected,
+            model_responses_create_params_dict=model_responses_create_params_dict,
+            model_response_dict=model_response_dict,
+            prompt_uid=prompt_uid,
         )
         # If they are both equal, we give a reward of 1.0; otherwise use configured fallback.
         # User has to expect this on the training side to discard the data points if negative.
-        reward = 1.0 if second_equal else self.config.reward_if_swap_fails
+        # reward = 1.0 if second_equal else self.config.reward_if_swap_fails
+        if first_equal and second_equal:
+            reward = 1.0
+        else:
+            reward = 0.0
         payload = body.model_dump()
         payload.pop("expected_answer", None)
         return LLMJudgeVerifyResponse(
@@ -263,9 +295,26 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
         )
 
     async def _generate_judge_evaluation(
-        self, *, question: str, expected_answer: str, generated_answer: str
+        self,
+        *,
+        question: str,
+        expected_answer: str,
+        generated_answer: str,
+        model_responses_create_params_dict: Optional[dict] = None,
+        model_response_dict: Optional[dict] = None,
+        prompt_uid: Optional[str] = None,
     ) -> tuple[bool, JudgeEvaluation]:
+        # TODO(pjin): logging judge responses.
+        global_cfg = get_global_config_dict()
         cfg = self.config
+
+        base_log_dir = global_cfg.get("_x_nemo_rl_base_log_dir", None)
+        if base_log_dir is not None:
+            # judge_log_path = os.path.join(base_log_dir, f"{cfg.name}-{uuid.uuid4()}-judge_responses_data.jsonl")
+            judge_log_path = os.path.join(base_log_dir, f"{cfg.name}-judge_responses_data.jsonl")
+        else:
+            judge_log_path = None
+
         equal_label = cfg.judge_equal_label
         not_equal_label = cfg.judge_not_equal_label
 
@@ -307,14 +356,48 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
 
         eq_pos = text.find(equal_label)
         neq_pos = text.find(not_equal_label)
-        if eq_pos < 0 and neq_pos < 0:
-            eval_record.verdict_label = None
-            return False, eval_record
-        if eq_pos >= 0 and (neq_pos < 0 or eq_pos < neq_pos):
-            eval_record.verdict_label = equal_label
-            return True, eval_record
-        eval_record.verdict_label = not_equal_label
-        return False, eval_record
+
+        def _compute_verdict(eq_pos, neq_pos):
+            if eq_pos < 0 and neq_pos < 0:
+                return False, None
+            if eq_pos >= 0 and (neq_pos < 0 or eq_pos < neq_pos):
+                return True, equal_label
+            return False, not_equal_label
+
+        verdict, verdict_label = _compute_verdict(eq_pos, neq_pos)
+        eval_record.verdict_label = verdict_label
+
+        # if False:
+        if judge_log_path is not None:
+            print(f"DEBUG: LLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(judge_log_path)}", flush=True)
+            async with self._log_lock:
+                try:
+                    log_file = open(judge_log_path, "a")
+                except Exception as e:
+                    log_file = None
+                    print(f"DEBUG: LLMJudgeResourcesServer._generate_judge_evaluation: log except: {type(e).__name__} {e}", flush=True)
+                if log_file is not None:
+                    responses_create_params_dict = responses_create_params.model_dump()
+                    judge_response_dict = judge_response.model_dump()
+                    log_item = {
+                        "question": question,
+                        "expected_answer": expected_answer,
+                        "generated_answer": generated_answer,
+                        "judge_responses_create_params": responses_create_params_dict,
+                        "judge_response": judge_response_dict,
+                        "judge_verdict": verdict,
+                        "judge_verdict_label": verdict_label,
+                    }
+                    if model_responses_create_params_dict is not None:
+                        log_item["model_responses_create_params"] = model_responses_create_params_dict
+                    if model_response_dict is not None:
+                        log_item["model_response"] = model_response_dict
+                    if prompt_uid is not None:
+                        log_item["prompt_uid"] = prompt_uid
+                    print(json.dumps(log_item), file=log_file, flush=True)
+                    log_file.close()
+
+        return verdict, eval_record
 
 
 if __name__ == "__main__":

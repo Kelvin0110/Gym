@@ -7,6 +7,7 @@ equivalence_llm_judge:
         name: policy_model
       judge_responses_create_params:
         input: []
+      judge_prompt_template_file: null
       judge_prompt_template: |-
         ===== System role =====
         You are a meticulous STEM grader. Compare a candidate answer to a GOLD reference for a scientific question and decide strict equivalence.
@@ -81,6 +82,7 @@ equivalence_llm_judge:
       # group is returned; otherwise, the entire last match is used.
       # Example: "^Answer:\\s*(.*)$"
       response_extract_regex: null
+      parse_reasoning: null
       domain: knowledge
 equivalence_llm_judge_simple_agent:
   responses_api_agents:
