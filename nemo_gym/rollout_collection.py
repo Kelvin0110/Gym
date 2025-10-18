@@ -98,7 +98,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
             # FIXME(pjin): HACK.
             # agent_ref = row.pop("agent_ref")
             agent_ref = {
-                "name": "equivalence_llm_judge_simple_agent",
+                # "name": "equivalence_llm_judge_simple_agent",
+                "name": "multistep_equiv_llm_judge_simple_agent",
                 "type": "responses_api_agents",
             }
             res = await server_client.post(server_name=agent_ref["name"], url_path="/run", json=row)
