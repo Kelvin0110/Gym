@@ -64,6 +64,8 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_model_server: ModelServerRef
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
 
+    judge_endpoint_max_concurrency: int = 128
+
     judge_system_message: Optional[str] = None
     judge_prompt_template: Optional[str] = None
 
@@ -92,7 +94,9 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     # returned; otherwise, the entire last match is used.
     response_extract_regex: Optional[str] = None
 
+    # TODO(peter)
     response_parse_reasoning: Optional[bool] = None
+    # model_response_parse_reasoning: Optional[bool] = None
 
     # If true, perform a second judge pass swapping expected and generated answers
     # to reduce potential positional bias. Default is false for speed.
@@ -354,11 +358,15 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
     config: MultistepEquivLLMJudgeResourcesServerConfig
 
     def __init__(self, *args, **kwargs):
-        print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: init...", flush=True)
         super().__init__(*args, **kwargs)
-        self._log_lock = asyncio.Lock()
-        # TODO(peter): configurable max requests.
-        self._judge_endpoint_max_requests = asyncio.Semaphore(value=128)
+        if hasattr(self, "config"):
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: config = {self.config}", flush=True)
+            max_concurrency = self.config.judge_endpoint_max_concurrency
+        else:
+            print("DEBUG: MultistepEquivLLMJudgeResourcesServer: missing config during init", flush=True)
+            max_concurrency = 128
+        self._log_write = asyncio.Lock()
+        self._judge_endpoint_max_concurrency = asyncio.Semaphore(value=max_concurrency)
         # TODO(peter)
         self._judge_extract_system_template = None
         self._judge_extract_prompt_template = None
@@ -532,7 +540,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         extract_params = cfg.judge_responses_create_params.model_copy(deep=True)
         extract_params.input = extract_messages
-        async with self._judge_endpoint_max_requests:
+        async with self._judge_endpoint_max_concurrency:
             extract_response = await self.server_client.post(
                 server_name=cfg.judge_model_server.name,
                 url_path="/v1/responses",
@@ -575,7 +583,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         distill_params = cfg.judge_responses_create_params.model_copy(deep=True)
         distill_params.input = distill_messages
-        async with self._judge_endpoint_max_requests:
+        async with self._judge_endpoint_max_concurrency:
             distill_response = await self.server_client.post(
                 server_name=cfg.judge_model_server.name,
                 url_path="/v1/responses",
@@ -685,7 +693,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         msgs.append(NeMoGymEasyInputMessage(role="user", content=user_prompt))
         responses_create_params.input = msgs
 
-        async with self._judge_endpoint_max_requests:
+        async with self._judge_endpoint_max_concurrency:
             response = await self.server_client.post(
                 server_name=cfg.judge_model_server.name,
                 url_path="/v1/responses",
@@ -724,7 +732,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         # if False:
         if judge_log_path is not None:
             # print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(judge_log_path)}", flush=True)
-            async with self._log_lock:
+            async with self._log_write:
                 try:
                     log_file = open(judge_log_path, "a")
                 except Exception as e:
