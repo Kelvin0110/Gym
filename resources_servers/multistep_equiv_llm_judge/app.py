@@ -543,12 +543,24 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         extract_params = cfg.judge_responses_create_params.model_copy(deep=True)
         extract_params.input = extract_messages
-        async with self._judge_endpoint_max_concurrency:
-            extract_response = await self.server_client.post(
-                server_name=cfg.judge_model_server.name,
-                url_path="/v1/responses",
-                json=extract_params,
-            )
+        try:
+            async with self._judge_endpoint_max_concurrency:
+                extract_response = await self.server_client.post(
+                    server_name=cfg.judge_model_server.name,
+                    url_path="/v1/responses",
+                    json=extract_params,
+                )
+        except Exception as e:
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_extract_response: dummy response b/c of POST exception: {type(e).__name__} {e}", flush=True)
+            extract_response = NeMoGymResponse.model_validate({
+                "output": [
+                    {
+                        # "type": "message",
+                        "role": "assistant",
+                        "content": f"<answer>\n{raw_response}\n></answer>",
+                    }
+                ],
+            })
         extract_response = NeMoGymResponse.model_validate(await extract_response.json())
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_extract_response: {extract_response}", flush=True)
 
@@ -586,13 +598,25 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         distill_params = cfg.judge_responses_create_params.model_copy(deep=True)
         distill_params.input = distill_messages
-        async with self._judge_endpoint_max_concurrency:
-            distill_response = await self.server_client.post(
-                server_name=cfg.judge_model_server.name,
-                url_path="/v1/responses",
-                json=distill_params,
-            )
-        distill_response = NeMoGymResponse.model_validate(await distill_response.json())
+        try:
+            async with self._judge_endpoint_max_concurrency:
+                distill_response = await self.server_client.post(
+                    server_name=cfg.judge_model_server.name,
+                    url_path="/v1/responses",
+                    json=distill_params,
+                )
+            distill_response = NeMoGymResponse.model_validate(await distill_response.json())
+        except Exception as e:
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: dummy response b/c of POST exception: {type(e).__name__} {e}", flush=True)
+            distill_response = NeMoGymResponse.model_validate({
+                "output": [
+                    {
+                        # "type": "message",
+                        "role": "assistant",
+                        "content": f"<distilled_answer>\n{answer}\n></distilled_answer>",
+                    }
+                ],
+            })
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: {distill_response}", flush=True)
 
         return distill_response
@@ -613,6 +637,17 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         *,
         question: str,
         answer: str,
+    ):
+        cfg = self.config
+
+        # TODO(peter)
+
+    async def _generate_judge_verdict_response(
+        self,
+        *,
+        question: str,
+        answer_0: str,
+        answer_1: str,
     ):
         cfg = self.config
 
