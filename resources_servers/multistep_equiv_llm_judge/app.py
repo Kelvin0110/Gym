@@ -354,8 +354,11 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
     config: MultistepEquivLLMJudgeResourcesServerConfig
 
     def __init__(self, *args, **kwargs):
+        print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: init...", flush=True)
         super().__init__(*args, **kwargs)
         self._log_lock = asyncio.Lock()
+        # TODO(peter): configurable max requests.
+        self._judge_endpoint_max_requests = asyncio.Semaphore(value=128)
         # TODO(peter)
         self._judge_extract_system_template = None
         self._judge_extract_prompt_template = None
@@ -404,9 +407,6 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 judge_evaluations=[],
             )
 
-        # FIXME(peter)
-        # model_answer = model_raw_response
-
         model_extract_response = await self._generate_judge_extract_response(
             question=question,
             raw_response=model_raw_response,
@@ -434,6 +434,9 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         model_distilled_answer = _extract_distilled_answer_tagged_section(model_distill_text)
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model distilled answer    = {repr(model_distilled_answer)}", flush=True)
 
+        if not model_distilled_answer:
+            model_distilled_answer = model_answer
+
         expected_distill_response = await self._generate_judge_distill_response(
             question=question,
             answer=expected_answer,
@@ -441,6 +444,9 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         expected_distill_text = _get_response_last_content_text(expected_distill_response) or ""
         expected_distilled_answer = _extract_distilled_answer_tagged_section(expected_distill_text)
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: expected distilled answer = {repr(expected_distilled_answer)}", flush=True)
+
+        if not expected_distilled_answer:
+            expected_distilled_answer = expected_answer
 
         # Run judge twice to mitigate positional or presentation bias by swapping orders.
         first_equal, first_eval = await self._generate_judge_evaluation(
@@ -526,11 +532,12 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         extract_params = cfg.judge_responses_create_params.model_copy(deep=True)
         extract_params.input = extract_messages
-        extract_response = await self.server_client.post(
-            server_name=cfg.judge_model_server.name,
-            url_path="/v1/responses",
-            json=extract_params,
-        )
+        async with self._judge_endpoint_max_requests:
+            extract_response = await self.server_client.post(
+                server_name=cfg.judge_model_server.name,
+                url_path="/v1/responses",
+                json=extract_params,
+            )
         extract_response = NeMoGymResponse.model_validate(await extract_response.json())
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_extract_response: {extract_response}", flush=True)
 
@@ -568,11 +575,12 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         distill_params = cfg.judge_responses_create_params.model_copy(deep=True)
         distill_params.input = distill_messages
-        distill_response = await self.server_client.post(
-            server_name=cfg.judge_model_server.name,
-            url_path="/v1/responses",
-            json=distill_params,
-        )
+        async with self._judge_endpoint_max_requests:
+            distill_response = await self.server_client.post(
+                server_name=cfg.judge_model_server.name,
+                url_path="/v1/responses",
+                json=distill_params,
+            )
         distill_response = NeMoGymResponse.model_validate(await distill_response.json())
         print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: {distill_response}", flush=True)
 
@@ -677,11 +685,12 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         msgs.append(NeMoGymEasyInputMessage(role="user", content=user_prompt))
         responses_create_params.input = msgs
 
-        response = await self.server_client.post(
-            server_name=cfg.judge_model_server.name,
-            url_path="/v1/responses",
-            json=responses_create_params,
-        )
+        async with self._judge_endpoint_max_requests:
+            response = await self.server_client.post(
+                server_name=cfg.judge_model_server.name,
+                url_path="/v1/responses",
+                json=responses_create_params,
+            )
         judge_response = NeMoGymResponse.model_validate(await response.json())
         eval_record = JudgeEvaluation(
             responses_create_params=responses_create_params,
@@ -714,7 +723,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         # if False:
         if judge_log_path is not None:
-            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(judge_log_path)}", flush=True)
+            # print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(judge_log_path)}", flush=True)
             async with self._log_lock:
                 try:
                     log_file = open(judge_log_path, "a")
