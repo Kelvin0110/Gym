@@ -64,6 +64,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_model_server: ModelServerRef
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
 
+    judge_endpoint_max_num_retries: int = 2
     judge_endpoint_max_concurrency: Optional[int] = 128
 
     judge_system_message: Optional[str] = None
@@ -95,6 +96,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     response_extract_regex: Optional[str] = None
 
     # TODO(peter)
+    expected_answer_distill: Optional[bool] = None
     response_parse_reasoning: Optional[bool] = None
     # model_response_parse_reasoning: Optional[bool] = None
 
@@ -448,15 +450,22 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         if not model_distilled_answer:
             model_distilled_answer = model_answer
 
-        expected_distill_response = await self._generate_judge_distill_response(
-            question=question,
-            answer=expected_answer,
-        )
-        expected_distill_text = _get_response_last_content_text(expected_distill_response) or ""
-        expected_distilled_answer = _extract_distilled_answer_tagged_section(expected_distill_text)
-        print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: expected distilled answer = {repr(expected_distilled_answer)}", flush=True)
+        if (
+            self.config.expected_answer_distill is None or
+            self.config.expected_answer_distill
+        ):
+            expected_distill_response = await self._generate_judge_distill_response(
+                question=question,
+                answer=expected_answer,
+            )
+            expected_distill_text = _get_response_last_content_text(expected_distill_response) or ""
+            expected_distilled_answer = _extract_distilled_answer_tagged_section(expected_distill_text)
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: expected distilled answer = {repr(expected_distilled_answer)}", flush=True)
 
-        if not expected_distilled_answer:
+            if not expected_distilled_answer:
+                expected_distilled_answer = expected_answer
+
+        else:
             expected_distilled_answer = expected_answer
 
         # Run judge twice to mitigate positional or presentation bias by swapping orders.
