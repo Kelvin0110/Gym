@@ -21,10 +21,10 @@ The judge prompt is fully configurable via server config.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import re
-# import uuid
 from typing import Any, Optional
 
 from fastapi import FastAPI
@@ -64,7 +64,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_model_server: ModelServerRef
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
 
-    judge_endpoint_max_concurrency: int = 128
+    judge_endpoint_max_concurrency: Optional[int] = 128
 
     judge_system_message: Optional[str] = None
     judge_prompt_template: Optional[str] = None
@@ -366,7 +366,10 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             print("DEBUG: MultistepEquivLLMJudgeResourcesServer: missing config during init", flush=True)
             max_concurrency = 128
         self._log_write = asyncio.Lock()
-        self._judge_endpoint_max_concurrency = asyncio.Semaphore(value=max_concurrency)
+        if max_concurrency is not None:
+            self._judge_endpoint_max_concurrency = asyncio.Semaphore(value=max_concurrency)
+        else:
+            self._judge_endpoint_max_concurrency = contextlib.nullcontext()
         # TODO(peter)
         self._judge_extract_system_template = None
         self._judge_extract_prompt_template = None
