@@ -74,6 +74,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_extract_prompt_template_fpath: Optional[str] = None
     judge_distill_system_template_fpath: Optional[str] = None
     judge_distill_prompt_template_fpath: Optional[str] = None
+    judge_verdict_prompt_template_fpath: Optional[str] = None
 
     judge_equal_label: str = "[[A=B]]"
     judge_not_equal_label: str = "[[A!=B]]"
