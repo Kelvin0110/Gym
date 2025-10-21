@@ -325,25 +325,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             model_response_dict=model_response_dict,
             rl_metadata=body.rl_metadata,
         )
-        if False:
-            # if not first_equal:
-            reward = 0.0
-            payload = body.model_dump()
-            # Avoid duplicate field when constructing response
-            payload.pop("expected_answer", None)
-            return MultistepEquivLLMJudgeVerifyResponse(
-                **payload, reward=reward, expected_answer=expected_answer, judge_evaluations=[first_eval]
-            )
 
         # If first pass says equal, optionally confirm with a second pass (swap answers).
-        if False:
-            # if not self.config.check_twice_swap:
-            payload = body.model_dump()
-            payload.pop("expected_answer", None)
-            return MultistepEquivLLMJudgeVerifyResponse(
-                **payload, reward=1.0, expected_answer=expected_answer, judge_evaluations=[first_eval]
-            )
-
         second_equal, second_eval = await self._generate_judge_evaluation(
             question=question,
             expected_answer=model_distilled_answer,
@@ -352,6 +335,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             model_response_dict=model_response_dict,
             rl_metadata=body.rl_metadata,
         )
+
         # If they are both equal, we give a reward of 1.0; otherwise use configured fallback.
         # User has to expect this on the training side to discard the data points if negative.
         # reward = 1.0 if second_equal else self.config.reward_if_swap_fails
