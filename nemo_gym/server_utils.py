@@ -27,6 +27,7 @@ from traceback import print_exc
 from typing import Literal, Optional, Tuple, Type, Union, Unpack
 from uuid import uuid4
 
+import ray
 import requests
 import uvicorn
 import yappi
@@ -150,7 +151,8 @@ Sleeping 0.5s and retrying...
 async def raise_for_status(response: ClientResponse) -> None:  # pragma: no cover
     if not response.ok:
         content = await response.content.read()
-        print(content)
+        print(f"""Request info: {response.request_info}
+Response content: {content}""")
         response.raise_for_status()
 
 
@@ -308,6 +310,22 @@ class UvicornLoggingConfig(BaseModel):
     uvicorn_logging_show_200_ok: bool = False
 
 
+def initialize_ray() -> None:
+    if ray.is_initialized():
+        print("Ray already initialized")
+        return
+
+    global_config_dict = get_global_config_dict()
+    ray_head_node_address = global_config_dict.get("ray_head_node_address")
+
+    if ray_head_node_address is not None:
+        print(f"Connecting to Ray cluster at specified address: {ray_head_node_address}")
+        ray.init(address=ray_head_node_address, ignore_reinit_error=True)
+    else:
+        print("Starting Ray cluster...")
+        ray.init(ignore_reinit_error=True)
+
+
 class SimpleServer(BaseServer):
     server_client: ServerClient
 
@@ -432,6 +450,8 @@ class SimpleServer(BaseServer):
     @classmethod
     def run_webserver(cls) -> None:  # pragma: no cover
         global_config_dict = get_global_config_dict()
+
+        initialize_ray()
 
         server_config = cls.load_config_from_global_config()
         server_client = ServerClient(
