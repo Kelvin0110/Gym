@@ -79,10 +79,13 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
 
     judge_extract_system_template_fpath: Optional[str] = None
     judge_extract_prompt_template_fpath: Optional[str] = None
+    judge_extract_quorum_template_fpath: Optional[str] = None
     judge_distill_system_template_fpath: Optional[str] = None
     judge_distill_prompt_template_fpath: Optional[str] = None
+    judge_distill_quorum_template_fpath: Optional[str] = None
     judge_compare_system_template_fpath: Optional[str] = None
     judge_compare_prompt_template_fpath: Optional[str] = None
+    judge_compare_quorum_template_fpath: Optional[str] = None
     judge_verdict_prompt_template_fpath: Optional[str] = None
 
     quorum_max_samples: int = 1
@@ -241,10 +244,15 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         self._judge_extract_system_template = None
         self._judge_extract_prompt_template = None
+        self._judge_extract_quorum_template = None
+
         self._judge_distill_system_template = None
         self._judge_distill_prompt_template = None
+        self._judge_distill_quorum_template = None
+
         self._judge_compare_system_template = None
         self._judge_compare_prompt_template = None
+
         self._judge_verdict_prompt_template = None
 
         assert self.config.quorum_max_samples >= 1
@@ -292,14 +300,14 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 judge_evaluations=[],
             )
 
-        model_answer = await self._query_judge_extract_quorum(
+        model_answer = await self._query_judge_distill_quorum(
             question=question,
-            raw_response=model_raw_response,
+            answer=model_raw_response,
             max_samples=self.config.quorum_max_samples,
         )
         if self.config.debug:
             print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model answer    = {repr(model_answer)}",
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model answer = {repr(model_answer)}",
                 flush=True,
             )
         if not model_answer:
@@ -312,19 +320,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 expected_answer=expected_answer,
                 judge_evaluations=[],
             )
-
-        model_distilled_answer = await self._query_judge_distill_quorum(
-            question=question,
-            answer=model_answer,
-            max_samples=self.config.quorum_max_samples,
-        )
-        if self.config.debug:
-            print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model distilled answer = {repr(model_distilled_answer)}",
-                flush=True,
-            )
-        if not model_distilled_answer:
-            model_distilled_answer = model_answer
+        model_distilled_answer = model_answer
 
         if self.config.expected_answer_distill:
             expected_distilled_answer = await self._query_judge_distill_quorum(
@@ -595,8 +591,44 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 return results[0]
             else:
                 return None
-        # TODO: quorum.
-        raise NotImplementedError
+
+        if self._judge_distill_quorum_template is None:
+            assert self.config.judge_distill_quorum_template_fpath is not None
+            with open(self.config.judge_distill_quorum_template_fpath, "r") as file:
+                self._judge_distill_quorum_template = file.read().rstrip()
+
+        quorum_messages: list[NeMoGymEasyInputMessage] = []
+        quorum_messages.append(
+            NeMoGymEasyInputMessage(
+                role="system",
+                content=self._judge_distill_quorum_template,
+            )
+        )
+        prompt_parts = []
+        prompt_parts.append("<question>")
+        prompt_parts.append(question)
+        prompt_parts.append("</question>")
+        for i, r in enumerate(results):
+            rank = i + 1
+            prompt_parts.append("")
+            prompt_parts.append(f"<answer_{rank}>")
+            prompt_parts.append(r or "")
+            prompt_parts.append(f"</answer_{rank}>")
+        prompt = "\n".join(prompt_parts)
+        quorum_messages.append(
+            NeMoGymEasyInputMessage(
+                role="user",
+                content=prompt,
+            )
+        )
+
+        quorum_params = self.config.judge_responses_create_params.model_copy(deep=True)
+        quorum_params.input = quorum_messages
+        quorum_response = await self._post_judge_response(quorum_params)
+        quorum_text = _get_response_last_assistant_content_text(quorum_response) or ""
+        final_answer = _extract_tagged_section(quorum_text, "final_answer")
+
+        return final_answer
 
     async def _generate_judge_compare_response(
         self,
