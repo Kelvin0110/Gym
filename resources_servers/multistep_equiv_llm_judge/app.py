@@ -197,17 +197,34 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         super().__init__(*args, **kwargs)
         if self.config.debug:
             print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: config = {self.config}", flush=True)
+
+        base_log_dir = self.config.get("base_log_dir", None)
+        if base_log_dir is None:
+            global_cfg = get_global_config_dict()
+            base_log_dir = global_cfg.get("base_log_dir", None)
+        if base_log_dir is not None:
+            self._log_path = os.path.join(base_log_dir, f"{self.config.name}-judge_log.jsonl")
+            self._log_write = asyncio.Lock()
+        else:
+            self._log_path = None
+            self._log_write = contextlib.nullcontext()
+
         max_concurrency = self.config.judge_endpoint_max_concurrency
-        self._log_write = asyncio.Lock()
         if max_concurrency is not None:
             self._judge_endpoint_max_concurrency = asyncio.Semaphore(value=max_concurrency)
         else:
             self._judge_endpoint_max_concurrency = contextlib.nullcontext()
+
         self._judge_extract_system_template = None
         self._judge_extract_prompt_template = None
         self._judge_distill_system_template = None
         self._judge_distill_prompt_template = None
         self._judge_verdict_prompt_template = None
+
+        assert self.config.quorum_max_samples >= 1
+        assert self.config.quorum_type == "majority", (
+            f"unsupported quorum_type: {self.config.quorum_type!r}"
+        )
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -432,6 +449,29 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
         return model_answer
 
+    async def _query_judge_extract_quorum(
+        self,
+        *,
+        question: str,
+        model_raw_response: str,
+    ) -> Optional[str]:
+        work = []
+        for _ in range(self.config.quorum_max_samples):
+            work.append(
+                self._query_judge_distill_sample(
+                    question=question,
+                    model_raw_response=model_raw_response,
+                )
+            )
+        results = asyncio.gather(*work, return_exceptions=True)
+        if len(results) == 1:
+            if isinstance(results[0], str):
+                return results[0]
+            else:
+                return None
+        # TODO: quorum.
+        raise NotImplementedError
+
     async def _generate_judge_distill_response(
         self,
         *,
@@ -496,6 +536,29 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
         return model_distilled_answer
 
+    async def _query_judge_distill_quorum(
+        self,
+        *,
+        question: str,
+        model_raw_response: str,
+    ) -> Optional[str]:
+        work = []
+        for _ in range(self.config.quorum_max_samples):
+            work.append(
+                self._query_judge_distill_sample(
+                    question=question,
+                    model_raw_response=model_raw_response,
+                )
+            )
+        results = asyncio.gather(*work, return_exceptions=True)
+        if len(results) == 1:
+            if isinstance(results[0], str):
+                return results[0]
+            else:
+                return None
+        # TODO: quorum.
+        raise NotImplementedError
+
     async def _generate_judge_evaluation(
         self,
         *,
@@ -506,18 +569,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         model_response_dict: Optional[dict] = None,
         rl_metadata: Optional[dict] = None,
     ) -> tuple[bool, JudgeEvaluation]:
-        global_cfg = get_global_config_dict()
         cfg = self.config
-
-        base_log_dir = cfg.get("base_log_dir", None)
-        if base_log_dir is None:
-            base_log_dir = global_cfg.get("_x_nemo_rl_base_log_dir", None)
-
-        if base_log_dir is not None:
-            # judge_log_path = os.path.join(base_log_dir, f"{cfg.name}-{uuid.uuid4()}-judge_responses_data.jsonl")
-            judge_log_path = os.path.join(base_log_dir, f"{cfg.name}-judge_responses_data.jsonl")
-        else:
-            judge_log_path = None
 
         equal_label = cfg.judge_equal_label
         not_equal_label = cfg.judge_not_equal_label
@@ -596,11 +648,11 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         verdict, verdict_label = _compute_verdict(eq_pos, neq_pos)
         eval_record.verdict_label = verdict_label
 
-        if judge_log_path is not None:
-            # print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(judge_log_path)}", flush=True)
+        if self._log_path is not None:
+            # print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_evaluation: log path = {repr(self._log_path)}", flush=True)
             async with self._log_write:
                 try:
-                    log_file = open(judge_log_path, "a")
+                    log_file = open(self._log_path, "a")
                 except Exception as e:
                     log_file = None
                     print(
