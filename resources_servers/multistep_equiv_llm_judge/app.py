@@ -100,6 +100,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     expected_answer_distill: bool = False
     model_response_parse_reasoning: bool = False
 
+    base_log_dir: Optional[str] = None
     debug: bool = False
 
 
@@ -225,16 +226,18 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         if self.config.debug:
             print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: config = {self.config}", flush=True)
 
-        base_log_dir = self.config.get("base_log_dir", None)
+        base_log_dir = self.config.base_log_dir
         if base_log_dir is None:
             global_cfg = get_global_config_dict()
             base_log_dir = global_cfg.get("base_log_dir", None)
         if base_log_dir is not None:
             self._log_path = os.path.join(base_log_dir, f"{self.config.name}-judge_log.jsonl")
             self._log_write = asyncio.Lock()
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: log path = {self._log_path!r}", flush=True)
         else:
             self._log_path = None
             self._log_write = contextlib.nullcontext()
+            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: missing log path", flush=True)
 
         max_concurrency = self.config.judge_endpoint_max_concurrency
         if max_concurrency is not None:
@@ -497,7 +500,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                     raw_response=raw_response,
                 )
             )
-        results = asyncio.gather(*work, return_exceptions=True)
+        results = await asyncio.gather(*work, return_exceptions=True)
         if len(results) == 1:
             if isinstance(results[0], str):
                 return results[0]
@@ -574,7 +577,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         self,
         *,
         question: str,
-        raw_response: str,
+        answer: str,
         max_samples: int,
     ) -> Optional[str]:
         work = []
@@ -582,10 +585,10 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             work.append(
                 self._query_judge_distill_sample(
                     question=question,
-                    raw_response=raw_response,
+                    answer=answer,
                 )
             )
-        results = asyncio.gather(*work, return_exceptions=True)
+        results = await asyncio.gather(*work, return_exceptions=True)
         if len(results) == 1:
             if isinstance(results[0], str):
                 return results[0]
@@ -728,7 +731,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                         answer_1=expected_answer,
                     )
                 )
-        results = asyncio.gather(*work, return_exceptions=True)
+        results = await asyncio.gather(*work, return_exceptions=True)
         quorum = _CompareQuorum()
         for r in results:
             if r is True:
