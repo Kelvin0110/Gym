@@ -73,27 +73,21 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_system_message: Optional[str] = None
     judge_prompt_template: Optional[str] = None
 
+    judge_equal_label: str = "[[A=B]]"
+    judge_not_equal_label: str = "[[A!=B]]"
+
     judge_extract_system_template_fpath: Optional[str] = None
     judge_extract_prompt_template_fpath: Optional[str] = None
     judge_distill_system_template_fpath: Optional[str] = None
     judge_distill_prompt_template_fpath: Optional[str] = None
     judge_verdict_prompt_template_fpath: Optional[str] = None
 
-    judge_equal_label: str = "[[A=B]]"
-    judge_not_equal_label: str = "[[A!=B]]"
-
-    # Optional regex to extract the question from the last user message.
-    # If provided and a match is found, the first non-empty capture group is used;
-    # otherwise the full match is used.
-    question_extract_regex: Optional[str] = None
-    # Optional regex to extract the generated response from the last assistant message.
-    # The last match is used. If capture groups exist, the first non-empty group is
-    # returned; otherwise, the entire last match is used.
-    response_extract_regex: Optional[str] = None
+    quorum_max_samples: int = 1
+    quorum_type: str = "majority"
 
     # If true, perform a second judge pass swapping expected and generated answers
     # to reduce potential positional bias. Default is True.
-    # swap: bool = True
+    swap: bool = True
 
     # trials: int = 1
 
@@ -185,17 +179,13 @@ def _get_response_last_assistant_raw_response_text(response, parse_reasoning: bo
 
 def _extract_tagged_section(haystack: str, tag: str) -> Optional[str]:
     needle = haystack
-    _, _, needle = needle.partition(f"<{tag}>")
-    needle, _, _ = needle.partition(f"</{tag}>")
+    needle, sep, _ = needle.rpartition(f"</{tag}>")
+    if not sep:
+        needle = haystack
+    _, sep, needle = needle.rpartition(f"<{tag}>")
+    if not sep:
+        return None
     return needle.strip()
-
-
-def _extract_answer_tagged_section(haystack: str) -> Optional[str]:
-    return _extract_tagged_section(haystack, "answer")
-
-
-def _extract_distilled_answer_tagged_section(haystack: str) -> Optional[str]:
-    return _extract_tagged_section(haystack, "distilled_answer")
 
 
 class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
@@ -264,7 +254,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             raw_response=model_raw_response,
         )
         model_extract_text = _get_response_last_assistant_content_text(model_extract_response) or ""
-        model_answer = _extract_answer_tagged_section(model_extract_text)
+        model_answer = _extract_tagged_section(model_extract_text, "answer")
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model answer    = {repr(model_answer)}",
@@ -287,7 +277,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             answer=model_answer,
         )
         model_distill_text = _get_response_last_assistant_content_text(model_distill_response) or ""
-        model_distilled_answer = _extract_distilled_answer_tagged_section(model_distill_text)
+        model_distilled_answer = _extract_tagged_section(model_distill_text, "distilled_answer")
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: model distilled answer = {repr(model_distilled_answer)}",
@@ -303,7 +293,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 answer=expected_answer,
             )
             expected_distill_text = _get_response_last_assistant_content_text(expected_distill_response) or ""
-            expected_distilled_answer = _extract_distilled_answer_tagged_section(expected_distill_text)
+            expected_distilled_answer = _extract_tagged_section(expected_distill_text, "distilled_answer")
             if self.config.debug:
                 print(
                     f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: expected distilled answer = {repr(expected_distilled_answer)}",
@@ -352,6 +342,32 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             judge_evaluations=[first_eval, second_eval],
         )
 
+    async def _post_judge_response(self, params) -> NeMoGymResponse:
+        try:
+            async with self._judge_endpoint_max_concurrency:
+                response = await self.server_client.post(
+                    server_name=self.config.judge_model_server.name,
+                    url_path="/v1/responses",
+                    json=params,
+                )
+            response = NeMoGymResponse.model_validate(await response.json())
+        except Exception as e:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
+                flush=True,
+            )
+            response = NeMoGymResponse.model_validate(
+                {
+                    "output": [
+                        {
+                            "role": "assistant",
+                            "content": "",
+                        }
+                    ],
+                }
+            )
+        return response
+
     async def _generate_judge_extract_response(
         self,
         *,
@@ -388,31 +404,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         extract_params = cfg.judge_responses_create_params.model_copy(deep=True)
         extract_params.input = extract_messages
-        try:
-            async with self._judge_endpoint_max_concurrency:
-                extract_response = await self.server_client.post(
-                    server_name=cfg.judge_model_server.name,
-                    url_path="/v1/responses",
-                    json=extract_params,
-                )
-        except Exception as e:
-            print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_extract_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
-                flush=True,
-            )
-            extract_response = NeMoGymResponse.model_validate(
-                {
-                    "output": [
-                        {
-                            # "type": "message",
-                            "role": "assistant",
-                            # "content": f"<answer>\n{raw_response}\n></answer>",
-                            "content": "",
-                        }
-                    ],
-                }
-            )
-        extract_response = NeMoGymResponse.model_validate(await extract_response.json())
+        extract_response = await self._post_judge_response(extract_params)
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_extract_response: {extract_response}",
@@ -420,6 +412,25 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
 
         return extract_response
+
+    async def _query_judge_extract_sample(
+        self,
+        *,
+        question: str,
+        model_raw_response: str,
+    ) -> Optional[str]:
+        model_extract_response = await self._generate_judge_extract_response(
+            question=question,
+            raw_response=model_raw_response,
+        )
+        model_extract_text = _get_response_last_assistant_content_text(model_extract_response) or ""
+        model_answer = _extract_tagged_section(model_extract_text, "answer")
+        if self.config.debug:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_extract_sample: model answer = {repr(model_answer)}",
+                flush=True,
+            )
+        return model_answer
 
     async def _generate_judge_distill_response(
         self,
@@ -457,31 +468,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
 
         distill_params = cfg.judge_responses_create_params.model_copy(deep=True)
         distill_params.input = distill_messages
-        try:
-            async with self._judge_endpoint_max_concurrency:
-                distill_response = await self.server_client.post(
-                    server_name=cfg.judge_model_server.name,
-                    url_path="/v1/responses",
-                    json=distill_params,
-                )
-            distill_response = NeMoGymResponse.model_validate(await distill_response.json())
-        except Exception as e:
-            print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
-                flush=True,
-            )
-            distill_response = NeMoGymResponse.model_validate(
-                {
-                    "output": [
-                        {
-                            # "type": "message",
-                            "role": "assistant",
-                            # "content": f"<distilled_answer>\n{answer}\n></distilled_answer>",
-                            "content": "",
-                        }
-                    ],
-                }
-            )
+        distill_response = await self._post_judge_response(distill_params)
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: {distill_response}",
@@ -489,6 +476,25 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
 
         return distill_response
+
+    async def _query_judge_distill_sample(
+        self,
+        *,
+        question: str,
+        model_answer: str,
+    ) -> Optional[str]:
+        model_distill_response = await self._generate_judge_distill_response(
+            question=question,
+            answer=model_answer,
+        )
+        model_distill_text = _get_response_last_assistant_content_text(model_distill_response) or ""
+        model_distilled_answer = _extract_tagged_section(model_distill_text, "answer")
+        if self.config.debug:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_distill_sample: model distilled answer = {repr(model_distilled_answer)}",
+                flush=True,
+            )
+        return model_distilled_answer
 
     async def _generate_judge_evaluation(
         self,
