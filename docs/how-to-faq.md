@@ -585,6 +585,82 @@ library_judge_math_simple_agent:
         # `jsonl_fpath` - same as above.
         # Note: This file must be committed to git.
         jsonl_fpath: resources_servers/library_judge_math/data/example.jsonl
+
+# ============================================================================
+# MODEL SERVER DEFINITION
+# ============================================================================
+
+# `policy_model` is a special Level 1 name that refers to the policy model being trained.
+# This is the default model for NeMo Gym agents during training.
+# You can also define custom model server instances with unique names (e.g., `judge_model`, `teacher_model`).
+policy_model:
+  # `responses_api_models` indicates this is a model server
+  responses_api_models:
+    # The model server type. Common types include:
+    #   - openai_model: For OpenAI-compatible endpoints.
+    #   - azure_openai_model: For Azure OpenAI endpoints.
+    #   - vllm_model: For vLLM-hosted models.
+    # This maps to the folder `responses_api_models/<model-type>/`
+    openai_model:
+      # `entrypoint` specifies the file that contains your model server implementation.
+      # It is relative to the implementation directory (`responses_api_models/openai_model`).
+      entrypoint: app.py
+
+      # === COMMON PARAMETERS (all model types) ===
+
+      # API endpoint URL. Parameter name varies by model type:
+      #   - openai_model: `openai_base_url`
+      #   - azure_openai_model: `openai_base_url`
+      #   - vllm_model: `base_url`
+      # Examples:
+      #   - "https://api.openai.com/v1" (OpenAI)
+      #   - "https://my-resource.openai.azure.com" (Azure OpenAI)
+      #   - "http://localhost:8000/v1" (self-hosted vLLM)
+      #   - ["http://gpu-1:8000/v1", "http://gpu-2:8000/v1"] (vLLM only: list for load balancing)
+      openai_base_url: ${policy_base_url}
+
+      # API authentication key. Parameter name varies:
+      #   - openai_model: `openai_api_key`
+      #   - azure_openai_model: `openai_api_key`
+      #   - vllm_model: `api_key`
+      # Should be provided via Hydra variable for security (See Best Practices - Keep Secrets in env.yaml from docs/tutorials/09-configuration-guide.md).
+      openai_api_key: ${policy_api_key}
+
+      # Model identifier. Parameter name varies:
+      #   - openai_model: `openai_model`
+      #   - azure_openai_model: `openai_model`
+      #   - vllm_model: `model`
+      # Examples:
+      #   - "gpt-4o-2024-11-20" (OpenAI)
+      #   - "my-gpt4-deployment" (Azure OpenAI deployment name)
+      #   - "meta-llama/Llama-3.1-8B-Instruct" (vLLM)
+      openai_model: ${policy_model_name}
+
+      # === AZURE OPENAI SPECIFIC PARAMETERS ===
+      # Only used by `azure_openai_model` type.
+
+      # `default_query` contains Azure-specific query parameters.
+      # Required for Azure OpenAI to specify the API version.
+      default_query:
+        # Azure API version string. Updates frequently with new features.
+        # Check Azure OpenAI documentation for current supported versions.
+        api-version: "2024-10-21"
+
+      # `num_concurrent_requests` limits parallel requests to Azure OpenAI.
+      num_concurrent_requests: 8
+
+      # === VLLM SPECIFIC PARAMETERS ===
+      # Only used by `vllm_model` type.
+
+      # `return_token_id_information` controls whether to return token IDs and log probs.
+      # Required for training to calculate token-level rewards.
+      # Set to true for training, false for inference-only scenarios.
+      return_token_id_information: false
+
+      # `uses_reasoning_parser` controls extraction of reasoning traces from model output.
+      # Set to true for models that generate reasoning in <think> tags.
+      # Set to false for standard chat models without explicit reasoning tokens.
+      uses_reasoning_parser: true
 ```
 
 
