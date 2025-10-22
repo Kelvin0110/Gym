@@ -222,9 +222,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         self._judge_verdict_prompt_template = None
 
         assert self.config.quorum_max_samples >= 1
-        assert self.config.quorum_type == "majority", (
-            f"unsupported quorum_type: {self.config.quorum_type!r}"
-        )
+        assert self.config.quorum_type == "majority", f"unsupported quorum_type: {self.config.quorum_type!r}"
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
