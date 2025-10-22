@@ -516,14 +516,14 @@ library_judge_math_simple_agent:
   responses_api_agents:
     # The name of the agent. This maps to the folder `responses_api_agents/simple_agent/`.
     simple_agent:
-      `entrypoint` for the agent implementation.
+      # `entrypoint` for the agent implementation.
       entrypoint: app.py
 
       # Links the agent to a specific resource server instance.
       resources_server:
         # `type` must be resources_servers.
         type: resources_servers
-        `name` here must match the Level 1 name of resources_servers defined in this config.
+        # `name` here must match the Level 1 name of resources_servers defined in this config.
         name: library_judge_math
 
       # Links the agent to a specific model server instance.
@@ -614,7 +614,6 @@ policy_model:
       #   - vllm_model: `base_url`
       # Examples:
       #   - "https://api.openai.com/v1" (OpenAI)
-      #   - "https://my-resource.openai.azure.com" (Azure OpenAI)
       #   - "http://localhost:8000/v1" (self-hosted vLLM)
       #   - ["http://gpu-1:8000/v1", "http://gpu-2:8000/v1"] (vLLM only: list for load balancing)
       openai_base_url: ${policy_base_url}
