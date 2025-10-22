@@ -47,6 +47,10 @@ from nemo_gym.server_utils import (
     get_global_config_dict,
 )
 
+from resources_servers.equivalence_llm_judge.equivalence_llm_judge_utils import (
+    _get_request_expected_answer_text,
+)
+
 
 class LLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     """Configuration for the LLM judge server.
@@ -175,11 +179,7 @@ def _extract_last_assistant_text(body: BaseVerifyRequest, extract_regex: Optiona
 
 
 def _extract_expected_answer(req: LLMJudgeRunRequest) -> Optional[str]:
-    if req.expected_answer:
-        return str(req.expected_answer)
-    md = req.metadata or {}
-    exp = md.get("expected_answer")
-    return str(exp) if exp is not None else None
+    return _get_request_expected_answer_text(req)
 
 
 def _extract_question_text(
