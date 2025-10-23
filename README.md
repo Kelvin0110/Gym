@@ -106,6 +106,7 @@ ng_test_all
 | math                  | Python Math Exec      | <a href='resources_servers/python_math_exec/configs/python_math_exec.yaml'>resources_servers/python_math_exec/configs/python_math_exec.yaml</a>                     | Apache 2.0                                                | Train, Example             |
 | translation           | Translation Bleu      | <a href='resources_servers/translation_bleu/configs/temp.yaml'>resources_servers/translation_bleu/configs/temp.yaml</a>                                             | NVIDIA Internal Use Only, Do Not Distribute               | Train, Example             |
 | translation           | Translation Bleu      | <a href='resources_servers/translation_bleu/configs/translation_bleu.yaml'>resources_servers/translation_bleu/configs/translation_bleu.yaml</a>                     | NVIDIA Internal Use Only, Do Not Distribute               | Train, Validation, Example |
+| translation           | Translation Comet     | <a href='resources_servers/translation_comet/configs/translation_comet.yaml'>resources_servers/translation_comet/configs/translation_comet.yaml</a>                 | NVIDIA Internal Use Only, Do Not Distribute               | Train, Validation, Example |
 <!-- END_RESOURCE_TABLE -->
 
 
