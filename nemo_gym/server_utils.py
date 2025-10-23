@@ -320,10 +320,10 @@ def initialize_ray() -> None:
 
     if ray_head_node_address is not None:
         print(f"Connecting to Ray cluster at specified address: {ray_head_node_address}")
-        ray.init(address=ray_head_node_address, ignore_reinit_error=True)
+        ray.init(address=ray_head_node_address, ignore_reinit_error=True, runtime_env={"working_dir": PARENT_DIR})
     else:
         print("Starting Ray cluster...")
-        ray.init(ignore_reinit_error=True)
+        ray.init(ignore_reinit_error=True, runtime_env={"working_dir": PARENT_DIR})
 
 
 class SimpleServer(BaseServer):
@@ -451,7 +451,7 @@ class SimpleServer(BaseServer):
     def run_webserver(cls) -> None:  # pragma: no cover
         global_config_dict = get_global_config_dict()
 
-        initialize_ray()
+        # initialize_ray()
 
         server_config = cls.load_config_from_global_config()
         server_client = ServerClient(
