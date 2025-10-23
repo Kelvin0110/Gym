@@ -152,6 +152,20 @@ class _CompareQuorum:
             return None
 
 
+def _get_request_first_user_content_text(req) -> Optional[str]:
+    # print(f"DEBUG: _get_request_first_user_content_text: req = {req}", flush=True)
+    params = req.responses_create_params
+    # TODO(peter)
+    last_text: Optional[str] = None
+    for m in params.input or []:
+        if getattr(m, "role", None) == "user":
+            c = getattr(m, "content", None)
+            if isinstance(c, str):
+                last_text = c
+    text = (last_text or "").strip()
+    return text
+
+
 def _get_response_content_text(response, turn: int, role: Optional[str] = None) -> Optional[str]:
     if not response.output:
         return None
@@ -177,7 +191,8 @@ def _get_response_content_text(response, turn: int, role: Optional[str] = None) 
     return text
 
 
-def _get_response_first_user_content_text(response, parse_reasoning: bool = False) -> Optional[str]:
+def _get_response_first_user_content_text(response) -> Optional[str]:
+    print(f"DEBUG: _get_response_first_user_content_text: response = {response}", flush=True)
     text = _get_response_content_text(response, turn=0, role="user")
     if text is None:
         text = _get_response_content_text(response, turn=1, role="user")
@@ -276,17 +291,20 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         model_params_dict = body.responses_create_params.model_dump()
         model_response_dict = body.response.model_dump()
 
-        question = _get_response_first_user_content_text(body.response)
+        # question = _get_response_first_user_content_text(body.response)
+        question = _get_request_first_user_content_text(body)
+        if self.config.debug:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: question        = {repr(question)}",
+                flush=True,
+            )
+
         model_raw_response = _get_response_last_assistant_raw_response_text(
             body.response, parse_reasoning=self.config.model_response_parse_reasoning
         )
         expected_answer = _get_request_expected_answer_text(body) or ""
 
         if self.config.debug:
-            print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: question        = {repr(question)}",
-                flush=True,
-            )
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: expected answer = {repr(expected_answer)}",
                 flush=True,
@@ -565,7 +583,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             answer=answer,
         )
         distill_text = _get_response_last_assistant_content_text(distill_response) or ""
-        distilled_answer = _extract_tagged_section(distill_text, "answer")
+        distilled_answer = _extract_tagged_section(distill_text, "distilled_answer")
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_distill_sample: model distilled answer = {repr(distilled_answer)}",
@@ -580,6 +598,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         answer: str,
         max_samples: int,
     ) -> Optional[str]:
+        assert question is not None
         work = []
         for _ in range(max_samples):
             work.append(
@@ -612,10 +631,15 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         prompt_parts.append(question)
         prompt_parts.append("</question>")
         for i, r in enumerate(results):
+            if r is None:
+                answer_i = ""
+            else:
+                assert isinstance(r, str)
+                answer_i = r
             rank = i + 1
             prompt_parts.append("")
             prompt_parts.append(f"<answer_{rank}>")
-            prompt_parts.append(r or "")
+            prompt_parts.append(answer_i)
             prompt_parts.append(f"</answer_{rank}>")
         prompt = "\n".join(prompt_parts)
         quorum_messages.append(
@@ -714,6 +738,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         max_samples: int,
         swap: bool = True,
     ) -> Optional[bool]:
+        if swap:
+            max_samples *= 2
         work = []
         for _ in range(max_samples):
             work.append(
