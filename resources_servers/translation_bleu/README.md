@@ -4,7 +4,7 @@ Data links: ?
 
 # Licensing information
 Code: Apache 2.0
-Data: Internal use only, TODO UPDATE MORE PRECISELY
+Data: NVIDIA Internal Use Only, Do Not Distribute
 
 Dependencies
 - nemo_gym: Apache 2.0
