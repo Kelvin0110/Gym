@@ -217,7 +217,7 @@ def _get_response_last_assistant_raw_response_text(response, parse_reasoning: bo
     return raw_response_text
 
 
-def _extract_tagged_section(haystack: str, tag: str, strip: bool = False) -> Optional[str]:
+def _extract_tagged_section(haystack: str, tag: str, strip: bool = True) -> Optional[str]:
     needle = haystack
     needle, sep, _ = needle.rpartition(f"</{tag}>")
     if not sep:
