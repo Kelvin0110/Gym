@@ -3,8 +3,8 @@ translation_comet_resources_server:
     translation_comet:
       entrypoint: app.py
       domain: translation
-      use_reference: true
-      comet_model_name: Unbabel/wmt22-comet-da
+      use_reference: false
+      comet_model_name: Unbabel/wmt22-cometkiwi-da
 translation_comet_simple_agent:
   responses_api_agents:
     simple_agent:

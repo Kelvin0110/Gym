@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 from copy import deepcopy
+from os.path import dirname, join
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -54,7 +55,7 @@ class TestApp:
                 # Need to use the actual model as the cometinho model does not return values in [0,1]
                 comet_gpu_count=0,  # CPU
                 comet_gpu_devices="auto",  # CPU
-                model_cache_dir="cache/ptl_cache",
+                model_cache_dir=join(dirname(__file__), "..", "..", "..", "cache", "ptl_cache"),
             ),
             server_client=MagicMock(spec=ServerClient),
         )
@@ -75,7 +76,7 @@ class TestApp:
                 comet_model_name="Unbabel/wmt22-cometkiwi-da",  # reference-free COMET
                 comet_gpu_count=0,  # CPU
                 comet_gpu_devices="auto",  # CPU
-                model_cache_dir="cache/ptl_cache",
+                model_cache_dir=join(dirname(__file__), "..", "..", "..", "cache", "ptl_cache"),
             ),
             server_client=MagicMock(spec=ServerClient),
         )
