@@ -79,7 +79,6 @@ def _setup_env_command(dir_path: Path, head_server_deps: Optional[str] = None) -
 def _run_command(command: str, working_directory: Path) -> Popen:  # pragma: no cover
     custom_env = environ.copy()
     custom_env["PYTHONPATH"] = f"{working_directory.absolute()}:{custom_env.get('PYTHONPATH', '')}"
-    print(f"Executing command:\n{command}\n")
     return Popen(command, executable="/bin/bash", shell=True, env=custom_env)
 
 
