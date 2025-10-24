@@ -26,12 +26,13 @@ from typing import Dict, List, Optional
 
 import uvicorn
 from devtools import pprint
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pydantic import BaseModel
 from tqdm.auto import tqdm
 
 from nemo_gym import PARENT_DIR
 from nemo_gym.global_config import (
+    HEAD_SERVER_DEPS_KEY_NAME,
     NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME,
     NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME,
     NEMO_GYM_RESERVED_TOP_LEVEL_KEYS,
@@ -46,7 +47,7 @@ from nemo_gym.server_utils import (
 )
 
 
-def _capture_head_server_dependencies() -> Optional[Path]:  # pragma: no cover
+def _capture_head_server_dependencies(global_config_dict: DictConfig) -> None:  # pragma: no cover
     try:
         result = subprocess.run(
             ["uv", "pip", "freeze", "--exclude-editable"],
@@ -54,22 +55,19 @@ def _capture_head_server_dependencies() -> Optional[Path]:  # pragma: no cover
             text=True,
             check=True,
         )
-        frozen_deps = result.stdout
-        constraints_file = Path("/tmp/head_server_constraints.txt")
-        constraints_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(constraints_file, "w") as f:
-            f.write(frozen_deps)
-
-        return constraints_file
+        head_server_deps = result.stdout
     except Exception as e:
         print(f"Warning: Could not capture head server dependencies: {e}")
-        return None
+        head_server_deps = None
+
+    with open_dict(global_config_dict):
+        global_config_dict[HEAD_SERVER_DEPS_KEY_NAME] = head_server_deps
 
 
-def _setup_env_command(dir_path: Path, head_server_deps_file: Optional[str] = None) -> str:  # pragma: no cover
+def _setup_env_command(dir_path: Path, head_server_deps: Optional[str] = None) -> str:  # pragma: no cover
     install_cmd = "uv pip install -r requirements.txt"
-    if head_server_deps_file:
-        install_cmd += f" --constraint {head_server_deps_file.absolute()}"
+    if head_server_deps:
+        install_cmd += f" --constraint <(cat << 'EOF'\n{head_server_deps}\nEOF\n)"
 
     return f"""cd {dir_path} \\
     && uv venv --allow-existing \\
@@ -127,8 +125,8 @@ class RunHelper:  # pragma: no cover
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
 
-        # Capture head server dependencies to use as constraints for other servers
-        head_server_deps_file = _capture_head_server_dependencies()
+        # Capture head server dependencies and store in global config dict
+        _capture_head_server_dependencies(global_config_dict)
 
         # Assume Nemo Gym Run is for a single agent.
         escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
@@ -165,7 +163,9 @@ class RunHelper:  # pragma: no cover
 
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
-            command = f"""{_setup_env_command(dir_path, head_server_deps_file)} \\
+            head_server_deps = global_config_dict.get(HEAD_SERVER_DEPS_KEY_NAME)
+
+            command = f"""{_setup_env_command(dir_path, head_server_deps)} \\
     && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
