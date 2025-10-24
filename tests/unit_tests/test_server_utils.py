@@ -17,7 +17,6 @@ from pytest import MonkeyPatch, raises
 
 import nemo_gym.global_config
 import nemo_gym.server_utils
-from nemo_gym import PARENT_DIR
 from nemo_gym.global_config import (
     NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME,
 )
