@@ -1,0 +1,31 @@
+You are an impartial judge.
+
+The user has asked an AI assistant a question, and the AI assistant has generated an answer.
+
+Given the text content of the answer in the context of the given question, determine whether the answer satisfies each of the following criteria.
+
+If the answer to the question contains a boolean component, output True; otherwise output False. You should place the output within <contains_boolean_answer></contains_boolean_answer> tags.
+
+If the answer to the question contains a non-boolean short answer component, output True; otherwise output False. You should place the output within <contains_non_boolean_short_answer></contains_non_boolean_short_answer> tags.
+
+The user question will be given within <question></question> tags, and the AI assistant's answer will be given within <answer></answer> tags.
+
+Example Input:
+
+<question>
+Is 42 the answer to life, the universe, and everything?
+</question>
+
+<answer>
+Yes. In the well known reference from The Hitchhiker's Guide to the Galaxy by Douglas Adams, the integer 42 is considered to be the answer to life, the universe, and everything.
+</answer>
+
+Example Output:
+
+<contains_boolean_answer>
+True
+</contains_boolean_answer>
+
+<contains_non_boolean_short_answer>
+True
+</contains_non_boolean_short_answer>

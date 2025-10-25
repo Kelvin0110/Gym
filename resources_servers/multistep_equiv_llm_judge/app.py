@@ -70,13 +70,15 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
 
     judge_endpoint_max_concurrency: Optional[int] = 128
 
-    judge_distill_system_template_fpath: Optional[str] = None
+    judge_categorize_system_template_fpath: Optional[str] = None
+    judge_categorize_prompt_template_fpath: Optional[str] = None
+
     judge_distill_prompt_template_fpath: Optional[str] = None
     judge_distill_quorum_template_fpath: Optional[str] = None
 
+    judge_compare_boolean_system_template_fpath: Optional[str] = None
     judge_compare_system_template_fpath: Optional[str] = None
     judge_compare_prompt_template_fpath: Optional[str] = None
-    # judge_compare_quorum_template_fpath: Optional[str] = None
 
     judge_verdict_prompt_template_fpath: Optional[str] = None
 
@@ -129,13 +131,21 @@ class MultistepEquivLLMJudgeVerifyResponse(BaseVerifyResponse):
 
 
 @dataclass
-class _CompareQuorum:
+class _BooleanQuorum:
     nil_count: int = 0
     neg_count: int = 0
     pos_count: int = 0
 
-    def majority(self, max_samples: int) -> Optional[bool]:
-        min_quorum = (max_samples // 2) + 1
+    def update(self, value: Optional[bool]):
+        if value is True:
+            self.pos_count += 1
+        elif value is False:
+            self.neg_count += 1
+        else:
+            self.nil_count += 1
+
+    def majority(self, samples: int) -> Optional[bool]:
+        min_quorum = (samples // 2) + 1
         if self.pos_count >= min_quorum:
             return True
         elif self.neg_count >= min_quorum:
@@ -188,6 +198,7 @@ def _get_response_content_text(response, turn: int, role: Optional[str] = None) 
                     f"DEBUG: _get_response_content_text: unexpected content item type = {repr(item.type)}",
                     flush=True,
                 )
+                continue
             text_parts.append(item.text)
         text = "".join(text_parts)
     else:
@@ -234,6 +245,17 @@ def _extract_tagged_section(haystack: str, tag: str, strip: bool = True) -> Opti
     else:
         return needle
 
+def _extract_tagged_section_bool(haystack: str, tag: str) -> Optional[bool]:
+    needle = _extract_tagged_section(haystack, tag, strip=True)
+    value = None
+    if isinstance(needle, str):
+        needle_lo = needle.lower()
+        if needle_lo == "true":
+            value = True
+        elif needle_lo == "false":
+            value = False
+    return value
+
 
 class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
     """Judge-only verifier using an LLM to compare answers."""
@@ -263,6 +285,9 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             self._judge_endpoint_max_concurrency = asyncio.Semaphore(value=max_concurrency)
         else:
             self._judge_endpoint_max_concurrency = contextlib.nullcontext()
+
+        self._judge_categorize_system_template = None
+        self._judge_categorize_prompt_template = None
 
         self._judge_distill_system_template = None
         self._judge_distill_prompt_template = None
@@ -314,6 +339,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             payload = body.model_dump()
             payload.pop("expected_answer", None)
             reward = 0.0
+            # TODO: early stop logging.
             return MultistepEquivLLMJudgeVerifyResponse(
                 **payload,
                 reward=reward,
@@ -335,6 +361,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             payload = body.model_dump()
             payload.pop("expected_answer", None)
             reward = 0.0
+            # TODO: early stop logging.
             return MultistepEquivLLMJudgeVerifyResponse(
                 **payload,
                 reward=reward,
@@ -359,19 +386,39 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         else:
             expected_distilled_answer = expected_answer
 
-        equivalent_dict = await self._query_judge_compare_quorum(
+        expected_categorization = await self._query_judge_categorize_quorum(
             question=question,
-            expected_answer=expected_distilled_answer,
-            model_answer=model_distilled_answer,
+            answer=expected_distilled_answer,
             max_samples=self.config.quorum_max_samples,
-            swap=self.config.swap,
-            return_dict=True,
         )
+        expected_boolean = expected_categorization["contains_boolean_answer"]
+        expected_short_answer = expected_categorization["contains_non_boolean_short_answer"]
+
+        if expected_boolean and not expected_short_answer:
+            equivalent_dict = await self._query_judge_compare_quorum(
+                system_variant="boolean",
+                question=question,
+                expected_answer=expected_distilled_answer,
+                model_answer=model_distilled_answer,
+                max_samples=self.config.quorum_max_samples,
+                swap=self.config.swap,
+                return_dict=True,
+            )
+        else:
+            equivalent_dict = await self._query_judge_compare_quorum(
+                question=question,
+                expected_answer=expected_distilled_answer,
+                model_answer=model_distilled_answer,
+                max_samples=self.config.quorum_max_samples,
+                swap=self.config.swap,
+                return_dict=True,
+            )
         equivalent = equivalent_dict["ret_value"]
         if equivalent:
             reward = 1.0
         else:
             reward = 0.0
+
         if self._log_path is not None:
             # print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: log path = {repr(self._log_path)}", flush=True)
             async with self._log_write:
@@ -442,6 +489,101 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 }
             )
         return response
+
+    async def _generate_judge_categorize_response(
+        self,
+        *,
+        question: str,
+        answer: str,
+    ):
+        cfg = self.config
+
+        if self._judge_categorize_system_template is None:
+            assert cfg.judge_categorize_system_template_fpath is not None
+            with open(cfg.judge_categorize_system_template_fpath, "r") as file:
+                self._judge_categorize_system_template = file.read().rstrip()
+        if self._judge_categorize_prompt_template is None:
+            assert cfg.judge_categorize_prompt_template_fpath is not None
+            with open(cfg.judge_categorize_prompt_template_fpath, "r") as file:
+                self._judge_categorize_prompt_template = file.read().rstrip()
+
+        categorize_messages: list[NeMoGymEasyInputMessage] = []
+        categorize_messages.append(
+            NeMoGymEasyInputMessage(
+                role="system",
+                content=self._judge_categorize_system_template,
+            )
+        )
+        categorize_messages.append(
+            NeMoGymEasyInputMessage(
+                role="user",
+                content=self._judge_categorize_prompt_template.format(
+                    question=question,
+                    answer=answer,
+                ),
+            )
+        )
+
+        categorize_params = cfg.judge_responses_create_params.model_copy(deep=True)
+        categorize_params.input = categorize_messages
+        categorize_response = await self._post_judge_response(categorize_params)
+        if self.config.debug:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_categorize_response: {categorize_response}",
+                flush=True,
+            )
+
+        return categorize_response
+
+    async def _query_judge_categorize_sample(
+        self,
+        *,
+        question: str,
+        answer: str,
+    ) -> dict[str, Optional[bool]]:
+        categorize_response = await self._generate_judge_categorize_response(
+            question=question,
+            answer=answer,
+        )
+        categorize_text = _get_response_last_assistant_content_text(categorize_response) or ""
+        contains_boolean_answer = _extract_tagged_section_bool(categorize_text, "contains_boolean_answer")
+        contains_non_boolean_short_answer = _extract_tagged_section_bool(categorize_text, "contains_non_boolean_short_answer")
+        return {
+            "contains_boolean_answer": contains_boolean_answer,
+            "contains_non_boolean_short_answer": contains_non_boolean_short_answer,
+        }
+
+    async def _query_judge_categorize_quorum(
+        self,
+        *,
+        question: str,
+        answer: str,
+        max_samples: int,
+    ) -> Union[Optional[bool], dict]:
+        quorum_samples = max_samples
+        work = []
+        for _ in range(max_samples):
+            work.append(
+                self._query_judge_categorize_sample(
+                    question=question,
+                    answer=answer,
+                )
+            )
+        results = await asyncio.gather(*work, return_exceptions=True)
+        assert quorum_samples == len(results)
+        boolean_quorum = _BooleanQuorum()
+        short_answer_quorum = _BooleanQuorum()
+        for r in results:
+            contains_boolean_answer = r["contains_boolean_answer"]
+            contains_non_boolean_short_answer = r["contains_non_boolean_short_answer"]
+            boolean_quorum.update(contains_boolean_answer)
+            short_answer_quorum.update(contains_non_boolean_short_answer)
+        contains_boolean_answer = boolean_quorum.majority(quorum_samples)
+        contains_non_boolean_short_answer = short_answer_quorum.majority(quorum_samples)
+        return {
+            "contains_boolean_answer": contains_boolean_answer,
+            "contains_non_boolean_short_answer": contains_non_boolean_short_answer,
+        }
 
     async def _generate_judge_distill_response(
         self,
@@ -580,9 +722,14 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         question: str,
         answer_0: str,
         answer_1: str,
+        system_variant: Optional[str] = None,
     ):
         cfg = self.config
 
+        if self._judge_compare_boolean_system_template is None:
+            assert cfg.judge_compare_boolean_system_template_fpath is not None
+            with open(cfg.judge_compare_boolean_system_template_fpath, "r") as file:
+                self._judge_compare_boolean_system_template = file.read().rstrip()
         if self._judge_compare_system_template is None:
             assert cfg.judge_compare_system_template_fpath is not None
             with open(cfg.judge_compare_system_template_fpath, "r") as file:
@@ -593,12 +740,22 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 self._judge_compare_prompt_template = file.read().rstrip()
 
         compare_messages: list[NeMoGymEasyInputMessage] = []
-        compare_messages.append(
-            NeMoGymEasyInputMessage(
-                role="system",
-                content=self._judge_compare_system_template,
+        if system_variant == "boolean":
+            compare_messages.append(
+                NeMoGymEasyInputMessage(
+                    role="system",
+                    content=self._judge_compare_boolean_system_template,
+                )
             )
-        )
+        elif system_variant is None:
+            compare_messages.append(
+                NeMoGymEasyInputMessage(
+                    role="system",
+                    content=self._judge_compare_system_template,
+                )
+            )
+        else:
+            raise NotImplementedError
         compare_messages.append(
             NeMoGymEasyInputMessage(
                 role="user",
@@ -627,25 +784,17 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         question: str,
         answer_0: str,
         answer_1: str,
+        system_variant: Optional[str] = None,
         return_dict: bool = False,
     ) -> Union[Optional[bool], dict]:
         compare_response = await self._generate_judge_compare_response(
             question=question,
             answer_0=answer_0,
             answer_1=answer_1,
+            system_variant=system_variant,
         )
         compare_text = _get_response_last_assistant_content_text(compare_response) or ""
-        compare_answer = _extract_tagged_section(compare_text, "equivalent", strip=True)
-        if isinstance(compare_answer, str):
-            compare_answer_lo = compare_answer.lower()
-            if compare_answer_lo == "true":
-                equiv = True
-            elif compare_answer_lo == "false":
-                equiv = False
-            else:
-                equiv = None
-        else:
-            equiv = None
+        equiv = _extract_tagged_section_bool(compare_text, "equivalent")
         if return_dict:
             compare_response_dict = _dump_response_dict(compare_response)
             return {
@@ -663,12 +812,13 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         model_answer: str,
         max_samples: int,
         swap: bool = True,
+        system_variant: Optional[str] = None,
         return_dict: bool = False,
     ) -> Union[Optional[bool], dict]:
         if swap:
-            quorum_max_samples = max_samples * 2
+            quorum_samples = max_samples * 2
         else:
-            quorum_max_samples = max_samples
+            quorum_samples = max_samples
         work = []
         for _ in range(max_samples):
             work.append(
@@ -676,6 +826,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                     question=question,
                     answer_0=expected_answer,
                     answer_1=model_answer,
+                    system_variant=system_variant,
                     return_dict=return_dict,
                 )
             )
@@ -685,15 +836,16 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                         question=question,
                         answer_0=model_answer,
                         answer_1=expected_answer,
+                        system_variant=system_variant,
                         return_dict=return_dict,
                     )
                 )
         results = await asyncio.gather(*work, return_exceptions=True)
         judgments = []
         responses = []
-        # print(f"MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: m={quorum_max_samples} n={len(results)}", flush=True)
-        assert quorum_max_samples == len(results)
-        quorum = _CompareQuorum()
+        # print(f"MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: m={quorum_samples} n={len(results)}", flush=True)
+        assert quorum_samples == len(results)
+        quorum = _BooleanQuorum()
         for r in results:
             if return_dict:
                 equiv = r["ret_value"]
@@ -701,13 +853,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 responses.append(r["response"])
             else:
                 equiv = r
-            if equiv is True:
-                quorum.pos_count += 1
-            elif equiv is False:
-                quorum.neg_count += 1
-            else:
-                quorum.nil_count += 1
-        equiv = quorum.majority(quorum_max_samples)
+            quorum.update(equiv)
+        equiv = quorum.majority(quorum_samples)
         if return_dict:
             return {
                 "ret_value": equiv,
