@@ -673,7 +673,9 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         return_dict: bool = False,
     ) -> Union[Optional[bool], dict]:
         if swap:
-            max_samples *= 2
+            quorum_max_samples = max_samples * 2
+        else:
+            quorum_max_samples = max_samples
         work = []
         for _ in range(max_samples):
             work.append(
@@ -696,6 +698,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         results = await asyncio.gather(*work, return_exceptions=True)
         judgments = []
         responses = []
+        # print(f"MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: m={quorum_max_samples} n={len(results)}", flush=True)
+        assert quorum_max_samples == len(results)
         quorum = _CompareQuorum()
         for r in results:
             if return_dict:
@@ -710,7 +714,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 quorum.neg_count += 1
             else:
                 quorum.nil_count += 1
-        equiv = quorum.majority(max_samples)
+        equiv = quorum.majority(quorum_max_samples)
         if return_dict:
             return {
                 "ret_value": equiv,
