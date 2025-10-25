@@ -25,7 +25,7 @@ import contextlib
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -80,9 +80,11 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_distill_system_template_fpath: Optional[str] = None
     judge_distill_prompt_template_fpath: Optional[str] = None
     judge_distill_quorum_template_fpath: Optional[str] = None
+
     judge_compare_system_template_fpath: Optional[str] = None
     judge_compare_prompt_template_fpath: Optional[str] = None
-    judge_compare_quorum_template_fpath: Optional[str] = None
+    # judge_compare_quorum_template_fpath: Optional[str] = None
+
     judge_verdict_prompt_template_fpath: Optional[str] = None
 
     quorum_max_samples: int = 1
@@ -147,6 +149,18 @@ class _CompareQuorum:
             return False
         else:
             return None
+
+
+def _dump_response_dict(response) -> dict:
+    response_dict = json.loads(response.model_dump_json())
+    if (
+        "output" in response_dict and
+        response_dict["output"]
+    ):
+        response_dict["output"][0].pop("prompt_token_ids", None)
+        response_dict["output"][0].pop("generation_token_ids", None)
+        response_dict["output"][0].pop("generation_log_probs", None)
+    return response_dict
 
 
 def _get_request_first_user_content_text(req) -> Optional[str]:
@@ -249,7 +263,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         else:
             self._log_path = None
             self._log_write = contextlib.nullcontext()
-            print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: missing log path", flush=True)
+            print("DEBUG: MultistepEquivLLMJudgeResourcesServer: missing log path", flush=True)
 
         max_concurrency = self.config.judge_endpoint_max_concurrency
         if max_concurrency is not None:
@@ -282,14 +296,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         self, body: MultistepEquivLLMJudgeVerifyRequest
     ) -> MultistepEquivLLMJudgeVerifyResponse:
         model_params_dict = json.loads(body.responses_create_params.model_dump_json())
-        model_response_dict = json.loads(body.response.model_dump_json())
-        if (
-            "output" in model_response_dict and
-            model_response_dict["output"]
-        ):
-            model_response_dict["output"][0].pop("prompt_token_ids", None)
-            model_response_dict["output"][0].pop("generation_token_ids", None)
-            model_response_dict["output"][0].pop("generation_log_probs", None)
+        model_response_dict = _dump_response_dict(body.response)
 
         # question = _get_response_first_user_content_text(body.response)
         question = _get_request_first_user_content_text(body)
@@ -359,13 +366,15 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         else:
             expected_distilled_answer = expected_answer
 
-        equivalent = await self._query_judge_compare_quorum(
+        equivalent_dict = await self._query_judge_compare_quorum(
             question=question,
             expected_answer=expected_distilled_answer,
             model_answer=model_distilled_answer,
             max_samples=self.config.quorum_max_samples,
             swap=self.config.swap,
+            return_dict=True,
         )
+        equivalent = equivalent_dict["ret_value"]
         if equivalent:
             reward = 1.0
         else:
@@ -398,6 +407,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                         "default_judge_responses_create_params": self._default_judge_params_dict,
                         "model_responses_create_params": model_params_dict,
                         "model_response": model_response_dict,
+                        "judge_judgments": equivalent_dict["judgments"],
+                        "judge_responses": equivalent_dict["responses"],
                     }
                     if body.rl_metadata is not None:
                         log_item["rl_metadata"] = body.rl_metadata
@@ -623,7 +634,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         question: str,
         answer_0: str,
         answer_1: str,
-    ) -> Optional[bool]:
+        return_dict: bool = False,
+    ) -> Union[Optional[bool], dict]:
         compare_response = await self._generate_judge_compare_response(
             question=question,
             answer_0=answer_0,
@@ -634,13 +646,21 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         if isinstance(compare_answer, str):
             compare_answer_lo = compare_answer.lower()
             if compare_answer_lo == "true":
-                return True
+                equiv = True
             elif compare_answer_lo == "false":
-                return False
+                equiv = False
             else:
-                return None
+                equiv = None
         else:
-            return None
+            equiv = None
+        if return_dict:
+            compare_response_dict = _dump_response_dict(compare_response)
+            return {
+                "ret_value": equiv,
+                "response": compare_response_dict,
+            }
+        else:
+            return equiv
 
     async def _query_judge_compare_quorum(
         self,
@@ -650,7 +670,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         model_answer: str,
         max_samples: int,
         swap: bool = True,
-    ) -> Optional[bool]:
+        return_dict: bool = False,
+    ) -> Union[Optional[bool], dict]:
         if swap:
             max_samples *= 2
         work = []
@@ -660,6 +681,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                     question=question,
                     answer_0=expected_answer,
                     answer_1=model_answer,
+                    return_dict=return_dict,
                 )
             )
             if swap:
@@ -668,18 +690,35 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                         question=question,
                         answer_0=model_answer,
                         answer_1=expected_answer,
+                        return_dict=return_dict,
                     )
                 )
         results = await asyncio.gather(*work, return_exceptions=True)
+        judgments = []
+        responses = []
         quorum = _CompareQuorum()
         for r in results:
-            if r is True:
+            if return_dict:
+                equiv = r["ret_value"]
+                judgments.append(equiv)
+                responses.append(r["response"])
+            else:
+                equiv = r
+            if equiv is True:
                 quorum.pos_count += 1
-            elif r is False:
+            elif equiv is False:
                 quorum.neg_count += 1
             else:
                 quorum.nil_count += 1
-        return quorum.majority(max_samples)
+        equiv = quorum.majority(max_samples)
+        if return_dict:
+            return {
+                "ret_value": equiv,
+                "judgments": judgments,
+                "responses": responses,
+            }
+        else:
+            return equiv
 
 
 if __name__ == "__main__":
