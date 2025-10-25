@@ -759,7 +759,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 )
             )
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"MultistepEquivLLMJudgeResourcesServer._generate_judge_compare_response: invalid system prompt variant: {repr(system_variant)}")
         compare_messages.append(
             NeMoGymEasyInputMessage(
                 role="user",
@@ -852,7 +852,14 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         quorum = _BooleanQuorum()
         for r in results:
             if return_dict:
-                equiv = r["ret_value"]
+                if isinstance(r, dict):
+                    equiv = r["ret_value"]
+                elif r is None:
+                    print("DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: unexpected result is None", flush=True)
+                    equiv = None
+                else:
+                    print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: unexpected result: {type(r).__name__} {r}", flush=True)
+                    equiv = None
                 judgments.append(equiv)
                 responses.append(r["response"])
             else:
