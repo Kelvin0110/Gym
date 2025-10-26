@@ -145,11 +145,16 @@ class _BooleanQuorum:
         else:
             self.nil_count += 1
 
-    def majority(self, samples: int) -> Optional[bool]:
-        min_quorum = (samples // 2) + 1
+    def majority(self, samples: Optional[int] = None) -> Optional[bool]:
+        if samples is not None:
+            quorum_samples = samples
+        else:
+            quorum_samples = self.nil_count + self.neg_count + self.pos_count
+        min_quorum = (quorum_samples // 2) + 1
+        min_neg_quorum = max(1, min_quorum - 1)
         if self.pos_count >= min_quorum:
             return True
-        elif self.neg_count >= min_quorum:
+        elif self.neg_count >= min_neg_quorum:
             return False
         else:
             return None
@@ -562,7 +567,6 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         answer: str,
         max_samples: int,
     ) -> Union[Optional[bool], dict]:
-        quorum_samples = max_samples
         work = []
         for _ in range(max_samples):
             work.append(
@@ -572,7 +576,6 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 )
             )
         results = await asyncio.gather(*work, return_exceptions=True)
-        assert quorum_samples == len(results)
         boolean_quorum = _BooleanQuorum()
         short_answer_quorum = _BooleanQuorum()
         for r in results:
@@ -580,8 +583,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             contains_non_boolean_short_answer = r["contains_non_boolean_short_answer"]
             boolean_quorum.update(contains_boolean_answer)
             short_answer_quorum.update(contains_non_boolean_short_answer)
-        contains_boolean_answer = boolean_quorum.majority(quorum_samples)
-        contains_non_boolean_short_answer = short_answer_quorum.majority(quorum_samples)
+        contains_boolean_answer = boolean_quorum.majority()
+        contains_non_boolean_short_answer = short_answer_quorum.majority()
         return {
             "contains_boolean_answer": contains_boolean_answer,
             "contains_non_boolean_short_answer": contains_non_boolean_short_answer,
@@ -820,10 +823,6 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         system_variant: Optional[str] = None,
         return_dict: bool = False,
     ) -> Union[Optional[bool], dict]:
-        if swap:
-            quorum_samples = max_samples * 2
-        else:
-            quorum_samples = max_samples
         work = []
         for _ in range(max_samples):
             work.append(
@@ -848,8 +847,6 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         results = await asyncio.gather(*work, return_exceptions=True)
         judgments = []
         responses = []
-        # print(f"MultistepEquivLLMJudgeResourcesServer._query_judge_compare_quorum: m={quorum_samples} n={len(results)}", flush=True)
-        assert quorum_samples == len(results)
         quorum = _BooleanQuorum()
         for r in results:
             if return_dict:
@@ -866,7 +863,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             else:
                 equiv = r
             quorum.update(equiv)
-        equiv = quorum.majority(quorum_samples)
+        equiv = quorum.majority()
         if return_dict:
             return {
                 "ret_value": equiv,
