@@ -59,7 +59,7 @@ _GLOBAL_AIOHTTP_CLIENT: Union[None, ClientSession] = None
 
 class GlobalAIOHTTPAsyncClientConfig(BaseModel):
     global_aiohttp_connector_limit: int = 100 * 1024
-    global_aiohttp_connector_limit_per_host: int = 1024
+    global_aiohttp_connector_limit_per_host: int = 4096
 
 
 def get_global_aiohttp_client(

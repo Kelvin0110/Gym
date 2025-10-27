@@ -64,7 +64,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        tqdm_miniters = 10
+        tqdm_miniters = 1
         print(
             f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
         )
@@ -82,6 +82,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     response.raise_for_status()
                     result = await response.json()
                     f.write(json.dumps(result) + "\n")
+                    f.flush()  # Force write to disk immediately
                     metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
             await tqdm.gather(*map(_post_coroutine, rows), desc="Collecting rollouts", miniters=tqdm_miniters)

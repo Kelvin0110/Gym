@@ -8,7 +8,7 @@ library_judge_math:
       judge_responses_create_params: {
         input: []
       }
-      should_use_judge: true
+      should_use_judge: false
       domain: math
 library_judge_math_simple_agent:
   responses_api_agents:
