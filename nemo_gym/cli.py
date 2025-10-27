@@ -141,6 +141,15 @@ class RunHelper:  # pragma: no cover
     _server_client: ServerClient
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
+        debug = environ.get("NG_DEBUG", None)
+        if debug is None:
+            debug = -1
+        else:
+            try:
+                debug = int(debug)
+            except ValueError:
+                debug = -1
+
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
 
         # Capture head server dependencies and store in global config dict
@@ -149,15 +158,25 @@ class RunHelper:  # pragma: no cover
 
         # Initialize Ray cluster in the main process
         # Note: This function will modify the global config dict - update `ray_head_node_address`
+        if debug:
+            print("DEBUG: RunHelper.start: init ray: ...", flush=True)
         initialize_ray()
+        if debug:
+            print("DEBUG: RunHelper.start: init ray: done", flush=True)
 
         # Assume Nemo Gym Run is for a single agent.
         escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
 
         # We always run the head server in this `run` command.
+        if debug:
+            print("DEBUG: RunHelper.start: run head webserver: ...", flush=True)
         self._head_server, self._head_server_thread = HeadServer.run_webserver()
+        if debug:
+            print("DEBUG: RunHelper.start: run head webserver: done", flush=True)
 
         top_level_paths = [k for k in global_config_dict.keys() if k not in NEMO_GYM_RESERVED_TOP_LEVEL_KEYS]
+        if debug:
+            print(f"DEBUG: RunHelper.start: top level paths = {top_level_paths}", flush=True)
 
         self._processes: Dict[str, Popen] = dict()
         self._server_instance_display_configs: List[ServerInstanceDisplayConfig] = []
