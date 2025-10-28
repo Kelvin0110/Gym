@@ -59,7 +59,7 @@ class RolloutCollectionConfig(BaseNeMoGymCLIConfig):
     )
     enable_cache: Optional[bool] = Field(
         default=None,
-        description="Enable caching for robust rollouts.",
+        description="Enable caching for robust rollout collection.",
     )
 
 
@@ -108,7 +108,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                 pass
             print(f"Found {len(cache_idx_set)} cached.", flush=True)
 
-        print("Start rollout collection...", flush=True)
+        print("Starting rollout collection...", flush=True)
 
         metrics = Counter()
         write_lock = Lock()
@@ -124,7 +124,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                 if config.enable_cache:
                     try:
                         await raise_for_status(response)
-                    except Exception:
+                    except Exception as e:
+                        print(f"HTTP error during rollout (row={row_idx} rep={rep_idx}): {e}", flush=True)
                         return
                 else:
                     await raise_for_status(response)
@@ -143,6 +144,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         write_file.flush()
         write_file.close()
+
+        print("Done rollout collection.", flush=True)
 
         avg_metrics = {k: v / len(rows) for k, v in metrics.items()}
 
