@@ -92,7 +92,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
         if config.responses_create_params:
             print(f"Overriding responses_create_params fields with {config.responses_create_params}")
 
-        cache_idx_set = {}
+        cache_key_set = {}
 
         if config.enable_cache:
             print("Reading cached rollouts...", flush=True)
@@ -100,13 +100,13 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                 with open(config.output_jsonl_fpath, "r") as f:
                     for line in f:
                         item = json.loads(line)
-                        assert "_x_nemo_gym_cache_idx" in item
-                        row_idx = item["_x_nemo_gym_cache_idx"]["row_idx"]
-                        rep_idx = item["_x_nemo_gym_cache_idx"]["rep_idx"]
-                        cache_idx_set.add((row_idx, rep_idx))
+                        assert "_rollout_cache_key" in item
+                        row_idx = item["_rollout_cache_key"]["row_idx"]
+                        rep_idx = item["_rollout_cache_key"]["rep_idx"]
+                        cache_key_set.add((row_idx, rep_idx))
             except OSError:
                 pass
-            print(f"Found {len(cache_idx_set)} cached.", flush=True)
+            print(f"Found {len(cache_key_set)} cached.", flush=True)
 
         print("Starting rollout collection...", flush=True)
 
@@ -116,7 +116,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         async def _post_coroutine(row_idx: int, rep_idx: int, row: dict) -> None:
             if config.enable_cache:
-                if (row_idx, rep_idx) in cache_idx_set:
+                if (row_idx, rep_idx) in cache_key_set:
                     return
             row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
             async with semaphore:
@@ -131,8 +131,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     await raise_for_status(response)
                 result = await response.json()
                 if config.enable_cache:
-                    assert "_x_nemo_gym_cache_idx" not in result
-                    result["_x_nemo_gym_cache_idx"] = {
+                    assert "_rollout_cache_key" not in result
+                    result["_rollout_cache_key"] = {
                         "row_idx": row_idx,
                         "rep_idx": rep_idx,
                     }
