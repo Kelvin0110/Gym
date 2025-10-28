@@ -16,7 +16,7 @@ import json
 from asyncio import Lock, Semaphore
 from collections import Counter
 from contextlib import nullcontext
-from itertools import chain, repeat
+from itertools import count, product
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -57,23 +57,26 @@ class RolloutCollectionConfig(BaseNeMoGymCLIConfig):
         default_factory=dict,
         description="Overrides for the responses_create_params e.g. temperature, max_output_tokens, etc.",
     )
+    enable_cache: Optional[bool] = Field(
+        default=None,
+        description="Enable caching for robust rollouts.",
+    )
 
 
 class RolloutCollectionHelper(BaseModel):  # pragma: no cover
     async def run_from_config(self, config: RolloutCollectionConfig):
-        range_iterator = repeat(0)
+        range_iterator = count()
         if config.limit:
             range_iterator = range(config.limit)
             print(f"Limiting the number of rows to {config.limit}!")
 
         with open(config.input_jsonl_fpath) as input_dataset:
-            rows = [row for _, row in zip(range_iterator, map(json.loads, input_dataset))]
-        print(f"Found {len(rows)} rows!")
-
-        if config.num_repeats:
-            previous_length = len(rows)
-            rows = list(chain.from_iterable(repeat(row, config.num_repeats) for row in rows))
-            print(f"Repeating rows (in a pattern of abc to aabbcc) from {previous_length} to {len(rows)}!")
+            if config.num_repeats:
+                rows = [(row_idx, rep_idx, row) for (row_idx, row), rep_idx in product(zip(range_iterator, map(json.loads, input_dataset)), range(config.num_repeats))]
+                print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
+            else:
+                rows = [(row_idx, 0, row) for row_idx, row in zip(range_iterator, map(json.loads, input_dataset))]
+                print(f"Found {len(rows)} rows!")
 
         semaphore = nullcontext()
         if config.num_samples_in_parallel:
@@ -89,16 +92,49 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
         if config.responses_create_params:
             print(f"Overriding responses_create_params fields with {config.responses_create_params}")
 
+        cache_idx_set = {}
+
+        if config.enable_cache:
+            print("Reading cached rollouts...", flush=True)
+            try:
+                with open(config.output_jsonl_fpath, "r") as f:
+                    for line in f:
+                        item = json.loads(line)
+                        assert "_x_nemo_gym_cache_idx" in item
+                        row_idx = item["_x_nemo_gym_cache_idx"]["row_idx"]
+                        rep_idx = item["_x_nemo_gym_cache_idx"]["rep_idx"]
+                        cache_idx_set.add((row_idx, rep_idx))
+            except OSError:
+                pass
+            print(f"Found {len(cache_idx_set)} cached.", flush=True)
+
+        print("Start rollout collection...", flush=True)
+
         metrics = Counter()
         write_lock = Lock()
         write_file = open(config.output_jsonl_fpath, "a")
 
-        async def _post_coroutine(row: dict) -> None:
+        async def _post_coroutine(row_idx: int, rep_idx: int, row: dict) -> None:
+            if config.enable_cache:
+                if (row_idx, rep_idx) in cache_idx_set:
+                    return
             row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
             async with semaphore:
                 response = await server_client.post(server_name=config.agent_name, url_path="/run", json=row)
-                await raise_for_status(response)
+                if config.enable_cache:
+                    try:
+                        await raise_for_status(response)
+                    except Exception:
+                        return
+                else:
+                    await raise_for_status(response)
                 result = await response.json()
+                if config.enable_cache:
+                    assert "_x_nemo_gym_cache_idx" not in result
+                    result["_x_nemo_gym_cache_idx"] = {
+                        "row_idx": row_idx,
+                        "rep_idx": rep_idx,
+                    }
                 async with write_lock:
                     print(json.dumps(result), file=write_file, flush=True)
                 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
