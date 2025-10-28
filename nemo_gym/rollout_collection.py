@@ -28,6 +28,7 @@ from nemo_gym.server_utils import (
     ServerClient,
     get_global_config_dict,
     is_global_aiohttp_client_setup,
+    raise_for_status,
     set_global_aiohttp_client,
 )
 
@@ -96,7 +97,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
             row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
             async with semaphore:
                 response = await server_client.post(server_name=config.agent_name, url_path="/run", json=row)
-                response.raise_for_status()
+                await raise_for_status(response)
                 result = await response.json()
                 async with write_lock:
                     print(json.dumps(result), file=write_file, flush=True)
@@ -118,7 +119,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         async def _post_subroutine(row: Dict) -> Dict:
             res = await server_client.post(server_name=row.pop("agent_ref")["name"], url_path="/run", json=row)
-            res.raise_for_status()
+            await raise_for_status(res)
             return await res.json()
 
         return await tqdm.gather(*map(_post_subroutine, examples), desc="Collecting rollouts", miniters=10)
