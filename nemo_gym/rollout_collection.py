@@ -114,7 +114,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
         write_lock = Lock()
         write_file = open(config.output_jsonl_fpath, "a")
 
-        async def _post_coroutine(row_idx: int, rep_idx: int, row: dict) -> None:
+        async def _post_coroutine(row: tuple) -> None:
+            row_idx, rep_idx, row = row
             if config.enable_cache:
                 if (row_idx, rep_idx) in cache_key_set:
                     return
