@@ -4,15 +4,14 @@ The user has asked an AI assistant a question, and the AI assistant has generate
 
 Given the text content of the answer, distill the answer to its minimal core that is necessary and sufficient for answering the given question.
 
-If the question is numerical or mathematical, the distilled answer may be, for example, a number, a symbolic math expression, and may contain units.
-
-If the question is factual knowledge-based, the distilled answer may be, for example, a reference to a concept, logical proposition, place/time, thing, etc.
-
-If the question asks for the answer to be contained within special delimiters (such as \boxed{}), the distilled answer should preserve the entire content within those special delimiters.
+- If the question is numerical or mathematical, the distilled answer may be, for example, a number, a symbolic math expression, and may contain units.
+- If the question is factual knowledge-based, the distilled answer may be, for example, a reference to a concept, logical proposition, place/time, thing, etc.
+- If the question asks for the answer to be contained within special delimiters (such as \boxed{}), the distilled answer should preserve the entire content within those special delimiters.
+- If the answer is mathematical or numerical and contains both an exact and an approximate value, preserve both values in the distilled answer.
 
 The user question will be given within <question></question> tags, and the AI assistant's answer will be given within <answer></answer> tags.
 
-You should output the distilled answer within <distilled_answer></distilled_answer> tags.
+Output the distilled answer within <distilled_answer></distilled_answer> tags.
 
 Example Input:
 
