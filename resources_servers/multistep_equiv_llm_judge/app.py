@@ -130,7 +130,8 @@ class JudgeEvaluation(BaseModel):
 
 class MultistepEquivLLMJudgeVerifyResponse(BaseVerifyResponse):
     expected_answer: str
-    judge_evaluations: list[JudgeEvaluation]
+    model_answer: Optional[str]
+    judge_metadata: Optional[dict]
 
 
 @dataclass
@@ -410,7 +411,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 **payload,
                 reward=reward,
                 expected_answer=expected_answer,
-                judge_evaluations=[],
+                model_answer=None,
+                judge_metadata=None,
             )
 
         model_answer = await self._query_judge_distill_quorum(
@@ -432,7 +434,8 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 **payload,
                 reward=reward,
                 expected_answer=expected_answer,
-                judge_evaluations=[],
+                model_answer=model_answer,
+                judge_metadata=None,
             )
         model_distilled_answer = model_answer
         model_distilled_answer = _replace_unicode_subscripts_superscripts(model_distilled_answer)
@@ -536,7 +539,22 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             **payload,
             reward=reward,
             expected_answer=expected_distilled_answer,
-            judge_evaluations=[],
+            model_answer=model_distilled_answer,
+            judge_metadata={
+                "swap": self.config.swap,
+                "quorum_max_samples": self.config.quorum_max_samples,
+                "quorum_type": self.config.quorum_type,
+                "evaluation": evaluation,
+                "equivalent": comparison["equivalent"],
+                # "model_greater": comparison.get("model_greater", None),
+                # "model_less": comparison.get("model_less", None),
+                "classifier": expected_classifier,
+                "judge_equivalent_judgments": comparison_dict["equivalent_judgments"],
+                "judge_model_greater_judgments": comparison_dict.get("model_greater_judgments", None),
+                "judge_model_less_judgments": comparison_dict.get("model_less_judgments", None),
+                "default_judge_responses_create_params": self._default_judge_params_dict,
+                "judge_responses": comparison_dict["responses"],
+            },
         )
 
     async def _post_judge_response(self, params, server: Optional[str] = None) -> NeMoGymResponse:
