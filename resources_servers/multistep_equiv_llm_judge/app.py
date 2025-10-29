@@ -65,7 +65,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
 
     # Default logical name for this resources server
     name: str = "multistep_equiv_llm_judge"
-    judge_model_server: ModelServerRef
+    judge_default_model_server: ModelServerRef
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
 
     judge_endpoint_max_concurrency: Optional[int] = 128
@@ -475,7 +475,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         try:
             async with self._judge_endpoint_max_concurrency:
                 response = await self.server_client.post(
-                    server_name=self.config.judge_model_server.name,
+                    server_name=self.config.judge_default_model_server.name,
                     url_path="/v1/responses",
                     json=params,
                 )

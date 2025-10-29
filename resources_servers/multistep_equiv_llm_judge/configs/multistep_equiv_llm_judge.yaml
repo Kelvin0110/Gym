@@ -2,7 +2,7 @@ multistep_equiv_llm_judge:
   resources_servers:
     multistep_equiv_llm_judge:
       entrypoint: app.py
-      judge_model_server:
+      judge_default_model_server:
         type: responses_api_models
         name: policy_model
       judge_responses_create_params:
