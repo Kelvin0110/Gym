@@ -14,6 +14,7 @@
 import asyncio
 import json
 from asyncio import Semaphore
+import sys
 from os import environ, getenv, makedirs
 from pathlib import Path
 from typing import Any, Callable, Literal, Optional
@@ -78,7 +79,7 @@ class MiniSWEAgentVerifyResponse(BaseVerifyResponse):
     scheduling_strategy="SPREAD",
     runtime_env={
         # TODO: might not be the best way to do this
-        "py_executable": str(Path(__file__).parent / ".venv" / "bin" / "python"),
+        "py_executable": sys.executable,
     },
 )
 def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
