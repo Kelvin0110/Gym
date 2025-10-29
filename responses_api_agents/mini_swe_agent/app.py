@@ -74,7 +74,13 @@ class MiniSWEAgentVerifyResponse(BaseVerifyResponse):
     model_config = ConfigDict(extra="allow")
 
 
-@ray.remote(scheduling_strategy="SPREAD")
+@ray.remote(
+    scheduling_strategy="SPREAD",
+    runtime_env={
+        # TODO: might not be the best way to do this
+        "py_executable": str(Path(__file__).parent / ".venv" / "bin" / "python"),
+    },
+)
 def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
     return runner(**params)
 
