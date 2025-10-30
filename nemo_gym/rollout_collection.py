@@ -91,10 +91,12 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        tqdm_miniters = 10
-        print(
-            f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
-        )
+        tqdm_miniters = 1
+        if False:
+            tqdm_miniters = 10
+            print(
+                f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
+            )
 
         if config.responses_create_params:
             print(f"Overriding responses_create_params fields with {config.responses_create_params}")
@@ -122,11 +124,15 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
         write_lock = Lock()
         write_file = open(config.output_jsonl_fpath, "a")
 
-        async def _post_coroutine(row: tuple) -> None:
+        def _filter_row(row: tuple) -> bool:
             row_idx, rep_idx, row = row
             if config.enable_cache:
                 if (row_idx, rep_idx) in cache_key_set:
-                    return
+                    return False
+            return True
+
+        async def _post_coroutine(row: tuple) -> None:
+            row_idx, rep_idx, row = row
             row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
             async with semaphore:
                 response = await server_client.post(server_name=config.agent_name, url_path="/run", json=row)
@@ -149,7 +155,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     print(json.dumps(result), file=write_file, flush=True)
                 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
-        await tqdm.gather(*map(_post_coroutine, rows), desc="Collecting rollouts", miniters=tqdm_miniters)
+        await tqdm.gather(*filter(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters)
 
         write_file.flush()
         write_file.close()
