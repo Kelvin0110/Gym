@@ -62,7 +62,7 @@ class LLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_endpoint_max_concurrency: Optional[int] = None
 
     judge_system_message: Optional[str] = None
-    judge_prompt_template: str
+    judge_prompt_template_fpath: str
     judge_equal_label: str = "[[A=B]]"
     judge_not_equal_label: str = "[[A!=B]]"
     # Optional regex to extract the question from the last user message.
@@ -254,11 +254,15 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self._judge_endpoint_max_concurrency = nullcontext()
         if self.config.judge_endpoint_max_concurrency is not None:
             self._judge_endpoint_max_concurrency = asyncio.Semaphore(
                 value=self.config.judge_endpoint_max_concurrency,
             )
+
+        with open(self.config.judge_prompt_template_fpath, "r") as f:
+            self._judge_prompt_template = f.read().strip()
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -430,7 +434,7 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
         not_equal_label = cfg.judge_not_equal_label
 
         responses_create_params = cfg.judge_responses_create_params.model_copy(deep=True)
-        prompt_template = cfg.judge_prompt_template
+        prompt_template = self._judge_prompt_template
         system_message = cfg.judge_system_message
 
         user_prompt = prompt_template.format(
