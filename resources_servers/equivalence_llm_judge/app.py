@@ -20,7 +20,9 @@ The judge prompt is fully configurable via server config.
 # limitations under the License.
 from __future__ import annotations
 
+import asyncio
 import re
+from contextlib import nullcontext
 from typing import Any, Optional
 
 from fastapi import FastAPI
@@ -56,6 +58,8 @@ class LLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     name: str = "equivalence_llm_judge"
     judge_model_server: ModelServerRef
     judge_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
+
+    judge_endpoint_max_concurrency: Optional[int] = 128
 
     judge_system_message: Optional[str] = None
     judge_prompt_template: str
@@ -248,6 +252,14 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
 
     config: LLMJudgeResourcesServerConfig
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._judge_endpoint_max_concurrency = nullcontext()
+        if self.config.judge_endpoint_max_concurrency is not None:
+            self._judge_endpoint_max_concurrency = asyncio.Semaphore(
+                value=self.config.judge_endpoint_max_concurrency,
+            )
+
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
         return app
@@ -431,11 +443,28 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
         msgs.append(NeMoGymEasyInputMessage(role="user", content=user_prompt))
         responses_create_params.input = msgs
 
-        response = await self.server_client.post(
-            server_name=cfg.judge_model_server.name,
-            url_path="/v1/responses",
-            json=responses_create_params,
-        )
+        try:
+            async with self._judge_endpoint_max_concurrency:
+                response = await self.server_client.post(
+                    server_name=cfg.judge_model_server.name,
+                    url_path="/v1/responses",
+                    json=responses_create_params,
+                )
+        except Exception as e:
+            print(
+                f"LLMJudgeResourcesServer._generate_judge_evaluation: dummy response b/c of HTTP POST exception: {type(e).__name__} {e}",
+                flush=True,
+            )
+            response = NeMoGymResponse.model_validate(
+                {
+                    "output": [
+                        {
+                            "role": "assistant",
+                            "content": "",
+                        }
+                    ],
+                }
+            )
         judge_response = NeMoGymResponse.model_validate(await response.json())
         eval_record = JudgeEvaluation(
             responses_create_params=responses_create_params,
