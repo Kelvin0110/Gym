@@ -213,7 +213,9 @@ class AviaryAgent(SimpleResponsesAPIAgent):
                     break
 
             if done:
-                print("Done, last tool call:", [c.name for c in all_fn_calls], flush=True)
+                print(
+                    "Done, last tool call:", [c.name for c in all_fn_calls], "reward:", env_response.reward, flush=True
+                )
                 break
 
         await self.server_client.post(
