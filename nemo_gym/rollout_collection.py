@@ -175,7 +175,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         avg_metrics = {k: v / len(rows) for k, v in metrics.items()}
 
-        print(json.dumps(avg_metrics, indent=4))
+        if avg_metrics:
+            print(f"Metrics (sample mean): {json.dumps(avg_metrics, indent=4)}", flush=True)
 
     async def run_examples(
         self, examples: List[Dict], head_server_config: Optional[BaseServerConfig] = None
