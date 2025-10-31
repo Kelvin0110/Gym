@@ -20,8 +20,8 @@ from itertools import count, product
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-from tqdm.asyncio import tqdm
-from tqdm import tqdm as sync_tqdm
+from tqdm.asyncio import tqdm as tqdm_asyncio
+from tqdm import tqdm
 
 from nemo_gym.config_types import BaseNeMoGymCLIConfig, BaseServerConfig
 from nemo_gym.server_utils import (
@@ -83,7 +83,10 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                         zip(range_iterator, map(json.loads, input_dataset)), range(config.num_repeats)
                     )
                 ]
-                print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
+                print(f"Found {len(rows) // config.num_repeats} rows!")
+                print(
+                    f"Including {config.num_repeats} repeats per original row, found {len(rows)} total repeated rows!"
+                )
                 print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
             else:
                 rows = [(row_idx, 0, row) for row_idx, row in zip(range_iterator, map(json.loads, input_dataset))]
@@ -111,7 +114,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
             print("Reading cached rollouts...", flush=True)
             try:
                 with open(config.output_jsonl_fpath, "r") as f:
-                    for line in sync_tqdm(f, total=len(rows)):
+                    for line in tqdm(f, total=len(rows)):
                         item = json.loads(line)
                         assert "_rollout_cache_key" in item
                         item_cache_key = item["_rollout_cache_key"]
@@ -161,7 +164,9 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     print(json.dumps(result), file=write_file, flush=True)
                 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
-        await tqdm.gather(*filter(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters)
+        await tqdm_asyncio.gather(
+            *map(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters
+        )
 
         write_file.flush()
         write_file.close()
@@ -170,7 +175,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         avg_metrics = {k: v / len(rows) for k, v in metrics.items()}
 
-        print(json.dumps(avg_metrics, indent=4))
+        if avg_metrics:
+            print(f"Metrics (sample mean): {json.dumps(avg_metrics, indent=4)}", flush=True)
 
     async def run_examples(
         self, examples: List[Dict], head_server_config: Optional[BaseServerConfig] = None
