@@ -15,7 +15,7 @@ import asyncio
 import json
 from collections import Counter
 from contextlib import nullcontext
-from itertools import count, product
+from itertools import count, product, repeat
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -70,19 +70,41 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
             range_iterator = range(config.limit)
             print(f"Limiting the number of rows to {config.limit}!")
 
+        rollout_cache = None
+
+        def _load_row(row: tuple) -> tuple:
+            (row_idx, row), rep_idx = row
+            item = json.loads(row)
+            nonlocal rollout_cache
+            if rollout_cache is None:
+                if "_rollout_cache_key" in item:
+                    rollout_cache = True
+                else:
+                    rollout_cache = False
+            if rollout_cache:
+                assert "_rollout_cache_key" in item
+                item_cache_key = item["_rollout_cache_key"]
+                row_idx = item_cache_key["row_idx"]
+                rep_idx = item_cache_key["rep_idx"]
+            return row_idx, rep_idx, item
+
         with open(config.input_jsonl_fpath) as input_dataset:
             if config.num_repeats:
-                rows = [
-                    (row_idx, rep_idx, row)
-                    for (row_idx, row), rep_idx in product(
-                        zip(range_iterator, map(json.loads, input_dataset)), range(config.num_repeats)
-                    )
-                ]
-                print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
-                print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
+                repeat_iterator = range(config.num_repeats)
             else:
-                rows = [(row_idx, 0, row) for row_idx, row in zip(range_iterator, map(json.loads, input_dataset))]
-                print(f"Found {len(rows)} rows!")
+                repeat_iterator = repeat(0, 1)
+            rows = [
+                row
+                for row in map(
+                    _load_row,
+                    product(zip(range_iterator, input_dataset), repeat_iterator),
+                )
+            ]
+        if config.num_repeats:
+            print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
+            print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
+        else:
+            print(f"Found {len(rows)} rows!")
 
         semaphore = nullcontext()
         if config.num_samples_in_parallel:
