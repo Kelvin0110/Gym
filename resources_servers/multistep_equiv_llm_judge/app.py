@@ -121,13 +121,6 @@ class MultistepEquivLLMJudgeVerifyRequest(MultistepEquivLLMJudgeRunRequest, Base
     pass
 
 
-class JudgeEvaluation(BaseModel):
-    responses_create_params: NeMoGymResponseCreateParamsNonStreaming
-    response: NeMoGymResponse
-    # Extracted verdict token from judge output, e.g., "[[A=B]]" or "[[A!=B]]".
-    verdict_label: Optional[str] = None
-
-
 class MultistepEquivLLMJudgeVerifyResponse(BaseVerifyResponse):
     expected_answer: str
     model_answer: Optional[str]
@@ -235,7 +228,9 @@ def _get_response_last_assistant_raw_response_text(response, parse_reasoning: bo
     text = _get_response_content_text(response, turn=-1, role="assistant")
     # FIXME: hardcoded reasoning end token.
     if parse_reasoning:
-        reasoning_text, _, raw_response_text = text.partition("</think>")
+        reasoning_text, sep, raw_response_text = text.partition("</think>")
+        if not sep:
+            raw_response_text = ""
     else:
         raw_response_text = text
     if raw_response_text.startswith("\n\n"):
