@@ -83,7 +83,10 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                         zip(range_iterator, map(json.loads, input_dataset)), range(config.num_repeats)
                     )
                 ]
-                print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
+                print(f"Found {len(rows) // config.num_repeats} rows!")
+                print(
+                    f"Including {config.num_repeats} repeats per original row, found {len(rows)} total repeated rows!"
+                )
                 print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
             else:
                 rows = [(row_idx, 0, row) for row_idx, row in zip(range_iterator, map(json.loads, input_dataset))]
@@ -161,7 +164,9 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     print(json.dumps(result), file=write_file, flush=True)
                 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
-        await tqdm_asyncio.gather(*map(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters)
+        await tqdm_asyncio.gather(
+            *map(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters
+        )
 
         write_file.flush()
         write_file.close()
