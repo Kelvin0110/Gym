@@ -24,12 +24,13 @@ import asyncio
 import contextlib
 import json
 import os
+import sys
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
 from fastapi import FastAPI
-from pydantic import BaseModel
 
 from nemo_gym.base_resources_server import (
     BaseResourcesServerConfig,
@@ -69,6 +70,7 @@ class MultistepEquivLLMJudgeResourcesServerConfig(BaseResourcesServerConfig):
     judge_default_model_server: ModelServerRef
     judge_default_responses_create_params: NeMoGymResponseCreateParamsNonStreaming
     judge_compare_model_server: Optional[ModelServerRef] = None
+    judge_compare_responses_create_params: Optional[NeMoGymResponseCreateParamsNonStreaming] = None
 
     judge_endpoint_max_concurrency: Optional[int] = 128
 
@@ -191,7 +193,10 @@ def _get_response_content_text(response, turn: int, role: Optional[str] = None) 
         return None
     if turn >= 0 and len(response.output) <= turn:
         return None
-    if role is not None and response.output[turn].role != role:
+    if (
+        role is not None and
+        getattr(response.output[turn], "role", None) != role
+    ):
         return None
     content = response.output[turn].content
     if isinstance(content, str):
@@ -230,10 +235,12 @@ def _get_response_last_assistant_raw_response_text(response, parse_reasoning: bo
     if parse_reasoning:
         reasoning_text, sep, raw_response_text = text.partition("</think>")
         if not sep:
-            raw_response_text = ""
+            raw_response_text = None
     else:
         raw_response_text = text
-    if raw_response_text.startswith("\n\n"):
+    if raw_response_text is None:
+        raw_response_text = ""
+    elif raw_response_text.startswith("\n\n"):
         raw_response_text = raw_response_text[2:]
     elif raw_response_text.startswith("\n"):
         raw_response_text = raw_response_text[1:]
@@ -327,6 +334,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         super().__init__(*args, **kwargs)
         if self.config.debug:
             print(f"DEBUG: MultistepEquivLLMJudgeResourcesServer: config = {self.config}", flush=True)
+            # self._dummy_response()
 
         base_log_dir = self.config.base_log_dir
         if base_log_dir is None:
@@ -407,9 +415,17 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 reward=reward,
                 expected_answer=expected_answer,
                 model_answer=None,
-                judge_metadata=None,
+                judge_metadata={
+                    "early_stop": "empty_model_response",
+                },
             )
 
+        # if self.config.debug:
+        if False:
+            print(
+                "DEBUG: MultistepEquivLLMJudgeResourcesServer.verify: query: distilled model answer...",
+                flush=True,
+            )
         model_answer = await self._query_judge_distill_quorum(
             question=question,
             answer=model_raw_response,
@@ -430,7 +446,9 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 reward=reward,
                 expected_answer=expected_answer,
                 model_answer=model_answer,
-                judge_metadata=None,
+                judge_metadata={
+                    "early_stop": "empty_model_answer",
+                },
             )
         model_distilled_answer = model_answer
         model_distilled_answer = _replace_unicode_subscripts_superscripts(model_distilled_answer)
@@ -564,17 +582,49 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             },
         )
 
+    def _dummy_response(self) -> NeMoGymResponse:
+        response = NeMoGymResponse.model_validate(
+            {
+                "id": f"resp_{uuid.uuid4()}",
+                "object": "response",
+                "created_at": 0,
+                "model": "dummy",
+                "parallel_tool_calls": True,
+                "tool_choice": "auto",
+                "tools": [],
+                "output": [
+                    {
+                        "role": "assistant",
+                        "content": "",
+                    }
+                ],
+            }
+        )
+        return response
+
     async def _post_judge_response(self, params, server: Optional[str] = None) -> NeMoGymResponse:
         server_name = None
-        if False:
-            if server is None or server == "default":
-                pass
-            elif server == "compare" and self.config.judge_compare_model_server:
+        # if False:
+        if server is None or server == "default":
+            pass
+        elif server == "compare":
+            if self.config.judge_compare_model_server:
                 server_name = self.config.judge_compare_model_server.name
-            else:
-                raise NotImplementedError(f"MultistepEquivLLMJudgeResourcesServer._post_judge_response: invalid server = {repr(server)}")
+        else:
+            raise NotImplementedError(f"MultistepEquivLLMJudgeResourcesServer._post_judge_response: invalid server = {repr(server)}")
         if server_name is None:
             server_name = self.config.judge_default_model_server.name
+        # if self.config.debug:
+        if False:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: server name = {server_name}",
+                flush=True,
+            )
+        if False:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: post params = {params}",
+                flush=True,
+            )
         try:
             async with self._judge_endpoint_max_concurrency:
                 response = await self.server_client.post(
@@ -588,16 +638,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
                 flush=True,
             )
-            response = NeMoGymResponse.model_validate(
-                {
-                    "output": [
-                        {
-                            "role": "assistant",
-                            "content": "",
-                        }
-                    ],
-                }
-            )
+            response = self._dummy_response()
         return response
 
     async def _generate_judge_classify_response(
@@ -738,12 +779,17 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
         )
 
+        if self.config.debug:
+            print(
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: messages = {distill_messages}",
+                flush=True,
+            )
         distill_params = cfg.judge_default_responses_create_params.model_copy(deep=True)
         distill_params.input = distill_messages
         distill_response = await self._post_judge_response(distill_params)
         if self.config.debug:
             print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: {distill_response}",
+                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._generate_judge_distill_response: response = {distill_response}",
                 flush=True,
             )
 
@@ -889,7 +935,10 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
         )
 
-        compare_params = cfg.judge_default_responses_create_params.model_copy(deep=True)
+        if cfg.judge_compare_responses_create_params:
+            compare_params = cfg.judge_compare_responses_create_params.model_copy(deep=True)
+        else:
+            compare_params = cfg.judge_default_responses_create_params.model_copy(deep=True)
         compare_params.input = compare_messages
         compare_response = await self._post_judge_response(compare_params, server="compare")
         if self.config.debug:
