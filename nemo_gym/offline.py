@@ -53,9 +53,17 @@ class VerifyOfflineConfig(BaseNeMoGymCLIConfig):
     num_samples_in_parallel: Optional[int] = Field(
         default=None, description="Limit the number of concurrent samples running at once."
     )
+    tqdm_miniters: Optional[int] = Field(
+        default=None,
+        description="tqdm miniters.",
+    )
     remove_reward: Optional[bool] = Field(
         default=None,
         description="Remove reward.",
+    )
+    use_rollout_cache: Optional[bool] = Field(
+        default=None,
+        description="Use rollout cache keys.",
     )
     enable_cache: Optional[bool] = Field(
         default=None,
@@ -66,27 +74,33 @@ class VerifyOfflineConfig(BaseNeMoGymCLIConfig):
 class VerifyOfflineHelper(BaseModel):  # pragma: no cover
     async def run_from_config(self, config: VerifyOfflineConfig):
         range_iterator = count()
-        if config.limit:
+        if config.limit and not config.use_rollout_cache:
             range_iterator = range(config.limit)
             print(f"Limiting the number of rows to {config.limit}!")
-
-        rollout_cache = None
 
         def _load_row(row: tuple) -> tuple:
             (row_idx, row), rep_idx = row
             item = json.loads(row)
-            nonlocal rollout_cache
-            if rollout_cache is None:
-                if "_rollout_cache_key" in item:
-                    rollout_cache = True
-                else:
-                    rollout_cache = False
-            if rollout_cache:
+            if config.use_rollout_cache:
                 assert "_rollout_cache_key" in item
                 item_cache_key = item["_rollout_cache_key"]
                 row_idx = item_cache_key["row_idx"]
                 rep_idx = item_cache_key["rep_idx"]
             return row_idx, rep_idx, item
+
+        def _postfilter_row(row: tuple) -> bool:
+            row_idx, rep_idx, item = row
+            row_cond = True
+            if config.limit:
+                row_cond = row_idx < config.limit
+            if not row_cond:
+                return False
+            rep_cond = True
+            if config.num_repeats:
+                rep_cond = rep_idx < config.num_repeats
+            if not rep_cond:
+                return False
+            return True
 
         with open(config.input_jsonl_fpath) as input_dataset:
             if config.num_repeats:
@@ -99,6 +113,7 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
                     _load_row,
                     product(zip(range_iterator, input_dataset), repeat_iterator),
                 )
+                if _postfilter_row(row)
             ]
         if config.num_repeats:
             print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
@@ -112,10 +127,16 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        tqdm_miniters = 10
-        print(
-            f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
-        )
+        if config.tqdm_miniters:
+            if len(rows) > config.tqdm_miniters:
+                tqdm_miniters = config.tqdm_miniters
+                print(
+                    f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
+                )
+            else:
+                tqdm_miniters = 1
+        else:
+            tqdm_miniters = 1
 
         cache_key_set = set()
 
@@ -123,7 +144,7 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
             print("Reading cached verifications...", flush=True)
             try:
                 with open(config.output_jsonl_fpath, "r") as f:
-                    for line in tqdm(f, total=len(rows)):
+                    for line in tqdm(f, total=len(rows), miniters=tqdm_miniters):
                         item = json.loads(line)
                         assert "_verify_cache_key" in item
                         item_cache_key = item["_verify_cache_key"]
@@ -148,10 +169,9 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
             return True
 
         async def _post_coroutine(row: tuple) -> None:
-            row_idx, rep_idx, row = row
-            row["responses_create_params"] = row["responses_create_params"]
+            row_idx, rep_idx, request = row
             async with semaphore:
-                response = await server_client.post(server_name=config.server_name, url_path="/verify", json=row)
+                response = await server_client.post(server_name=config.server_name, url_path="/verify", json=request)
                 if config.enable_cache:
                     try:
                         await raise_for_status(response)
@@ -175,7 +195,7 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
 
         await tqdm_asyncio.gather(
             *map(_post_coroutine, filter(_filter_row, rows)),
-            desc="Collecting rollouts",
+            desc="Verifying",
             miniters=tqdm_miniters,
         )
 

@@ -2,6 +2,7 @@ noop:
   resources_servers:
     noop:
       entrypoint: app.py
+      reward: 1.0
 noop_simple_agent:
   responses_api_agents:
     simple_agent:
