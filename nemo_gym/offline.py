@@ -19,8 +19,8 @@ from itertools import count, product, repeat
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from tqdm.asyncio import tqdm as tqdm_asyncio
 from tqdm import tqdm
+from tqdm.asyncio import tqdm as tqdm_asyncio
 
 from nemo_gym.config_types import BaseNeMoGymCLIConfig, BaseServerConfig
 from nemo_gym.server_utils import (

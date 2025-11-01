@@ -37,19 +37,13 @@ class DummyModel(SimpleResponsesAPIModel):
     def model_post_init(self, context):
         return super().model_post_init(context)
 
-    async def responses(
-        self, request, body: NeMoGymResponseCreateParamsNonStreaming = Body()
-    ) -> NeMoGymResponse:
-        raise RuntimeError(
-            "DummyModel.responses: should never actually be called!"
-        )
+    async def responses(self, request, body: NeMoGymResponseCreateParamsNonStreaming = Body()) -> NeMoGymResponse:
+        raise RuntimeError("DummyModel.responses: should never actually be called!")
 
     async def chat_completions(
         self, request, body: NeMoGymChatCompletionCreateParamsNonStreaming = Body()
     ) -> NeMoGymChatCompletion:
-        raise RuntimeError(
-            "DummyModel.chat_completions: should never actually be called!"
-        )
+        raise RuntimeError("DummyModel.chat_completions: should never actually be called!")
 
 
 if __name__ == "__main__":
