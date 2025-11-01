@@ -94,6 +94,8 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
             rep_cond = True
             if config.num_repeats:
                 rep_cond = rep_idx < config.num_repeats
+            else:
+                rep_cond = rep_idx == 0
             if not rep_cond:
                 return False
             return True
