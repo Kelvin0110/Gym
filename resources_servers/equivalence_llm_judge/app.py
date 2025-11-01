@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-import uuid
 from contextlib import nullcontext
 from typing import Any, Optional
 
@@ -41,6 +40,7 @@ from nemo_gym.openai_utils import (
     NeMoGymEasyInputMessage,
     NeMoGymResponse,
     NeMoGymResponseCreateParamsNonStreaming,
+    empty_response,
 )
 
 
@@ -448,34 +448,12 @@ class LLMJudgeResourcesServer(SimpleResourcesServer):
         msgs.append(NeMoGymEasyInputMessage(role="user", content=user_prompt))
         responses_create_params.input = msgs
 
-        try:
-            async with self._judge_endpoint_max_concurrency:
-                response = await self.server_client.post(
-                    server_name=cfg.judge_model_server.name,
-                    url_path="/v1/responses",
-                    json=responses_create_params,
-                )
-        except Exception as e:
-            print(
-                f"LLMJudgeResourcesServer._generate_judge_evaluation: dummy response b/c of HTTP POST exception: {type(e).__name__} {e}",
-                flush=True,
-            )
-            response = NeMoGymResponse.model_validate(
-                {
-                    "id": f"resp_{uuid.uuid4()}",
-                    "object": "response",
-                    "created_at": 0,
-                    "model": "dummy",
-                    "parallel_tool_calls": True,
-                    "tool_choice": "auto",
-                    "tools": [],
-                    "output": [
-                        {
-                            "role": "assistant",
-                            "content": "",
-                        }
-                    ],
-                }
+        async with self._judge_endpoint_max_concurrency:
+            response = await self.server_client.wrapped_post(
+                server_name=cfg.judge_model_server.name,
+                url_path="/v1/responses",
+                default_factory=empty_response,
+                json=responses_create_params,
             )
         judge_response = NeMoGymResponse.model_validate(await response.json())
         eval_record = JudgeEvaluation(
