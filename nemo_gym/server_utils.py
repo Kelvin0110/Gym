@@ -17,13 +17,14 @@ import json
 import resource
 from abc import abstractmethod
 from contextlib import asynccontextmanager
+from datetime import datetime
 from io import StringIO
 from logging import Filter as LoggingFilter
 from logging import LogRecord, getLogger
 from os import getenv
 from pathlib import Path
 from threading import Thread
-from traceback import print_exc
+from traceback import format_exc, print_exc
 from typing import Literal, Optional, Tuple, Type, Union, Unpack
 from uuid import uuid4
 
@@ -155,6 +156,8 @@ async def request(
         except ServerDisconnectedError:
             await asyncio.sleep(0.5)
         except Exception as e:
+            # TODO(peter)
+            # print_exc()
             # Don't increment internal since we know we are ok. If we are not, the head server will shut everything down anyways.
             if not _internal:
                 print(
@@ -174,8 +177,25 @@ Sleeping 0.5s and retrying...
 async def raise_for_status(response: ClientResponse) -> None:  # pragma: no cover
     if not response.ok:
         content = await response.content.read()
-        print(f"""Request info: {response.request_info}
-Response content: {content}""")
+        if isinstance(content, str):
+            if content.find("\\n") >= 0:
+                content = json.loads(content)
+                print(f"""Request info: {response.request_info}
+Response content 1:\n{content}""")
+            else:
+                print(f"""Request info: {response.request_info}
+Response content 0: {content}""")
+        else:
+            try:
+                content = json.loads(content.decode("utf-8"))
+                if isinstance(content, dict):
+                    content = json.dumps(json.loads(content.decode('utf-8')), indent=2)
+                print(f"""Request info: {response.request_info}
+Response content 3:\n{content}""")
+            except Exception as e:
+                print(f"""Request info: {response.request_info}
+Content exception: {e}
+Response content 2: {content}""")
 
         try:
             response.raise_for_status()
@@ -406,15 +426,19 @@ class SimpleServer(BaseServer):
             try:
                 return await call_next(request)
             except Exception as e:
-                print_exc()
+                exc_utc = datetime.utcnow().isoformat()
+                # print_exc()
                 print(
-                    f"🚨 Caught an exception printed above in {self.config.name} ({self.__class__.__name__}). If you expect this to be fed back into this model, the exception repr i.e. `repr(e)` is returned to the model. However, please make sure this exception is caught in your server and returned to the model as appropriate. See https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception"
+                    f"🚨 [{exc_utc}] Caught an exception printed below in {self.config.name} ({self.__class__.__name__}). If you expect this to be fed back into this model, the exception repr i.e. `repr(e)` is returned to the model. However, please make sure this exception is caught in your server and returned to the model as appropriate. See https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception\n\n{type(e).__name__} {e}\n\n{format_exc()}",
+                    flush=True,
                 )
                 return JSONResponse(content=repr(e), status_code=500)
             except:
+                exc_utc = datetime.utcnow().isoformat()
                 print_exc()
                 print(
-                    f"🚨 Caught an unknown exception printed above in {self.config.name} ({self.__class__.__name__}). If you expect this to be fed back into this model, nothing meaningful is returned to the model. Please make sure this exception is caught in your server and returned to the model as appropriate. See https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception"
+                    f"🚨 [{exc_utc}] Caught an unknown exception printed above in {self.config.name} ({self.__class__.__name__}). If you expect this to be fed back into this model, nothing meaningful is returned to the model. Please make sure this exception is caught in your server and returned to the model as appropriate. See https://fastapi.tiangolo.com/tutorial/handling-errors/#use-httpexception",
+                    flush=True,
                 )
                 return JSONResponse(content="An unknown error occurred", status_code=500)
 
