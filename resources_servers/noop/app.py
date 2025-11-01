@@ -22,24 +22,24 @@ from nemo_gym.base_resources_server import (
 )
 
 
-class NoopResourcesServerConfig(BaseResourcesServerConfig):
+class NoopResourcesServerConfig(BaseResourcesServerConfig):  # pragma: no cover
     name: str = "noop"
     reward: float = 1.0
 
 
-class NoopRunRequest(BaseRunRequest):
+class NoopRunRequest(BaseRunRequest):  # pragma: no cover
     pass
 
 
-class NoopVerifyRequest(NoopRunRequest, BaseVerifyRequest):
+class NoopVerifyRequest(NoopRunRequest, BaseVerifyRequest):  # pragma: no cover
     pass
 
 
-class NoopVerifyResponse(BaseVerifyResponse):
+class NoopVerifyResponse(BaseVerifyResponse):  # pragma: no cover
     pass
 
 
-class NoopResourcesServer(SimpleResourcesServer):
+class NoopResourcesServer(SimpleResourcesServer):  # pragma: no cover
     config: NoopResourcesServerConfig
 
     def setup_webserver(self) -> FastAPI:
