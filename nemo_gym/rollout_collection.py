@@ -98,12 +98,13 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        tqdm_miniters = 1
-        if False:
+        if len(rows) > 10:
             tqdm_miniters = 10
             print(
                 f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
             )
+        else:
+            tqdm_miniters = 1
 
         if config.responses_create_params:
             print(f"Overriding responses_create_params fields with {config.responses_create_params}")
