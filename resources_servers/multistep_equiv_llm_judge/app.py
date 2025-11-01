@@ -24,12 +24,12 @@ import asyncio
 import contextlib
 import json
 import os
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
 from fastapi import FastAPI
-from pydantic import BaseModel
 
 from nemo_gym.base_resources_server import (
     BaseResourcesServerConfig,
@@ -590,6 +590,13 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
             response = NeMoGymResponse.model_validate(
                 {
+                    "id": f"resp_{uuid.uuid4()}",
+                    "object": "response",
+                    "created_at": 0,
+                    "model": "dummy",
+                    "parallel_tool_calls": True,
+                    "tool_choice": "auto",
+                    "tools": [],
                     "output": [
                         {
                             "role": "assistant",
