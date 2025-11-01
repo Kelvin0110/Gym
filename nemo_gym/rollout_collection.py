@@ -20,8 +20,8 @@ from itertools import count, product
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-from tqdm.asyncio import tqdm
-from tqdm import tqdm as sync_tqdm
+from tqdm.asyncio import tqdm as tqdm_asyncio
+from tqdm import tqdm
 
 from nemo_gym.config_types import BaseNeMoGymCLIConfig, BaseServerConfig
 from nemo_gym.server_utils import (
@@ -91,12 +91,13 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        tqdm_miniters = 1
-        if False:
+        if len(rows) > 10:
             tqdm_miniters = 10
             print(
                 f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
             )
+        else:
+            tqdm_miniters = 1
 
         if config.responses_create_params:
             print(f"Overriding responses_create_params fields with {config.responses_create_params}")
@@ -107,7 +108,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
             print("Reading cached rollouts...", flush=True)
             try:
                 with open(config.output_jsonl_fpath, "r") as f:
-                    for line in sync_tqdm(f, total=len(rows)):
+                    for line in tqdm(f, total=len(rows)):
                         item = json.loads(line)
                         assert "_rollout_cache_key" in item
                         item_cache_key = item["_rollout_cache_key"]
@@ -155,7 +156,7 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                     print(json.dumps(result), file=write_file, flush=True)
                 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
 
-        await tqdm.gather(
+        await tqdm_asyncio.gather(
             *map(_post_coroutine, filter(_filter_row, rows)), desc="Collecting rollouts", miniters=tqdm_miniters
         )
 
