@@ -98,12 +98,15 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
             rep_cond = True
             if config.num_repeats:
                 rep_cond = rep_idx < config.num_repeats
+            else:
+                rep_cond = rep_idx == 0
             if not rep_cond:
                 return False
             return True
 
+        print("Reading input dataset rows...", flush=True)
         with open(config.input_jsonl_fpath) as input_dataset:
-            if config.num_repeats:
+            if config.num_repeats and not config.use_rollout_cache:
                 repeat_iterator = range(config.num_repeats)
             else:
                 repeat_iterator = repeat(0, 1)
@@ -127,16 +130,15 @@ class VerifyOfflineHelper(BaseModel):  # pragma: no cover
 
         server_client = self.setup_server_client()
 
-        if config.tqdm_miniters:
-            if len(rows) > config.tqdm_miniters:
-                tqdm_miniters = config.tqdm_miniters
-                print(
-                    f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
-                )
-            else:
-                tqdm_miniters = 1
-        else:
+        tqdm_miniters = config.tqdm_miniters
+        if tqdm_miniters is None:
+            tqdm_miniters = 10
+        if tqdm_miniters >= len(rows):
             tqdm_miniters = 1
+        if tqdm_miniters > 1:
+            print(
+                f"The tqdm progress bar will only update every {tqdm_miniters} samples that finish to ensure that you are not being spammed."
+            )
 
         cache_key_set = set()
 
