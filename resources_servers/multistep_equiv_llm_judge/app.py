@@ -126,6 +126,7 @@ class MultistepEquivLLMJudgeVerifyRequest(MultistepEquivLLMJudgeRunRequest, Base
 class MultistepEquivLLMJudgeVerifyResponse(BaseVerifyResponse):
     expected_answer: str
     model_answer: Optional[str]
+    id: Optional[str]
     judge_metadata: Optional[dict]
 
 
@@ -157,6 +158,29 @@ class _BooleanQuorum:
             return False
         else:
             return None
+
+    def values(self) -> list:
+        return list(self._values)
+
+
+@dataclass
+class _StringQuorum:
+    _values: list[Optional[str]] = field(default_factory=list)
+
+    def update(self, value: Optional[bool]):
+        self._values.append(value)
+
+    def majority(self, samples: Optional[int] = None) -> Optional[str]:
+        if samples is not None:
+            quorum_samples = samples
+        else:
+            quorum_samples = len(self._values)
+        min_quorum = (quorum_samples // 2) + 1
+        v_dict = defaultdict(int)
+        for v in self._values:
+            v_dict[v] += 1
+        v_sort = sorted([(ct, v) for v, ct in v_dict.items()], reverse=True)
+        return v_sort[0][1]
 
     def values(self) -> list:
         return list(self._values)
@@ -247,7 +271,7 @@ def _get_response_last_assistant_raw_response_text(response, parse_reasoning: bo
     return raw_response_text
 
 
-def _extract_tagged_section(haystack: str, tag: str, strip: bool = True) -> Optional[str]:
+def _extract_tagged_section_text(haystack: str, tag: str, strip: bool = True) -> Optional[str]:
     needle = haystack
     needle, sep, _ = needle.rpartition(f"</{tag}>")
     if not sep:
@@ -260,8 +284,9 @@ def _extract_tagged_section(haystack: str, tag: str, strip: bool = True) -> Opti
     else:
         return needle
 
+
 def _extract_tagged_section_bool(haystack: str, tag: str) -> Optional[bool]:
-    needle = _extract_tagged_section(haystack, tag, strip=True)
+    needle = _extract_tagged_section_text(haystack, tag, strip=True)
     value = None
     if isinstance(needle, str):
         needle_lo = needle.lower()
@@ -270,6 +295,15 @@ def _extract_tagged_section_bool(haystack: str, tag: str) -> Optional[bool]:
         elif needle_lo == "false":
             value = False
     return value
+
+
+def _extract_tagged_section(haystack: str, tag: str, type_):
+    if type_ is str:
+        return _extract_tagged_section_text(haystack, tag)
+    elif type_ is bool:
+        return _extract_tagged_section_bool(haystack, tag)
+    else:
+        raise NotImplementedError(f"_extract_tagged_section: type_ = {type_.__name__}")
 
 
 def _build_unicode_subscripts_superscripts_replacement() -> dict:
@@ -406,8 +440,13 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             )
 
         if not model_raw_response:
-            payload = body.model_dump()
+            payload = json.loads(body.model_dump_json())
             payload.pop("expected_answer", None)
+            payload.pop("id", None)
+            payload.pop("uuid", None)
+            uid = body.id
+            if uid is None:
+                uid = body.uuid
             reward = 0.0
             # TODO: early stop logging.
             return MultistepEquivLLMJudgeVerifyResponse(
@@ -415,6 +454,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 reward=reward,
                 expected_answer=expected_answer,
                 model_answer=None,
+                id=uid,
                 judge_metadata={
                     "early_stop": "empty_model_response",
                 },
@@ -437,8 +477,15 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 flush=True,
             )
         if not model_answer:
-            payload = body.model_dump()
+            model_answer = model_raw_response
+        if False and not model_answer:
+            payload = json.loads(body.model_dump_json())
             payload.pop("expected_answer", None)
+            payload.pop("id", None)
+            payload.pop("uuid", None)
+            uid = body.id
+            if uid is None:
+                uid = body.uuid
             reward = 0.0
             # TODO: early stop logging.
             return MultistepEquivLLMJudgeVerifyResponse(
@@ -446,11 +493,13 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 reward=reward,
                 expected_answer=expected_answer,
                 model_answer=model_answer,
+                id=uid,
                 judge_metadata={
                     "early_stop": "empty_model_answer",
                 },
             )
         model_distilled_answer = model_answer
+        model_distilled_answer_orig = model_distilled_answer
         model_distilled_answer = _replace_unicode_subscripts_superscripts(model_distilled_answer)
 
         if self.config.expected_answer_distill:
@@ -546,13 +595,19 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                     print(json.dumps(log_item), file=log_file, flush=True)
                     log_file.close()
 
-        payload = body.model_dump()
+        payload = json.loads(body.model_dump_json())
         payload.pop("expected_answer", None)
+        payload.pop("id", None)
+        payload.pop("uuid", None)
+        uid = body.id
+        if uid is None:
+            uid = body.uuid
         return MultistepEquivLLMJudgeVerifyResponse(
             **payload,
             reward=reward,
             expected_answer=expected_distilled_answer,
             model_answer=model_distilled_answer,
+            id=uid,
             judge_metadata={
                 "id": body.id,
                 "uuid": body.uuid,
@@ -560,6 +615,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 "expected_answer": expected_answer,
                 "expected_distilled_answer": expected_distilled_answer,
                 "model_answer": model_answer,
+                "model_distilled_answer_original": model_distilled_answer_orig,
                 "model_distilled_answer": model_distilled_answer,
                 "reward": reward,
                 "evaluation": evaluation,
@@ -625,20 +681,26 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: post params = {params}",
                 flush=True,
             )
-        try:
-            async with self._judge_endpoint_max_concurrency:
+        response = None
+        async with self._judge_endpoint_max_concurrency:
+            try:
                 response = await self.server_client.post(
                     server_name=server_name,
                     url_path="/v1/responses",
                     json=params,
                 )
-            response = NeMoGymResponse.model_validate(await response.json())
-        except Exception as e:
-            print(
-                f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
-                flush=True,
-            )
-            response = self._dummy_response()
+                valid_response = NeMoGymResponse.model_validate(await response.json())
+                response = valid_response
+            except Exception as e:
+                print(
+                    f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response: dummy response b/c of POST exception: {type(e).__name__} {e}",
+                    flush=True,
+                )
+                print(
+                    f"DEBUG: MultistepEquivLLMJudgeResourcesServer._post_judge_response:   bad response: {response}",
+                    flush=True,
+                )
+                response = self._dummy_response()
         return response
 
     async def _generate_judge_classify_response(
@@ -697,17 +759,19 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             answer=answer,
         )
         classify_text = _get_response_last_assistant_content_text(classify_response) or ""
-        classify_keys = [
-            "specific_answer",
-            "example_answer",
-            "approximate_answer",
-            "mathematical_answer",
-            "boolean_answer",
-            "short_answer",
-        ]
+        classify_keys = {
+            "specific_answer": bool,
+            "example_answer": bool,
+            "approximate_answer": bool,
+            "mathematical_answer": bool,
+            "boolean_answer": bool,
+            "short_answer": bool,
+            "missing_information": bool,
+            "subject": str,
+        }
         ret_value = {}
-        for k in classify_keys:
-            ret_value[k] = _extract_tagged_section_bool(classify_text, k)
+        for k, type_ in classify_keys.items():
+            ret_value[k] = _extract_tagged_section(classify_text, k, type_)
         return ret_value
 
     async def _query_judge_classify_quorum(
@@ -726,17 +790,24 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
                 )
             )
         results = await asyncio.gather(*work, return_exceptions=True)
-        classify_keys = [
-            "specific_answer",
-            "example_answer",
-            "approximate_answer",
-            "mathematical_answer",
-            "boolean_answer",
-            "short_answer",
-        ]
+        classify_keys = {
+            "specific_answer": bool,
+            "example_answer": bool,
+            "approximate_answer": bool,
+            "mathematical_answer": bool,
+            "boolean_answer": bool,
+            "short_answer": bool,
+            "missing_information": bool,
+            "subject": str,
+        }
         quorum_dict = {}
-        for k in classify_keys:
-            quorum_dict[k] = _BooleanQuorum()
+        for k, type_ in classify_keys.items():
+            if type_ is bool:
+                quorum_dict[k] = _BooleanQuorum()
+            elif type_ is str:
+                quorum_dict[k] = _StringQuorum()
+            else:
+                raise NotImplementedError
         for r in results:
             for k in classify_keys:
                 quorum_dict[k].update(r[k])
@@ -806,7 +877,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
             answer=answer,
         )
         distill_text = _get_response_last_assistant_content_text(distill_response) or ""
-        distilled_answer = _extract_tagged_section(distill_text, "distilled_answer")
+        distilled_answer = _extract_tagged_section_text(distill_text, "distilled_answer")
         if self.config.debug:
             print(
                 f"DEBUG: MultistepEquivLLMJudgeResourcesServer._query_judge_distill_sample: model distilled answer = {repr(distilled_answer)}",
@@ -880,7 +951,7 @@ class MultistepEquivLLMJudgeResourcesServer(SimpleResourcesServer):
         quorum_params.input = quorum_messages
         quorum_response = await self._post_judge_response(quorum_params)
         quorum_text = _get_response_last_assistant_content_text(quorum_response) or ""
-        final_answer = _extract_tagged_section(quorum_text, "final_answer")
+        final_answer = _extract_tagged_section_text(quorum_text, "final_answer")
 
         return final_answer
 

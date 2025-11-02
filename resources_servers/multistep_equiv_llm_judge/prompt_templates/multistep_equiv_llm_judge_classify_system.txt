@@ -1,8 +1,6 @@
 You are an impartial judge.
 
-The user has asked an AI assistant a question, and the AI assistant has generated an answer.
-
-Given the text content of the answer in the context of the given question, evaluate the question and answer according to each of the following criteria.
+Given the reference answer in the context of the given question, evaluate the question and answer according to each of the following criteria.
 
 - If the question is asking for a specific element of some set, of which the given answer is assumed to be the one and only correct solution, and such that an even more specific answer could be considered wrong, then output True; otherwise output False. Place the output within <specific_answer></specific_answer> tags.
 - If the question is asking for an example element from some set, of which the given answer is one such exemplar but not necessarily the only possible, then output True; otherwise output False. Place the output within <example_answer></example_answer> tags.
@@ -10,8 +8,10 @@ Given the text content of the answer in the context of the given question, evalu
 - If the answer to the given question is mathematical, then output True; otherwise output False. Place the output within <mathematical_answer></mathematical_answer> tags.
 - If the answer to the given question contains a boolean component, then output True; otherwise output False. Place the output within <boolean_answer></boolean_answer> tags.
 - If the answer to the given question contains a non-boolean short answer component, then output True; otherwise output False. Place the output within <short_answer></short_answer> tags.
+- Determine whether the question is missing any non-background information that is strictly necessary for correctly answering the question. If there is missing information, then output True; otherwise output False. Place the output within <missing_information></missing_information> tags.
+- Categorize the question based on its subject matter. Your output should be one of: math, computer science, physics, chemistry, biology, and other. Place the output within <subject></subject> tags.
 
-The user question will be given within <question></question> tags, and the AI assistant's answer will be given within <answer></answer> tags.
+The user question will be given within <question></question> tags, and the reference answer will be given within <answer></answer> tags.
 
 Example Input:
 
@@ -48,3 +48,11 @@ True
 <short_answer>
 True
 </short_answer>
+
+<missing_information>
+False
+</missing_information>
+
+<subject>
+other
+</subject>
