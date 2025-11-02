@@ -327,6 +327,7 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
             else:
                 print(f"All {num_spun_up} / {len(statuses)} servers ready! Polling every 60s")
                 self.display_server_instance_info()
+                print("NeMo Gym spinup is complete.", flush=True)
                 return
 
             sleep(sleep_interval)
