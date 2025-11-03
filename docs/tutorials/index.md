@@ -55,7 +55,7 @@ Build custom environments, tools, and verification systems.
 
 Master configuration, testing, deployment, and scaling.
 
-::::{grid} 1 1 1 1
+::::{grid} 1 1 2 2
 :gutter: 1 1 1 2
 
 :::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Configuration Management
@@ -64,6 +64,14 @@ Master configuration, testing, deployment, and scaling.
 Master NeMo Gym's three-tier configuration system for flexible environments, secrets management, and deployment scenarios.
 +++
 {bdg-secondary}`configuration` {bdg-secondary}`deployment`
+:::
+
+:::{grid-item-card} {octicon}`cpu;1.5em;sd-mr-1` Dual-Model Math Evaluation
+:link: dual-model-math-evaluation
+:link-type: doc
+Configure a two-model system with separate policy and judge models for accurate math evaluation—a realistic multi-server orchestration pattern.
++++
+{bdg-secondary}`configuration` {bdg-secondary}`multi-model`
 :::
 
 ::::

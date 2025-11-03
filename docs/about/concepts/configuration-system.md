@@ -140,7 +140,6 @@ Understanding how NeMo Gym implements configuration resolution can help you opti
 The configuration is resolved once per process and cached:
 
 ```python
-# From global_config.py:280-282
 global _GLOBAL_CONFIG_DICT
 if _GLOBAL_CONFIG_DICT is not None:
     return _GLOBAL_CONFIG_DICT
@@ -160,7 +159,6 @@ if _GLOBAL_CONFIG_DICT is not None:
 When NeMo Gym spawns child processes (for individual servers), the parent passes configuration via environment variable:
 
 ```python
-# From global_config.py:284-290
 nemo_gym_config_dict_str_from_env = getenv(NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME)
 if nemo_gym_config_dict_str_from_env:
     global_config_dict = OmegaConf.create(nemo_gym_config_dict_str_from_env)
