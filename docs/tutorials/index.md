@@ -55,16 +55,8 @@ Build custom environments, tools, and verification systems.
 
 Master configuration, testing, deployment, and scaling.
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 1 1
 :gutter: 1 1 1 2
-
-:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Configuration Management
-:link: configuration-management
-:link-type: doc
-Master NeMo Gym's three-tier configuration system for flexible environments, secrets management, and deployment scenarios.
-+++
-{bdg-secondary}`configuration` {bdg-secondary}`deployment`
-:::
 
 :::{grid-item-card} {octicon}`cpu;1.5em;sd-mr-1` Separate Policy and Judge Models
 :link: separate-policy-and-judge-models
