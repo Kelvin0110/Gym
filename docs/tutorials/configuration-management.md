@@ -253,7 +253,7 @@ policy_model:
 
 When you run `ng_run` or `nemo_gym_run`, NeMo Gym resolves configuration in this order:
 
-### Step 1: Load Server YAML Configs
+### 1. Load Server YAML Configs
 ```bash
 ng_run "+config_paths=[model.yaml,weather.yaml]"
 ```
@@ -261,14 +261,14 @@ ng_run "+config_paths=[model.yaml,weather.yaml]"
 - Later files override earlier files
 - Creates the foundation configuration
 
-### Step 2: Apply env.yaml
+### 2. Apply env.yaml
 ```yaml
 # env.yaml values override Server YAML config values
 policy_api_key: sk-real-key-from-env
 custom_setting: override-value
 ```
 
-### Step 3: Apply Command Line
+### 3. Apply Command Line
 ```bash
 ng_run "+config_paths=[...]" +policy_model_name=different-model
 ```
