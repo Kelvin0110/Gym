@@ -21,14 +21,6 @@ Master rollout generation and training data preparation for RL, SFT, and DPO.
 ::::{grid} 1 1 1 1
 :gutter: 1 1 1 2
 
-:::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Rollout Collection Fundamentals
-:link: 05-rollout-collection
-:link-type: doc
-Master rollout generation - the foundation for understanding agent behavior and creating training data.
-+++
-{bdg-secondary}`data-generation` {bdg-secondary}`rollouts`
-:::
-
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` SFT and DPO Training
 :link: 07-sft-dpo-rollout-collection
 :link-type: doc

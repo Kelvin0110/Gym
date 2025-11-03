@@ -379,12 +379,12 @@ You now have hands-on experience with:
 
 Now that you can score individual agent responses, the next challenge is generating these responses at scale for training. This process is called **rollout collection**—systematically gathering agent interactions with verification scores to create the training data that powers RL.
 
-:::{button-ref} /tutorials/05-rollout-collection
+:::{button-ref} collecting-rollouts
 :color: primary
 :outline:
 :ref-type: doc
 
-Next: Rollout Collection →
+Next: Collecting Rollouts →
 :::
 
 Learn how to systematically collect thousands of agent responses with verification scores—the foundation of RL training data.

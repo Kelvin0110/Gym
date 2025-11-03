@@ -146,7 +146,6 @@ get-started/collecting-rollouts
 :maxdepth: 1
 
 Overview <tutorials/index>
-tutorials/05-rollout-collection
 tutorials/07-sft-dpo-rollout-collection
 tutorials/09-configuration-guide
 ```

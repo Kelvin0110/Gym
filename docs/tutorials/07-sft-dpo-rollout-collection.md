@@ -55,7 +55,7 @@
 
 The offline training pipeline follows this logical flow:
 
-1. Collect rollouts using strategies from [Tutorial 5](05-rollout-collection.md)
+1. Collect rollouts using strategies from the {doc}`../get-started/collecting-rollouts` guide and {doc}`../about/concepts/rollout-collection-fundamentals` reference
 - **SFT data**: Use consistent generation (low temperature, single rollout per task)
 - **DPO data**: Use diverse generation (higher temperature, 2 rollouts per task for comparison)
 2. Filter for quality - Remove poor rollouts before processing
