@@ -230,34 +230,79 @@ global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
 
 ## How Configuration Gets Resolved
 
-When you run `ng_run`, NeMo Gym merges all three layers following a specific process. Let's trace what happens when you run this command:
+Configuration resolution works like layers stacking on top of each other, with each higher layer overriding values from below.
+
+### The Layers Stack and Override
+
+When you run this command:
 
 ```bash
 ng_run "+config_paths=[model.yaml]" +policy_model_name=gpt-4o-mini
 ```
 
-With an `env.yaml` file containing secrets:
-
+With `model.yaml` containing:
 ```yaml
+policy_model:
+  responses_api_models:
+    openai_model:
+      entrypoint: app.py
+      openai_base_url: ${policy_base_url}
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
+```
+
+And `env.yaml` containing:
+```yaml
+policy_base_url: https://api.openai.com/v1
 policy_api_key: sk-real-key
 policy_model_name: gpt-4o-2024-11-20
 ```
 
-### The Process
+Here's how the layers stack:
 
-1. **Parse Command Line → Configuration Dictionary**
-   
-   Hydra extracts arguments:
-   > `{config_paths: ["model.yaml"], policy_model_name: "gpt-4o-mini"}`
+```
+┌─────────────────────────────────────────────────────────┐
+│  Command Line (Highest Priority)                        │
+├─────────────────────────────────────────────────────────┤
+│  policy_model_name: gpt-4o-mini  ← Overrides env.yaml  │
+│  config_paths: [model.yaml]                             │
+└─────────────────────────────────────────────────────────┘
+                      ⬇ OVERRIDES ⬇
+┌─────────────────────────────────────────────────────────┐
+│  env.yaml (Middle Priority)                             │
+├─────────────────────────────────────────────────────────┤
+│  policy_base_url: https://api.openai.com/v1             │
+│  policy_api_key: sk-real-key                            │
+│  policy_model_name: gpt-4o-2024-11-20  ← Gets overridden│
+└─────────────────────────────────────────────────────────┘
+                      ⬇ OVERRIDES ⬇
+┌─────────────────────────────────────────────────────────┐
+│  YAML Files (Foundation)                                │
+├─────────────────────────────────────────────────────────┤
+│  policy_model:                                          │
+│    responses_api_models:                                │
+│      openai_model:                                      │
+│        openai_base_url: ${policy_base_url}              │
+│          ↳ Resolved from env.yaml                       │
+│        openai_api_key: ${policy_api_key}                │
+│          ↳ Resolved from env.yaml                       │
+│        openai_model: ${policy_model_name}               │
+│          ↳ Resolved from CLI (after override)           │
+└─────────────────────────────────────────────────────────┘
+```
 
-2. **Load env.yaml → Secrets Layer**
-   
-   If `env.yaml` exists, it's loaded into a separate dictionary:
-   > `{policy_api_key: "sk-real-key", policy_model_name: "gpt-4o-2024-11-20"}`
+### Resolution Steps
 
-3. **Resolve config_paths → Determine Which Files to Load**
+1. **Parse command-line arguments**
    
-   System merges CLI and env.yaml to resolve any variable references in config paths:
+   Hydra extracts `config_paths` and any overrides like `+policy_model_name=gpt-4o-mini`
+
+2. **Load env.yaml**
+   
+   If `env.yaml` exists, load secrets and environment-specific values
+
+3. **Merge CLI and env.yaml to resolve config_paths**
+   
    ```python
    # From global_config.py:189
    merged_config_for_config_paths = OmegaConf.merge(dotenv_extra_config, global_config_dict)
@@ -266,16 +311,12 @@ policy_model_name: gpt-4o-2024-11-20
    
    This enables using config collections: `ng_run '+config_paths=${weather_config_paths}'`
 
-4. **Load YAML Files → Server Configurations**
+4. **Load YAML files**
    
-   Each file in `config_paths` is loaded in order:
-   > First file: `{policy_model: {openai_model: {...}}}`
-   >
-   > Second file overrides/extends: `{simple_weather: {resources_servers: {...}}}`
+   Load each file in `config_paths` in order. Variable references like `${policy_model_name}` are resolved using the merged CLI + env.yaml values.
 
-5. **Final Merge → Single Configuration**
+5. **Final merge with priority**
    
-   All layers merge with priority order:
    ```python
    # From global_config.py:201
    global_config_dict = OmegaConf.merge(
@@ -284,18 +325,32 @@ policy_model_name: gpt-4o-2024-11-20
        global_config_dict     # CLI args (highest priority)
    )
    ```
-   
-   **Result**: `policy_model_name` from CLI (`gpt-4o-mini`) overrides env.yaml's value (`gpt-4o-2024-11-20`), while `policy_api_key` from env.yaml is preserved.
 
-6. **Validate and Populate Defaults → Ready to Run**
+6. **Validate and populate defaults**
    
-   Final validation ensures the configuration is complete:
    - Verify all server references exist
    - Populate missing host values (default: `127.0.0.1`)
    - Assign available ports if not specified
-   - Cache for the session
-   
-   Configuration is now ready for `ng_run` to start servers.
+   - Cache configuration for the session
+
+### Final Merged Configuration
+
+After all layers merge, the result is:
+
+```yaml
+policy_model_name: gpt-4o-mini                     # From CLI (overrode env.yaml)
+policy_api_key: sk-real-key                        # From env.yaml
+policy_base_url: https://api.openai.com/v1         # From env.yaml
+policy_model:
+  responses_api_models:
+    openai_model:
+      entrypoint: app.py                           # From YAML
+      openai_base_url: https://api.openai.com/v1   # Variable resolved from env.yaml
+      openai_api_key: sk-real-key                  # Variable resolved from env.yaml
+      openai_model: gpt-4o-mini                    # Variable resolved with CLI override
+```
+
+**Key insight**: `policy_model_name` appears in both env.yaml (`gpt-4o-2024-11-20`) and CLI (`gpt-4o-mini`). CLI wins because it has highest priority. Variable interpolation happens during YAML loading, so `${policy_model_name}` already sees the CLI value.
 
 **Evidence**: Complete resolution logic in `nemo_gym/global_config.py:132-201`
 
