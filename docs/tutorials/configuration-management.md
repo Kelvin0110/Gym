@@ -36,17 +36,32 @@ This tutorial assumes you've completed the [Get Started](../get-started/index.md
 
 ## The Three Configuration Sources
 
-NeMo Gym uses a powerful configuration system with three sources that are resolved in this order:
+NeMo Gym uses a powerful configuration system with three sources that are resolved in priority order:
 
-```
-Server YAML Config Files  <  env.yaml  <  Command Line Arguments
-    (lowest priority)                       (highest priority)
+```{list-table}
+:header-rows: 1
+:widths: 25 35 40
+
+* - Source
+  - Priority
+  - Best For
+* - **Server YAML Files**
+  - Lowest (base layer)
+  - Shared settings, server structure, defaults
+* - **env.yaml**
+  - Middle (overrides YAML)
+  - Secrets, environment-specific values (never commit!)
+* - **Command Line**
+  - Highest (overrides all)
+  - Runtime customization, testing, quick experiments
 ```
 
-This allows you to:
-- Base configuration in YAML files (shared settings)
-- Secrets and environment-specific values in `env.yaml` 
-- Runtime overrides via command line arguments
+**Resolution order**: Server YAML → env.yaml → Command Line (later sources override earlier ones)
+
+This layered approach gives you:
+- **Reusable base configurations** in version-controlled YAML files
+- **Secure secrets management** in git-ignored env.yaml
+- **Flexible runtime overrides** via command line for any scenario
 
 ---
 
@@ -211,7 +226,13 @@ ng_run "+config_paths=[...]" +policy_model_name=different-model
 
 ## Practical Configuration Scenarios
 
-### Scenario 1: Development vs Production
+Choose the scenario that matches your use case:
+
+::::{tab-set}
+
+:::{tab-item} Development vs Production
+
+**Use case**: Switch between cheaper dev models and production models
 
 **env.yaml** (shared secrets):
 ```yaml
@@ -228,26 +249,53 @@ ng_run "+config_paths=[dev-config.yaml]" +policy_model_name=gpt-4o-mini
 ng_run "+config_paths=[prod-config.yaml]" +policy_model_name=gpt-4o-2024-11-20
 ```
 
-### Scenario 2: Multi-Resource Testing
+**Key insight**: Same code, same secrets, different models based on environment.
 
+:::
+
+:::{tab-item} Multi-Resource Testing
+
+**Use case**: Test the same agent with different resource servers
+
+**Switch to math resources**:
 ```bash
-# Test with math resources
 ng_run "+config_paths=[base.yaml]" \
     +simple_agent.responses_api_agents.simple_agent.resources_server.name=library_judge_math
+```
 
-# Test with weather resources  
+**Switch to weather resources**:
+```bash
 ng_run "+config_paths=[base.yaml]" \
     +simple_agent.responses_api_agents.simple_agent.resources_server.name=simple_weather
 ```
 
-### Scenario 3: Custom Server Ports
+**Key insight**: Command-line overrides let you swap components without editing config files.
 
+:::
+
+:::{tab-item} Custom Server Ports
+
+**Use case**: Avoid port conflicts in multi-user or multi-environment setups
+
+**Override default ports**:
 ```bash
-# Avoid port conflicts in multi-user environments
 ng_run "+config_paths=[config.yaml]" \
     +simple_weather.resources_servers.simple_weather.port=8001 \
     +policy_model.responses_api_models.openai_model.port=8002
 ```
+
+**Auto-assign available ports**:
+```bash
+ng_run "+config_paths=[config.yaml]" \
+    +simple_weather.resources_servers.simple_weather.port=0 \
+    +policy_model.responses_api_models.openai_model.port=0
+```
+
+**Key insight**: Use `+port=0` for automatic port assignment to avoid conflicts entirely.
+
+:::
+
+::::
 
 ---
 
@@ -255,30 +303,91 @@ ng_run "+config_paths=[config.yaml]" \
 
 NeMo Gym validates your configuration and provides helpful error messages:
 
-### Problem: Missing Values
-```
+:::{dropdown} Problem: Missing Values
+:icon: alert
+:color: warning
+
+**Error message**:
+```text
 omegaconf.errors.MissingMandatoryValue: Missing mandatory value: policy_api_key
 ```
-**Fix**: Add the missing value to `env.yaml` or command line.
 
-### Problem: Invalid Server References
-```
+**What this means**: A required configuration value wasn't provided in any of the three sources.
+
+**Solutions**:
+
+1. **Add to env.yaml** (recommended for secrets):
+   ```yaml
+   policy_api_key: sk-your-actual-key
+   ```
+
+2. **Override via command line** (for testing):
+   ```bash
+   ng_run "+config_paths=[...]" +policy_api_key=sk-test-key
+   ```
+
+:::
+
+:::{dropdown} Problem: Invalid Server References
+:icon: search
+:color: warning
+
+**Error message**:
+```text
 AssertionError: Could not find type='resources_servers' name='typo_weather' 
 in the list of available servers: [simple_weather, library_judge_math, ...]
 ```
-**Fix**: Check your server name spelling and ensure the config is loaded.
 
-### Problem: Port Conflicts
-```
+**What this means**: You're referencing a server that doesn't exist or isn't loaded.
+
+**Solutions**:
+
+1. **Check spelling**: Verify the server name matches exactly (case-sensitive)
+2. **Ensure config is loaded**: Add the server's config file to `+config_paths`
+3. **List available servers**: Check the error message for valid server names
+
+:::
+
+:::{dropdown} Problem: Port Conflicts
+:icon: plug
+:color: danger
+
+**Error message**:
+```text
 OSError: [Errno 48] Address already in use
 ```
-**Fix**: Override ports via command line or use `+port=0` for auto-assignment.
+
+**What this means**: Another process is already using the port you're trying to bind to.
+
+**Solutions**:
+
+1. **Override with available port**:
+   ```bash
+   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=8001
+   ```
+
+2. **Use auto-assignment** (recommended):
+   ```bash
+   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=0
+   ```
+   The system will automatically find and assign an available port.
+
+3. **Check running processes**:
+   ```bash
+   lsof -i :8000  # Check what's using port 8000
+   ```
+
+:::
+
 
 ---
 
 ## Best Practices
 
-### 1. Keep Secrets in env.yaml
+:::{dropdown} 1. Keep Secrets in env.yaml
+:icon: lock
+
+**Principle**: Never commit secrets to version control—use env.yaml for sensitive data.
 
 **✅ Good - secrets in env.yaml:**
 ```yaml
@@ -294,7 +403,6 @@ policy_model:
   responses_api_models:
     openai_model:
       openai_api_key: sk-actual-secret-key-here  # Don't do this!
-      openai_base_url: https://api.openai.com/v1
 ```
 
 **✅ Good - use placeholders in committed config files:**
@@ -307,7 +415,16 @@ policy_model:
       openai_base_url: ${policy_base_url}  # Resolves from env.yaml
 ```
 
-### 2. Use Descriptive Config Collections
+**Why it matters**: Accidentally committing API keys can lead to unauthorized usage and security breaches.
+
+:::
+
+:::{dropdown} 2. Use Descriptive Config Collections
+:icon: list-unordered
+
+**Principle**: Group related configurations for easy switching between scenarios.
+
+**Implementation**:
 ```yaml
 # env.yaml - organize related configs
 math_training_config_paths:
@@ -320,7 +437,22 @@ weather_demo_config_paths:
   - resources_servers/simple_weather/configs/simple_weather.yaml
 ```
 
-### 3. Document Your Overrides
+**Usage**:
+```bash
+ng_run '+config_paths=${math_training_config_paths}'
+ng_run '+config_paths=${weather_demo_config_paths}'
+```
+
+**Why it matters**: Reduces typing and errors when switching between different setups.
+
+:::
+
+:::{dropdown} 3. Document Your Overrides
+:icon: comment
+
+**Principle**: Use inline comments to explain why each override is needed.
+
+**Implementation**:
 ```bash
 # Clear, documented overrides for different scenarios
 ng_run "+config_paths=[${base_config}]" \
@@ -329,12 +461,40 @@ ng_run "+config_paths=[${base_config}]" \
     +limit=10                               # Limit rollouts for testing
 ```
 
-### 4. Environment-Specific env.yaml Files
+**Why it matters**: Makes it easy for others (and future you) to understand configuration choices.
+
+:::
+
+:::{dropdown} 4. Environment-Specific env.yaml Files
+:icon: file
+
+**Principle**: Maintain separate env.yaml files for different environments and swap as needed.
+
+**Setup**:
 ```bash
-# Load different env files for different environments
-cp env.dev.yaml env.yaml    # Development settings
-cp env.prod.yaml env.yaml   # Production settings
+# Create environment-specific files
+env.dev.yaml    # Development settings (gpt-4o-mini, test keys)
+env.prod.yaml   # Production settings (gpt-4o, production keys)
+env.staging.yaml  # Staging settings
 ```
+
+**Usage**:
+```bash
+# Switch to development
+cp env.dev.yaml env.yaml
+ng_run "+config_paths=[...]"
+
+# Switch to production
+cp env.prod.yaml env.yaml
+ng_run "+config_paths=[...]"
+```
+
+**Pro tip**: Add env.yaml to .gitignore but commit env.example.yaml as a template.
+
+**Why it matters**: Prevents accidentally using production credentials in development and vice versa.
+
+:::
+
 
 ---
 
@@ -358,4 +518,5 @@ You've mastered configuration management! Continue exploring:
 - **[Offline Training with Rollouts](offline-training-w-rollouts.md)**: Apply your configuration skills to training workflows
 - **[Concepts](../about/concepts/index.md)**: Deep dive into NeMo Gym architecture
 
+Or return to the [Tutorials Overview](index.md) to explore other topics.
 Or return to the [Tutorials Overview](index.md) to explore other topics.
