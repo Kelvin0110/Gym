@@ -146,27 +146,55 @@ ng_run '+config_paths=${simple_weather_config_paths}'
 
 **Runtime overrides** using Hydra syntax for maximum flexibility.
 
-### Basic Overrides
+Choose your complexity level:
 
+::::{tab-set}
+
+:::{tab-item} Basic Overrides
+
+**Use case**: Simple, single-value overrides for common scenarios
+
+**Override a specific model**:
 ```bash
-# Override a specific model
 ng_run "+config_paths=[config.yaml]" \
     +policy_model.responses_api_models.openai_model.openai_model=gpt-4o-mini
+```
 
-# Point agent to different resource server
+**Point agent to different resource server**:
+```bash
 ng_run "+config_paths=[config.yaml]" \
     +simple_agent.responses_api_agents.simple_agent.resources_server.name=different_weather
 ```
 
-### Advanced Overrides
+**When to use**: Quick testing, single parameter changes, learning the system
 
+:::
+
+:::{tab-item} Advanced Overrides
+
+**Use case**: Multiple simultaneous overrides for complex scenarios
+
+**Multiple overrides for testing**:
 ```bash
-# Multiple overrides for testing
 ng_run "+config_paths=[${config_paths}]" \
     +policy_model_name=gpt-4o-mini \
     +simple_weather.resources_servers.simple_weather.host=localhost \
     +simple_weather.resources_servers.simple_weather.port=9090
 ```
+
+**Combining variable references with overrides**:
+```bash
+ng_run '+config_paths=${math_training_config_paths}' \
+    +policy_model_name=gpt-4o-2024-11-20 \
+    +limit=100 \
+    +num_samples_in_parallel=10
+```
+
+**When to use**: Production runs, integration testing, complex environment setups
+
+:::
+
+::::
 
 ---
 
@@ -299,89 +327,6 @@ ng_run "+config_paths=[config.yaml]" \
 
 ---
 
-## Troubleshooting
-
-NeMo Gym validates your configuration and provides helpful error messages:
-
-:::{dropdown} Problem: Missing Values
-:icon: alert
-:color: warning
-
-**Error message**:
-```text
-omegaconf.errors.MissingMandatoryValue: Missing mandatory value: policy_api_key
-```
-
-**What this means**: A required configuration value wasn't provided in any of the three sources.
-
-**Solutions**:
-
-1. **Add to env.yaml** (recommended for secrets):
-   ```yaml
-   policy_api_key: sk-your-actual-key
-   ```
-
-2. **Override via command line** (for testing):
-   ```bash
-   ng_run "+config_paths=[...]" +policy_api_key=sk-test-key
-   ```
-
-:::
-
-:::{dropdown} Problem: Invalid Server References
-:icon: search
-:color: warning
-
-**Error message**:
-```text
-AssertionError: Could not find type='resources_servers' name='typo_weather' 
-in the list of available servers: [simple_weather, library_judge_math, ...]
-```
-
-**What this means**: You're referencing a server that doesn't exist or isn't loaded.
-
-**Solutions**:
-
-1. **Check spelling**: Verify the server name matches exactly (case-sensitive)
-2. **Ensure config is loaded**: Add the server's config file to `+config_paths`
-3. **List available servers**: Check the error message for valid server names
-
-:::
-
-:::{dropdown} Problem: Port Conflicts
-:icon: plug
-:color: danger
-
-**Error message**:
-```text
-OSError: [Errno 48] Address already in use
-```
-
-**What this means**: Another process is already using the port you're trying to bind to.
-
-**Solutions**:
-
-1. **Override with available port**:
-   ```bash
-   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=8001
-   ```
-
-2. **Use auto-assignment** (recommended):
-   ```bash
-   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=0
-   ```
-   The system will automatically find and assign an available port.
-
-3. **Check running processes**:
-   ```bash
-   lsof -i :8000  # Check what's using port 8000
-   ```
-
-:::
-
-
----
-
 ## Best Practices
 
 :::{dropdown} 1. Keep Secrets in env.yaml
@@ -495,6 +440,88 @@ ng_run "+config_paths=[...]"
 
 :::
 
+---
+
+## Troubleshooting
+
+NeMo Gym validates your configuration and provides helpful error messages:
+
+:::{dropdown} Problem: Missing Values
+:icon: alert
+:color: warning
+
+**Error message**:
+```text
+omegaconf.errors.MissingMandatoryValue: Missing mandatory value: policy_api_key
+```
+
+**What this means**: A required configuration value wasn't provided in any of the three sources.
+
+**Solutions**:
+
+1. **Add to env.yaml** (recommended for secrets):
+   ```yaml
+   policy_api_key: sk-your-actual-key
+   ```
+
+2. **Override via command line** (for testing):
+   ```bash
+   ng_run "+config_paths=[...]" +policy_api_key=sk-test-key
+   ```
+
+:::
+
+:::{dropdown} Problem: Invalid Server References
+:icon: search
+:color: warning
+
+**Error message**:
+```text
+AssertionError: Could not find type='resources_servers' name='typo_weather' 
+in the list of available servers: [simple_weather, library_judge_math, ...]
+```
+
+**What this means**: You're referencing a server that doesn't exist or isn't loaded.
+
+**Solutions**:
+
+1. **Check spelling**: Verify the server name matches exactly (case-sensitive)
+2. **Ensure config is loaded**: Add the server's config file to `+config_paths`
+3. **List available servers**: Check the error message for valid server names
+
+:::
+
+:::{dropdown} Problem: Port Conflicts
+:icon: plug
+:color: danger
+
+**Error message**:
+```text
+OSError: [Errno 48] Address already in use
+```
+
+**What this means**: Another process is already using the port you're trying to bind to.
+
+**Solutions**:
+
+1. **Override with available port**:
+   ```bash
+   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=8001
+   ```
+
+2. **Use auto-assignment** (recommended):
+   ```bash
+   ng_run "+config_paths=[...]" +simple_weather.resources_servers.simple_weather.port=0
+   ```
+   The system will automatically find and assign an available port.
+
+3. **Check running processes**:
+   ```bash
+   lsof -i :8000  # Check what's using port 8000
+   ```
+
+:::
+
 
 ---
 
@@ -518,5 +545,4 @@ You've mastered configuration management! Continue exploring:
 - **[Offline Training with Rollouts](offline-training-w-rollouts.md)**: Apply your configuration skills to training workflows
 - **[Concepts](../about/concepts/index.md)**: Deep dive into NeMo Gym architecture
 
-Or return to the [Tutorials Overview](index.md) to explore other topics.
 Or return to the [Tutorials Overview](index.md) to explore other topics.
