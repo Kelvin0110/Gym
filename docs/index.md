@@ -148,6 +148,7 @@ get-started/collecting-rollouts
 Overview <tutorials/index>
 tutorials/offline-training-w-rollouts
 tutorials/configuration-management
+tutorials/separate-policy-and-judge-models
 ```
 
 
