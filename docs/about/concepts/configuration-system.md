@@ -112,8 +112,6 @@ Each layer serves a specific purpose and overrides the previous one. Here's how 
   - `+policy_model_name=gpt-4o-mini`
 ```
 
-**Merge priority** (highest last): YAML files → env.yaml → Command Line
-
 ---
 
 ## How Configuration Gets Resolved
@@ -170,15 +168,7 @@ global_config_dict = OmegaConf.merge(
 
 ---
 
-## Deploying Across Environments
-
-The three-tier system supports multiple deployment patterns: separate env.yaml files per environment, environment-specific YAML configs, or CI/CD with command-line overrides. Each approach balances convenience, security, and infrastructure-as-code principles differently.
-
-For hands-on guidance, see the Configuration Management tutorial.
-
----
-
-## Technical Implementation Details
+## Technical Details
 
 Understanding how NeMo Gym implements configuration resolution can help you optimize performance and debug issues:
 
