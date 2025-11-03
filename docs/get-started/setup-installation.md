@@ -2,7 +2,7 @@
 
 # Setup and Installation
 
-Welcome to NeMo Gym! In this tutorial, you'll install NeMo Gym, configure your environment, and run your first agent interaction—a simple weather agent that uses tools to answer questions.
+Welcome to NeMo Gym! In this tutorial, you will install NeMo Gym, configure your environment, and run your first agent interaction—a simple weather agent that uses tools to answer questions.
 
 :::{card}
 
@@ -49,7 +49,7 @@ source .venv/bin/activate
 uv sync --extra dev --group docs
 ```
 
-**✅ Success Check**: You should see something that indicates a newly activated environment such as `(.venv)` or `(NeMo-Gym)` in your terminal prompt.
+**✅ Success Check**: Verify that you can see something that indicates a newly activated environment such as `(.venv)` or `(NeMo-Gym)` in your terminal prompt.
 
 ## 2. Configure Your API Key
 
@@ -106,9 +106,9 @@ print(f'Response: {response.choices[0].message.content}')
 "
 ```
 
-**✅ Success Check**: You should see "API key validated successfully!" and a response from the model.
+**✅ Success Check**: Verify that you can see "API key validated successfully!" and a response from the model.
 
-If this step fails, you'll see a clear error message (like quota exceeded or invalid key) before investing time in server setup.
+If this step fails, you will see a clear error message (like quota exceeded or invalid key) before investing time in server setup.
 
 :::
 
@@ -122,7 +122,7 @@ config_paths="resources_servers/simple_weather/configs/simple_weather.yaml,respo
 ng_run "+config_paths=[${config_paths}]"
 ```
 
-**✅ Success Check**: You should see output like:
+**✅ Success Check**: Verify that you can see output like:
 ```
 INFO:     Started server process [12345]
 INFO:     Uvicorn running on http://127.0.0.1:11000 (Press CTRL+C to quit)
@@ -158,7 +158,7 @@ source .venv/bin/activate
 python responses_api_agents/simple_agent/client.py
 ```
 
-**✅ Success Check**: You should see JSON output showing:
+**✅ Success Check**: Verify that you can see JSON output showing:
 1. Agent calling the weather tool
 2. Weather tool returning data  
 3. Agent responding to the user
@@ -225,7 +225,7 @@ Make sure the servers are still running in the other terminal.
 
 :::{dropdown} OpenAI API errors or "500 Internal Server Error"
 
-If you see errors when running the client, check these common causes:
+If you encounter errors when running the client, check these common causes:
 
 **Quota/billing errors** (most common):
 
@@ -282,7 +282,7 @@ Gym/
 └── docs/                       # Documentation files
 ```
 
-## What's Running?
+## What Is Running?
 
 When you ran `ng_run`, you started a complete AI agent system:
 

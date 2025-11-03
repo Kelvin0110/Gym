@@ -41,9 +41,9 @@ In the setup tutorial, you ran this command and saw JSON output:
 python responses_api_agents/simple_agent/client.py
 ```
 
-Let's break down exactly what happened behind the scenes. When you ran the client script, here's the complete flow:
+Let's break down exactly what happened behind the scenes:
 
-### 1. Client Script Sends Request
+### 1. Client Script Sent a Request
 ```python
 # From the client script
 {"role": "user", "content": "going out in sf tn"}
@@ -53,7 +53,7 @@ Let's break down exactly what happened behind the scenes. When you ran the clien
 **What**: Sends a casual user message to the agent server  
 **Result**: Agent receives the request and prepares to process it
 
-### 2. Agent Forwards to GPT-4
+### 2. Agent Forwarded to GPT-4
 **Who**: The agent server (`simple_weather_simple_agent`)  
 **What**: Packages the request with context and available tools, then sends to GPT-4:
 - System message: "You are a helpful personal assistant..."
@@ -62,7 +62,7 @@ Let's break down exactly what happened behind the scenes. When you ran the clien
 
 **Result**: GPT-4 receives everything it needs to make decisions
 
-### 3. GPT-4 Decides to Call Tool
+### 3. GPT-4 Decided to Call Tool
 ```json
 {
     "type": "function_call",
@@ -76,7 +76,7 @@ Let's break down exactly what happened behind the scenes. When you ran the clien
 **What**: Analyzes the request, recognizes "sf" as San Francisco, determines weather info is needed  
 **Result**: Returns a tool call instruction to the agent
 
-### 4. Resource Server Executes Tool
+### 4. Resource Server Executed Tool
 ```json
 {
     "type": "function_call_output",
@@ -88,7 +88,7 @@ Let's break down exactly what happened behind the scenes. When you ran the clien
 **What**: Receives the tool call, executes `get_weather("San Francisco")`, returns weather data  
 **Result**: Tool output is sent back to GPT-4
 
-### 5. GPT-4 Generates Final Response
+### 5. GPT-4 Generated a Final Response
 ```json
 {
     "type": "message",
@@ -205,7 +205,7 @@ Let's try different inputs to see how the agent behaves.
    python responses_api_agents/simple_agent/custom_client.py
    ```
 
-## What You'll Observe
+## What You Will Observe
 
 You might notice that running the same query multiple times can produce different behaviors:
 
@@ -230,7 +230,7 @@ You might notice that running the same query multiple times can produce differen
   - May or may not call weather tool
 ```
 
-This non-deterministic behavior is normal for language models—and it's exactly why we need **verification and scoring** (covered in the next tutorial) to measure and improve agent quality consistently.
+This non-deterministic behavior is normal for language models—and it is exactly why we need **verification and scoring** (covered in the next tutorial) to measure and improve agent quality consistently.
 
 
 ## About This Implementation
@@ -266,7 +266,7 @@ A later tutorial will cover integrating with external services and building more
 
 ## What You've Learned
 
-This weather agent demonstrates patterns you'll see throughout NeMo Gym:
+This weather agent demonstrates patterns you will see throughout NeMo Gym:
 
 - **Agent workflow**: Request → Analysis → Tool calls → Integration → Response
 - **Models** handle the reasoning and decision-making

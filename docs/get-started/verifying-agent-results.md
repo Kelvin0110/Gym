@@ -49,13 +49,13 @@ async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
 - Receives the agent's complete response in `body.response`
 - Returns a reward of 1.0 (perfect score) no matter what
 
-**The problem**: Every response gets the same score, so there's no signal about quality. The agent can't learn what "good" looks like.
+**The problem**: Every response gets the same score, so there is no signal about quality. The agent cannot learn what "good" looks like.
 
 ---
 
 ## Build Quality Verification
 
-Let's create verification logic that actually measures performance. You'll build this up in three stages, from simple to sophisticated.
+Let us create verification logic that actually measures performance. You will build this up in three stages, from simple to sophisticated.
 
 ### 1. Check Tool Usage
 
@@ -187,7 +187,7 @@ Finally, make verification even more demanding by requiring actionable advice, n
 
 ## Test Your Verification Logic
 
-Now test whichever verification stage you've implemented to see how different agent behaviors produce different reward scores.
+Now test whichever verification stage you have implemented to observe how different agent behaviors produce different reward scores.
 
 1. Create a test script (`responses_api_agents/simple_agent/test_verification.py`):
 
@@ -306,7 +306,7 @@ Now test whichever verification stage you've implemented to see how different ag
 
 ---
 
-## What You'll Observe
+## What You Will Observe
 
 Watch how different agent behaviors produce different rewards:
 
@@ -339,21 +339,21 @@ Watch how different agent behaviors produce different rewards:
 ::::
 
 :::{note}
-**About Expected Rewards**: The reward scores you see depend on which verification stage you implemented:
+**About Expected Rewards**: The reward scores you observe depend on which verification stage you implemented:
 
 - **Stage 1** (tool usage): Only 0.0 or 1.0
 - **Stage 2** (tool + weather mention): 0.0, 0.3, 0.5, or 1.0  
 - **Stage 3** (actionable advice): 0.0, 0.3, 0.6, or 1.0
 
-The examples above assume **Stage 2** verification. With Stage 3, you'll need actionable advice keywords ("wear", "bring", "jacket") to get a perfect 1.0 score.
+The examples above assume **Stage 2** verification. With Stage 3, you will need actionable advice keywords ("wear", "bring", "jacket") to get a perfect 1.0 score.
 :::
 
 :::{tip}
-**Model Variability Matters Here Too**: Remember from Tutorial 2 that GPT-4's behavior varies between runs. You might see different reward scores for the same query across multiple runs—this is normal and demonstrates why collecting many rollouts (Tutorial 4) gives you a more complete picture of agent performance.
+**Model Variability Matters Here Too**: Remember from Tutorial 2 that GPT-4's behavior varies between runs. You might observe different reward scores for the same query across multiple runs—this is normal and demonstrates why collecting many rollouts (Tutorial 4) gives you a more complete picture of agent performance.
 :::
 
 :::{note}
-GPT-4 is quite capable, so you might see high scores across most tests. This demonstrates that the base model already performs well on simple tasks. During RL training, verification becomes critical for more challenging domains where the base model struggles.
+GPT-4 is quite capable, so you might observe high scores across most tests. This demonstrates that the base model already performs well on simple tasks. During RL training, verification becomes critical for more challenging domains where the base model struggles.
 :::
 
 ---

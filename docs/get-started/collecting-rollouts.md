@@ -43,7 +43,7 @@ Make sure you have:
 - ✅ Virtual environment activated
 
 :::{tip}
-If your servers have been running for a while, you might want to restart them to ensure they're using the latest verification logic from Tutorial 3.
+If your servers have been running for a while, you might want to restart them to ensure they are using the latest verification logic from Tutorial 3.
 :::
 
 ---
@@ -59,7 +59,7 @@ Think of them as "interaction transcripts with grades":
 - **Output**: Final response to user
 - **Score**: Verification reward (0.0–1.0)
 
-When you ran a single interaction in tutorial 1, that was **one rollout**. Now you'll generate **many rollouts** systematically—this is the foundation of RL training data.
+When you ran a single interaction in tutorial 1, that was **one rollout**. Now you will generate **many rollouts** systematically—this is the foundation of RL training data.
 
 ---
 
@@ -204,13 +204,13 @@ ng_collect_rollouts \
 - `+output_jsonl_fpath=weather_rollouts.jsonl`: Where to save results
 - `+limit=null`: Process all examples (in this case, 5)
 
-**✅ Success Check**: You should see output like:
+**✅ Success Check**: Verify that you can see output like:
 
 ```
 Collecting rollouts: 100%|████████████████| 5/5 [00:08<00:00,  1.67s/it]
 ```
 
-This means all 5 queries were processed successfully!
+This means all five queries were processed successfully!
 
 :::{important}
 **Where Do Reward Scores Come From?**
@@ -238,7 +238,7 @@ Let's examine what was captured. Open `weather_rollouts.jsonl` or view it in the
 head -n 1 weather_rollouts.jsonl | python -m json.tool
 ```
 
-You'll see a JSON object with three main sections:
+You will see a JSON object with three main sections:
 
 ### 1. Input (`responses_create_params`)
 
@@ -309,12 +309,12 @@ This is the score from your verification function—the same one you built in tu
 
 ## What Makes This Training Data?
 
-Look at all 5 rollouts together:
+Look at all five rollouts together:
 
 ```bash
 # Count total rollouts
 wc -l weather_rollouts.jsonl
-# Output: 5
+# Output: five
 
 # View all verification scores
 jq '.reward' weather_rollouts.jsonl
@@ -343,16 +343,16 @@ Your `weather_rollouts.jsonl` file is now **training data** that could be fed in
 * - **Tutorial 1-3** (Individual)
   - **Now** (Batch)
 * - Ran one interaction manually
-  - Ran 5 interactions automatically
+  - Ran five interactions automatically
 * - Saw one response
-  - Generated 5 complete rollouts
+  - Generated five complete rollouts
 * - Scored one at a time
   - All scored and saved
 * - Useful for testing and understanding
   - Ready for training at scale
 ```
 
-The same pattern works for 50, 500, or 5,000 examples—that's the power of rollout collection.
+The same pattern works for 50, 500, or 5,000 examples—that is the power of rollout collection.
 
 ---
 

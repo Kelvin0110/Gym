@@ -2,7 +2,7 @@
 
 # Get Started with NeMo Gym
 
-This guided tutorial experience is designed for those brand new to training AI agents with reinforcement learning (RL). These tutorials walk you through the complete journey from installation to generating training data at scale. By the end, you'll have:
+This guided tutorial experience is designed for those brand new to training AI agents with reinforcement learning (RL). These tutorials walk you through the complete journey from installation to generating training data at scale. By the end, you will have:
 
 - ✅ A working NeMo Gym installation with servers running
 - ✅ Hands-on experience with agent workflows and tool usage
@@ -80,7 +80,7 @@ Begin Tutorial: Setup and Installation →
 :::
 
 :::{tip}
-**New to reinforcement learning?** Don't worry—these tutorials introduce RL concepts naturally as you build.
+**New to reinforcement learning?** Do not worry—these tutorials introduce RL concepts naturally as you build.
 
 - For deeper conceptual understanding, explore the [About](../about/index.md) section.
 - For quick definitions, refer to the [Glossary](../resources/glossary.md).
