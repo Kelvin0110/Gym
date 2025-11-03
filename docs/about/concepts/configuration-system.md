@@ -132,7 +132,7 @@ global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
 
 When you run `ng_run`, NeMo Gym resolves configuration through this process:
 
-### Step 1: Parse Command Line
+### 1. Parse Command Line
 
 Hydra extracts command-line arguments into a configuration dictionary:
 
@@ -142,7 +142,7 @@ ng_run "+config_paths=[model.yaml]" +policy_model_name=gpt-4o-mini
 
 Creates: `{config_paths: ["model.yaml"], policy_model_name: "gpt-4o-mini"}`
 
-### Step 2: Load env.yaml
+### 2. Load env.yaml
 
 If `env.yaml` exists in the project root, it's loaded:
 
@@ -151,7 +151,7 @@ policy_api_key: sk-real-key
 policy_model_name: gpt-4o-2024-11-20  # Will be overridden by CLI
 ```
 
-### Step 3: Resolve config_paths
+### 3. Resolve config_paths
 
 The system merges env.yaml with CLI args to resolve `config_paths`:
 
@@ -166,11 +166,11 @@ This allows using config path collections from env.yaml:
 ng_run '+config_paths=${simple_weather_config_paths}'
 ```
 
-### Step 4: Load YAML Files
+### 4. Load YAML Files
 
 Each YAML file in `config_paths` is loaded in order. Later files override earlier ones.
 
-### Step 5: Final Merge (Priority Order)
+### 5. Final Merge (Priority Order)
 
 The system merges all layers with this priority:
 
@@ -185,7 +185,7 @@ global_config_dict = OmegaConf.merge(
 
 **Result**: A single configuration dictionary where later layers override earlier ones.
 
-### Step 6: Validation and Defaults
+### 6. Validation and Defaults
 
 The system validates and populates defaults:
 
