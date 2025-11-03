@@ -322,17 +322,37 @@ Once you have your processed data (`sft_data.jsonl` or `dpo_pairs.jsonl`), you c
 
 ### Standard Data Formats
 
+Your processed data is now ready for training. Here's the format your training library expects:
+
+::::{tab-set}
+
+:::{tab-item} SFT Format
+:sync: sft
+
 SFT data follows the conversation format used by most training libraries:
 
 ```json
 {"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
 ```
 
+This format is compatible with OpenAI's fine-tuning API, Hugging Face Transformers, and most modern training frameworks.
+
+:::
+
+:::{tab-item} DPO Format
+:sync: dpo
+
 DPO data follows the preference pair format:
 
 ```json
 {"prompt": ["..."], "chosen": ["..."], "rejected": ["..."]}
 ```
+
+This format is compatible with TRL (Transformer Reinforcement Learning), Axolotl, and other DPO training libraries.
+
+:::
+
+::::
 
 ---
 
