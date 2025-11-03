@@ -27,9 +27,9 @@ You've generated rollouts in the get-started series—now learn how to transform
 ← New to NeMo Gym? Start with Get Started
 :::
 
-:::{tip}
-**Prerequisites**: This tutorial assumes you've completed the [Get Started](../get-started/index.md) series and understand how to [collect rollouts](../get-started/collecting-rollouts.md). If you need a deeper understanding of rollout collection strategies, refer to [Rollout Collection Fundamentals](../about/concepts/rollout-collection-fundamentals.md).
-:::
+## Before You Start
+
+This tutorial assumes you've completed the [Get Started](../get-started/index.md) series and understand how to [collect rollouts](../get-started/collecting-rollouts.md). If you need a deeper understanding of rollout collection strategies, refer to [Rollout Collection Fundamentals](../about/concepts/rollout-collection-fundamentals.md).
 
 ---
 

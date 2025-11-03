@@ -27,9 +27,10 @@ Master NeMo Gym's flexible configuration system to handle different environments
 ← New to NeMo Gym? Start with Get Started
 :::
 
-:::{tip}
-**Prerequisites**: This tutorial assumes you've completed the [Get Started](../get-started/index.md) series and understand how to run basic NeMo Gym commands. For hands-on practice, work through [Setup and Installation](../get-started/setup-installation.md) first.
-:::
+## Before You Start
+
+This tutorial assumes you've completed the [Get Started](../get-started/index.md) series and understand how to run basic NeMo Gym commands. For hands-on practice, work through [Setup and Installation](../get-started/setup-installation.md) first.
+
 
 ---
 
