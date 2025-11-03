@@ -373,7 +373,7 @@ filter_criteria = {
 :::
 
 :::{dropdown} 2. Balanced Datasets
-:icon: scale
+:icon: rows
 
 **Principle**: Ensure diverse task representation to prevent overfitting to common patterns.
 
