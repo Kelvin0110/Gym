@@ -92,43 +92,84 @@ policy_api_key: sk-actual-secret-key
 
 ## The Three Configuration Layers
 
-### Layer 1: Server YAML Files (Foundation)
+Here's how the three layers compare:
 
-**Purpose**: Define the structure and default values for your servers.
+```{list-table}
+:header-rows: 1
+:widths: 20 27 27 26
 
-**Location**: `responses_api_models/`, `resources_servers/`, `responses_api_agents/` directories
+* - 
+  - **Layer 1: YAML Files**
+  - **Layer 2: env.yaml**
+  - **Layer 3: Command Line**
+* - **Priority**
+  - Lowest (foundation)
+  - Middle (overrides YAML)
+  - Highest (overrides everything)
+* - **Purpose**
+  - Define server structure and architecture
+  - Store secrets and environment-specific values
+  - Temporary overrides for testing
+* - **Location**
+  - `responses_api_models/`, `resources_servers/`, `responses_api_agents/` directories
+  - `env.yaml` in project root
+  - Arguments passed to `ng_run`
+* - **Version Control**
+  - ✅ Committed to git
+  - ❌ In `.gitignore` (never commit)
+  - ❌ Not persisted
+* - **Contains**
+  - Server hierarchy, entrypoints, structure, variable references
+  - API keys, secrets, environment-specific values, config collections
+  - Any configuration override, experiment parameters
+* - **When to Use**
+  - Defining your system architecture
+  - Different credentials per environment (dev/staging/prod)
+  - Quick experiments without editing files
+* - **Example Content**
+  - `openai_base_url: ${policy_base_url}`
+  - `policy_api_key: sk-real-key`
+  - `+policy_model_name=gpt-4o-mini`
+```
 
+**Merge priority** (highest last): YAML files → env.yaml → Command Line
+
+---
+
+### Configuration Examples
+
+::::{tab-set}
+
+:::{tab-item} Layer 1: YAML Files
 **Example** (`responses_api_models/openai_model/configs/openai_model.yaml`):
+
 ```yaml
 policy_model:
   responses_api_models:
     openai_model:
       entrypoint: app.py
-      openai_base_url: ${policy_base_url}
-      openai_api_key: ${policy_api_key}
-      openai_model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}      # Variable reference
+      openai_api_key: ${policy_api_key}        # Variable reference
+      openai_model: ${policy_model_name}       # Variable reference
 ```
 
-**Key characteristics**:
-- Version controlled (committed to git)
-- Uses variable interpolation (`${variable_name}`) for secrets
+**Key points**:
+- Uses variable interpolation (`${variable_name}`) instead of hardcoded values
 - Defines server hierarchy: server ID → server type → implementation → settings
 - Multiple YAML files can be loaded; later files override earlier ones
+- Committed to git—team shares these files
 
 **Evidence**: Configuration resolution in `nemo_gym/global_config.py:194`
 ```python
 config_paths, extra_configs = self.load_extra_config_paths(config_paths)
 ```
+:::
 
-### Layer 2: env.yaml (Secrets and Environment-Specific Values)
+:::{tab-item} Layer 2: env.yaml
+**Example** (`env.yaml` in project root):
 
-**Purpose**: Store secrets, API keys, and environment-specific settings that should never be committed.
-
-**Location**: `env.yaml` in the project root (must be in `.gitignore`)
-
-**Example** (`env.yaml`):
 ```yaml
-# API credentials (never commit!)
+# API credentials (NEVER commit this file!)
 policy_base_url: https://api.openai.com/v1
 policy_api_key: sk-your-actual-api-key-here
 policy_model_name: gpt-4o-2024-11-20
@@ -139,11 +180,11 @@ simple_weather_config_paths:
   - resources_servers/simple_weather/configs/simple_weather.yaml
 ```
 
-**Key characteristics**:
+**Key points**:
 - Loaded early so variables can be used in config paths
-- Overrides values from YAML files
-- Can store config path collections for convenience
 - Each environment (dev/staging/prod) has its own env.yaml
+- Can store config path collections for convenience
+- Must be in `.gitignore`
 
 **Evidence**: env.yaml loading in `nemo_gym/global_config.py:183-187`
 ```python
@@ -153,23 +194,23 @@ dotenv_path = parse_config.dotenv_path or Path(PARENT_DIR) / "env.yaml"
 if dotenv_path.exists() and not parse_config.skip_load_from_dotenv:
     dotenv_extra_config = OmegaConf.load(dotenv_path)
 ```
+:::
 
-### Layer 3: Command Line Arguments (Runtime Overrides)
+:::{tab-item} Layer 3: Command Line
+**Example** (command-line usage):
 
-**Purpose**: Temporary overrides for testing and experimentation without editing files.
-
-**Usage**:
 ```bash
 ng_run "+config_paths=[configs.yaml]" \
     +policy_model_name=gpt-4o-mini \
     +simple_weather.resources_servers.simple_weather.port=8001
 ```
 
-**Key characteristics**:
-- Highest priority—overrides everything
+**Key points**:
+- Highest priority—overrides everything from YAML and env.yaml
 - Uses Hydra syntax (`+key=value`)
-- Can override any nested configuration value
+- Can override any nested configuration value with dot notation
 - Perfect for one-off experiments and CI/CD pipelines
+- Changes don't persist (temporary overrides only)
 
 **Evidence**: Command line priority in `nemo_gym/global_config.py:199-201`
 ```python
@@ -178,6 +219,10 @@ ng_run "+config_paths=[configs.yaml]" \
 # to override everything else.
 global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
 ```
+:::
+
+::::
+
 
 ---
 
@@ -195,6 +240,8 @@ With an `env.yaml` file containing secrets:
 policy_api_key: sk-real-key
 policy_model_name: gpt-4o-2024-11-20
 ```
+
+### The Process
 
 1. **Parse Command Line → Configuration Dictionary**
    
@@ -505,31 +552,3 @@ model_2: ${policy_model_name}
 **Hydra integration**: NeMo Gym uses Hydra (built on OmegaConf) for command-line parsing, enabling the `+key=value` override syntax.
 
 :::
-
-
----
-
-## Related Concepts
-
-- **[Core Abstractions](core-abstractions.md)**: Understanding the three servers that configuration connects
-- **[Rollout Collection Fundamentals](rollout-collection-fundamentals.md)**: How configuration affects rollout generation
-
----
-
-## Summary
-
-NeMo Gym's three-tier configuration system provides:
-
-1. **YAML Files**: Version-controlled structure and defaults
-2. **env.yaml**: Environment-specific secrets and settings
-3. **Command Line**: Runtime overrides for experimentation
-
-Configuration is resolved once at startup with this priority order (highest last):
-```
-YAML files → env.yaml → Command Line
-```
-
-This design enables secure, flexible deployments across different environments while maintaining a single codebase.
-
-For hands-on practice with configuration, see the [Setup and Installation](../../get-started/setup-installation.md) tutorial.
-
