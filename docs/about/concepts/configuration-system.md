@@ -305,7 +305,10 @@ ng_run "+config_paths=[${base_config}]" \
 
 ## Best Practices
 
-### 1. Never Commit Secrets
+:::{dropdown} 1. Never Commit Secrets
+:icon: lock
+
+**Principle**: Keep sensitive data out of version control to prevent security breaches.
 
 **Always**:
 - Add `env.yaml` to `.gitignore`
@@ -317,9 +320,16 @@ ng_run "+config_paths=[${base_config}]" \
 - Commit env.yaml to version control
 - Share secrets in documentation or examples
 
-### 2. Use Config Path Collections
+**Why it matters**: Accidentally committed API keys can be scraped by bots and lead to unauthorized usage, unexpected charges, or security breaches.
 
-Group related configurations in env.yaml:
+:::
+
+:::{dropdown} 2. Use Config Path Collections
+:icon: list-unordered
+
+**Principle**: Group related configurations for easier scenario switching.
+
+**Implementation**:
 
 ```yaml
 math_training_config_paths:
@@ -328,14 +338,24 @@ math_training_config_paths:
   - responses_api_agents/simple_agent/configs/simple_agent.yaml
 ```
 
-Benefits:
+**Usage**:
+```bash
+ng_run '+config_paths=${math_training_config_paths}'
+```
+
+**Benefits**:
 - Single command to load complete setups
 - Easier to switch between scenarios
 - Less typing, fewer errors
 
-### 3. Document Your Overrides
+:::
 
-Use inline comments for command-line overrides:
+:::{dropdown} 3. Document Your Overrides
+:icon: comment
+
+**Principle**: Make your configuration choices explicit and understandable.
+
+**Implementation**:
 
 ```bash
 ng_run "+config_paths=[${config}]" \
@@ -344,9 +364,16 @@ ng_run "+config_paths=[${config}]" \
     +num_samples_in_parallel=2               # Avoid rate limits
 ```
 
-### 4. Provide an env.example.yaml
+**Why it matters**: Inline documentation helps team members (and future you) understand why specific overrides were chosen.
 
-Commit an example file showing required variables:
+:::
+
+:::{dropdown} 4. Provide an env.example.yaml
+:icon: file
+
+**Principle**: Give users a template showing required configuration without exposing real secrets.
+
+**Implementation**:
 
 ```yaml
 # env.example.yaml (committed to git)
@@ -357,59 +384,90 @@ policy_model_name: gpt-4o-2024-11-20
 # Copy this file to env.yaml and fill in real values
 ```
 
+**Why it matters**: New team members can quickly set up their environment without guessing what variables are needed.
+
+:::
+
+
 ---
 
 ## Troubleshooting
 
-### Missing Configuration Values
+:::{dropdown} Problem: Missing Configuration Values
+:icon: alert
+:color: warning
 
-**Error**:
-```
+**Error message**:
+```text
 omegaconf.errors.MissingMandatoryValue: Missing mandatory value: policy_api_key
 ```
 
-**Cause**: A required variable isn't defined in any of the three layers.
+**What this means**: A required variable isn't defined in any of the three configuration layers.
 
-**Solution**: Add the value to env.yaml or override via command line.
+**Solutions**:
 
-### Invalid Server References
+1. **Add to env.yaml** (recommended for secrets):
+   ```yaml
+   policy_api_key: sk-your-actual-key
+   ```
 
-**Error**:
-```
+2. **Override via command line** (for testing):
+   ```bash
+   ng_run "+config_paths=[...]" +policy_api_key=sk-test-key
+   ```
+
+:::
+
+:::{dropdown} Problem: Invalid Server References
+:icon: search
+:color: warning
+
+**Error message**:
+```text
 AssertionError: Could not find type='resources_servers' name='typo_weather' 
 in the list of available servers: [simple_weather, library_judge_math, ...]
 ```
 
-**Cause**: Configuration references a server that doesn't exist or isn't loaded.
+**What this means**: Configuration references a server that doesn't exist or isn't loaded.
 
-**Solution**: 
-1. Check spelling (case-sensitive)
-2. Ensure the server's config file is in `config_paths`
-3. Check the error message for valid server names
+**Solutions**:
+
+1. **Check spelling**: Server names are case-sensitive
+2. **Ensure config is loaded**: Add the server's config file to `config_paths`
+3. **List available servers**: Check the error message for valid server names
 
 **Evidence**: Validation logic in `nemo_gym/global_config.py:151-153`
 
-### Port Conflicts
+:::
 
-**Error**:
-```
+:::{dropdown} Problem: Port Conflicts
+:icon: plug
+:color: danger
+
+**Error message**:
+```text
 OSError: [Errno 48] Address already in use
 ```
 
-**Cause**: Another process is using the port.
+**What this means**: Another process is already using the port.
 
-**Solution**:
-```bash
-# Option 1: Specify available port
-ng_run "+config_paths=[...]" +server.port=8001
+**Solutions**:
 
-# Option 2: Auto-assign (recommended)
-ng_run "+config_paths=[...]" +server.port=0
-```
+1. **Specify available port**:
+   ```bash
+   ng_run "+config_paths=[...]" +server.port=8001
+   ```
 
-The system will automatically find and assign an available port when `port=0`.
+2. **Auto-assign** (recommended):
+   ```bash
+   ng_run "+config_paths=[...]" +server.port=0
+   ```
+   The system will automatically find and assign an available port when `port=0`.
 
 **Evidence**: Port allocation in `nemo_gym/global_config.py:159-164`
+
+:::
+
 
 ---
 
