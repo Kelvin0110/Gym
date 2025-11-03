@@ -34,6 +34,12 @@ Each explainer below covers one foundational idea and links to deeper material.
 Understand how Models, Resources, and Agents remain decoupled yet coordinated as independent HTTP services, including which endpoints each abstraction exposes.
 :::
 
+:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Configuration System
+:link: concepts-configuration-system
+:link-type: ref
+Learn how NeMo Gym's three-tier configuration system (YAML → env.yaml → CLI) enables secure secrets management and flexible multi-environment deployments.
+:::
+
 :::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Rollout Collection Fundamentals
 :link: concepts-rc-fundamentals
 :link-type: ref
@@ -63,6 +69,7 @@ Explore how resource servers score agent outputs with `verify()` implementations
 :maxdepth: 1
 
 Core Abstractions <core-abstractions>
+Configuration System <configuration-system>
 Rollout Collection Fundamentals <rollout-collection-fundamentals>
 Verifying Agent Results <verifying-agent-results>
 ```
