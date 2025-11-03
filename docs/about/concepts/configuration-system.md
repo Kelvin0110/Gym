@@ -90,9 +90,9 @@ policy_api_key: sk-actual-secret-key
 
 ---
 
-## The Three Configuration Layers
+## How the Layers Work Together
 
-Here's how the three layers compare:
+Each layer serves a specific purpose and overrides the previous one. Here's how they compare:
 
 ```{list-table}
 :header-rows: 1
@@ -136,7 +136,9 @@ Here's how the three layers compare:
 
 ---
 
-### Configuration Examples
+### Detailed Examples by Layer
+
+See concrete examples of how each layer is structured and used:
 
 ::::{tab-set}
 
@@ -226,9 +228,9 @@ global_config_dict = OmegaConf.merge(*extra_configs, global_config_dict)
 
 ---
 
-## Configuration Resolution Process
+## How Configuration Gets Resolved
 
-Let's trace what happens when you run this command:
+When you run `ng_run`, NeMo Gym merges all three layers following a specific process. Let's trace what happens when you run this command:
 
 ```bash
 ng_run "+config_paths=[model.yaml]" +policy_model_name=gpt-4o-mini
@@ -299,7 +301,9 @@ policy_model_name: gpt-4o-2024-11-20
 
 ---
 
-## Configuration Structure
+## Understanding Configuration Structure
+
+Once configuration is resolved, it follows a standard structure for defining servers and their relationships. These patterns apply regardless of which layer defines the values:
 
 :::{dropdown} Server Instance Config Format
 :icon: code
@@ -387,9 +391,9 @@ policy_model_name: gpt-4o-2024-11-20          # Model identifier
 
 ---
 
-## Environment-Specific Deployments
+## Deployment Strategies Across Environments
 
-Different deployment scenarios call for different configuration strategies. Choose the approach that best fits your workflow:
+The three-tier system supports multiple deployment patterns. Different deployment scenarios call for different configuration strategies—choose the approach that best fits your workflow:
 
 ::::{tab-set}
 
@@ -481,7 +485,9 @@ ng_run "+config_paths=[${base_config}]" \
 
 ---
 
-## Technical Implementation
+## Technical Implementation Details
+
+Understanding how NeMo Gym implements configuration resolution can help you optimize performance and debug issues:
 
 :::{dropdown} Configuration Caching
 :icon: cache
