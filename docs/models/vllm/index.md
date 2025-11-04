@@ -10,20 +10,15 @@ vLLM enables high-throughput inference with self-hosted open-source models for l
 
 vLLM is a fast and memory-efficient inference engine for large language models. NeMo Gym's vLLM adapter lets you deploy open-source models (Llama, Qwen, Mistral, etc.) on your own infrastructure with optimized throughput for generating training rollouts.
 
-**Why use vLLM with NeMo Gym?**
+| Why use vLLM with NeMo Gym? | |
+|------------------------------|-------------|
+| **High throughput** | Optimized batch processing generates thousands of rollouts concurrently |
+| **Full control** | Deploy any open-source model on your infrastructure |
+| **Cost-effective** | No per-token API costs for large-scale training workloads |
+| **Training-ready** | Built-in support for token IDs and log probabilities required by RL frameworks |
+| **Reasoning support** | Automatic parsing and extraction of reasoning tokens using `<think>` tags |
 
-- **High throughput**: Optimized batch processing generates thousands of rollouts concurrently
-- **Full control**: Deploy any open-source model on your infrastructure
-- **Cost-effective**: No per-token API costs for large-scale training workloads
-- **Training-ready**: Built-in support for token IDs and log probabilities required by RL frameworks
-- **Reasoning support**: Automatic parsing and extraction of reasoning tokens using `<think>` tags
-
-**When to use vLLM**:
-
-- Training with open-source models (Llama, Qwen, Mistral)
-- Large-scale rollout collection requiring high throughput
-- Cost-sensitive projects with predictable infrastructure costs
-- Research requiring full model control and reproducibility
+**When to use vLLM**: Training with open-source models (Llama, Qwen, Mistral) • Large-scale rollout collection requiring high throughput • Cost-sensitive projects with predictable infrastructure costs • Research requiring full model control and reproducibility
 
 :::{seealso}
 **Not sure which model serving method to use?** See the [Models Overview](../index.md#choosing-a-model-serving-method) for a comparison.

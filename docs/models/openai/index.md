@@ -10,20 +10,15 @@ Rapid prototyping and experimentation with OpenAI models through managed API ser
 
 OpenAI provides state-of-the-art language models through a managed API service. NeMo Gym integrates with OpenAI's endpoints using the Responses API format, enabling quick experimentation without infrastructure management.
 
-**Why use OpenAI with NeMo Gym?**
+| Why use OpenAI with NeMo Gym? | |
+|--------------------------------|-------------|
+| **Rapid prototyping** | Get started in minutes without infrastructure setup |
+| **Latest models** | Access to GPT-4, GPT-4 Turbo, and other cutting-edge models |
+| **Managed service** | High availability with no server maintenance |
+| **Pay-per-use** | Cost-effective for experimentation and small-scale projects |
+| **Easy migration** | Simple switch to self-hosted options when ready to scale |
 
-- **Rapid prototyping**: Get started in minutes without infrastructure setup
-- **Latest models**: Access to GPT-4, GPT-4 Turbo, and other cutting-edge models
-- **Managed service**: High availability with no server maintenance
-- **Pay-per-use**: Cost-effective for experimentation and small-scale projects
-- **Easy migration**: Simple switch to self-hosted options when ready to scale
-
-**When to use OpenAI**:
-
-- Quick prototyping and proof-of-concept work
-- Experimentation with different agent approaches
-- Small to medium-scale rollout collection
-- Development and testing before production deployment
+**When to use OpenAI**: Quick prototyping and proof-of-concept work • Experimentation with different agent approaches • Small to medium-scale rollout collection • Development and testing before production deployment
 
 :::{seealso}
 **Not sure which model serving method to use?** See the [Models Overview](../index.md#choosing-a-model-serving-method) for a comparison.
