@@ -131,9 +131,10 @@ If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym
    policy_model_name: Qwen/Qwen3-30B-A3B       # Must exactly match model identifier
    ```
 
-   :::{important}
+   ```{important}
    **Model name must be exact match**: The `policy_model_name` must exactly match the model identifier shown by vLLM (case-sensitive, including slashes). Test with `curl http://localhost:10240/v1/models` to verify.
-   :::
+   ```
+
    :::
 
    :::{tab-item} Existing vLLM Server
@@ -147,7 +148,7 @@ If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym
    policy_model_name: meta-llama/Llama-3.1-8B-Instruct  # Must exactly match loaded model
    ```
 
-   :::{tip}
+   ````{tip}
    **Load balancing**: For high-throughput scenarios, you can configure multiple vLLM servers:
   
    ```yaml
@@ -155,7 +156,8 @@ If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym
    ```
   
    NeMo Gym will distribute requests across servers automatically. See [Optimization Guide](optimization.md) for details.
-   :::
+   ````
+
 
    **Verify server accessibility**:
   
