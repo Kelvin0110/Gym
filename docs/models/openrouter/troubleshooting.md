@@ -15,7 +15,7 @@ Problems with API keys and OpenRouter access.
 **Solution**:
 
 1. Verify API key format:
-   - OpenRouter API keys start with `sk-or-`
+   - OpenRouter API keys typically start with `sk-or-` (verify format in OpenRouter dashboard)
    - Check for extra spaces or newlines in `env.yaml`
    - Ensure key is copied completely
 
@@ -233,13 +233,34 @@ Problems during rollout collection.
 
 :::{dropdown} {octicon}`x;1em;sd-text-danger` Context length exceeded
 
-**How NeMo Gym handles this**: The OpenAI adapter automatically catches context length errors and returns an empty response.
+**Problem**: Request exceeds the maximum context length for your chosen model.
 
-**To prevent**:
-- Check context limits for your chosen model in OpenRouter catalog
-- Different models have different context lengths
-- Implement conversation history truncation
-- Choose models with appropriate context windows
+**Error message**: OpenRouter API returns an error when the combined prompt and conversation history exceed the model's context window.
+
+**Solution**:
+
+1. Check model context limits:
+   - Visit [OpenRouter model catalog](https://openrouter.ai/models)
+   - Verify your model's maximum context length
+   - Different models have different limits (e.g., GPT-4 Turbo: 128K, GPT-3.5: 16K)
+
+2. Reduce context size:
+   - Shorten system prompts
+   - Truncate conversation history
+   - Remove unnecessary tool definitions
+   - Reduce input message length
+
+3. Switch to larger context model:
+   ```bash
+   # Use a model with larger context window
+   ng_run "+config_paths=[${config_paths}]" \
+       +policy_model_name=openai/gpt-4-turbo  # 128K context
+   ```
+
+4. Implement history management:
+   - Keep only recent conversation turns
+   - Summarize older context
+   - Remove tool call results after processing
 
 :::
 
@@ -281,12 +302,18 @@ Managing costs across multiple providers.
 
 If you're still experiencing issues:
 
-1. Check OpenRouter status: Visit [OpenRouter status](https://openrouter.ai/status) or dashboard
-2. Review OpenRouter logs: Check request logs in OpenRouter dashboard
-3. Test OpenRouter API directly: Use `curl` to isolate NeMo Gym vs OpenRouter issues
-4. Verify configuration: Use `ng_dump_config` to see resolved configuration values
-5. Run tests: Execute `ng_test +entrypoint=responses_api_models/openai_model`
-6. Contact OpenRouter support: Visit [OpenRouter Discord](https://discord.gg/openrouter) or support channels
+1. **Check OpenRouter status**: Visit [openrouter.ai/status](https://openrouter.ai/status) for service outages
+2. **Review OpenRouter logs**: Check request logs in OpenRouter dashboard for detailed error messages
+3. **Test API directly**: Use `curl` to isolate whether the issue is NeMo Gym or OpenRouter:
+   ```bash
+   curl https://openrouter.ai/api/v1/chat/completions \
+     -H "Authorization: Bearer sk-or-your-key" \
+     -H "Content-Type: application/json" \
+     -d '{"model":"openai/gpt-4-turbo","messages":[{"role":"user","content":"test"}]}'
+   ```
+4. **Verify configuration**: Use `ng_dump_config` to see all resolved configuration values
+5. **Run tests**: Execute `ng_test +entrypoint=responses_api_models/openai_model` to validate your setup
+6. **Contact OpenRouter support**: Visit [OpenRouter Discord](https://discord.gg/openrouter) or support channels
 
 :::{seealso}
 - **[Configuration Reference](configuration.md)** - Verify your settings

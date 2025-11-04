@@ -114,6 +114,10 @@ Ensure you have these prerequisites before configuring OpenRouter with NeMo Gym:
    ng_run "+config_paths=[${config_paths}]"
    ```
 
+   :::{note}
+   **Why `openai_model`?** OpenRouter implements the OpenAI API specification, so it uses the same `openai_model` adapter. Just change the `base_url` in your `env.yaml` to point to OpenRouter—no separate adapter needed.
+   :::
+
    **✅ Success check**: You should see multiple servers starting, including the head server (default port `11000`).
 
 2. Test with Single Rollout:
@@ -140,9 +144,13 @@ Ensure you have these prerequisites before configuring OpenRouter with NeMo Gym:
      +agent_name=simple_weather_simple_agent \
      +input_jsonl_fpath=resources_servers/simple_weather/data/example.jsonl \
      +output_jsonl_fpath=results/openrouter_rollouts.jsonl \
-     +limit=100 \
+     +limit=null \
      +num_samples_in_parallel=10
    ```
+
+   :::{note}
+   The example dataset contains 5 samples. For production use, replace with your full dataset path and adjust `limit` as needed (or use `+limit=null` to process all).
+   :::
 
    :::{tip}
    **Cost optimization**: OpenRouter shows per-request costs in the dashboard. Monitor usage and compare prices between providers to optimize costs.
