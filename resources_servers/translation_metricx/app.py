@@ -182,7 +182,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
     ) -> tuple[float, str]:
         extracted_answer = self._extract_answer(model_response)
         ds = self._create_dataset_from_example(extracted_answer, source_text, target_text)
-        predictions, _, _ = self._model_workers[0].predict(test_dataset=ds)
+        predictions, _, _ = ray.get(self._model_workers[0].predict.remote(test_dataset=ds))
         score = float(predictions[0])
 
         # MetricX scores are between 0 and 25, where 25 is worst, so we normalize to 0 to 1 where 0 is worst
