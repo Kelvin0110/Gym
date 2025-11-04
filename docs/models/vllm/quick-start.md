@@ -44,9 +44,9 @@ Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 
 ## Set Up vLLM Server
 
-:::{admonition} Already have a vLLM server running?
+:::{admonition} Already have a vLLM server?
 :class: tip
-Skip to [Step 4: Configure NeMo Gym](vllm-quickstart-configure) if you already have a vLLM server deployed and just need to connect NeMo Gym to it.
+If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym](#configure-nemo-gym) and use the "Existing vLLM Server" tab.
 :::
 
 1. Install vLLM:
@@ -116,15 +116,45 @@ Skip to [Step 4: Configure NeMo Gym](vllm-quickstart-configure) if you already h
 (vllm-quickstart-configure)=
 ## Configure NeMo Gym
 
-1. Create or update `env.yaml` in your NeMo Gym repository root:
+Choose your configuration based on where your vLLM server is running:
 
-   ```yaml
-   policy_base_url: http://localhost:10240/v1  # Your vLLM server URL
-   policy_api_key: EMPTY                       # Use EMPTY if no auth configured
-   policy_model_name: Qwen/Qwen3-30B-A3B       # Must match model loaded in vLLM
-   ```
+::::{tab-set}
 
-2. **Validate your configuration** (optional but recommended):
+:::{tab-item} Local vLLM Server
+If you completed steps 1-3 above and started vLLM on localhost:
+
+**Create `env.yaml`** in your NeMo Gym repository root:
+
+```yaml
+policy_base_url: http://localhost:10240/v1  # Your local vLLM server
+policy_api_key: EMPTY                       # No auth for local server
+policy_model_name: Qwen/Qwen3-30B-A3B       # Must match model you started
+```
+:::
+
+:::{tab-item} Existing vLLM Server
+If you have a vLLM server already running elsewhere:
+
+**Create or update `env.yaml`** in your NeMo Gym repository root:
+
+```yaml
+policy_base_url: http://your-vllm-server:8000/v1  # Your vLLM server URL
+policy_api_key: EMPTY                              # Or your API key if configured
+policy_model_name: meta-llama/Llama-3.1-8B-Instruct  # Must match loaded model
+```
+
+**Verify server accessibility**:
+```bash
+# Check server is reachable
+curl http://your-vllm-server:8000/v1/models
+```
+
+You should see a JSON response listing the available models.
+:::
+
+::::
+
+**Next: Validate your configuration** (optional but recommended):
 
    :::{dropdown} Test vLLM connection before starting NeMo Gym
    
@@ -178,22 +208,6 @@ Skip to [Step 4: Configure NeMo Gym](vllm-quickstart-configure) if you already h
    - `404 Not Found`: Check that `base_url` includes `/v1` path
    
    :::
-
-:::{dropdown} If you have an existing vLLM server elsewhere
-
-Update the configuration to point to your server:
-
-```yaml
-policy_base_url: http://your-vllm-server:8000/v1
-policy_api_key: EMPTY  # or your API key
-policy_model_name: meta-llama/Llama-3.1-8B-Instruct  # match your model
-```
-
-Verify your server is accessible:
-```bash
-curl http://your-vllm-server:8000/v1/models
-```
-:::
 
 ---
 
