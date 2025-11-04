@@ -494,9 +494,9 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
 
 ## Troubleshooting
 
-### Connection Issues
+Common issues and solutions when working with vLLM in NeMo Gym.
 
-**Symptom**: `Connection refused` or `Cannot connect to vLLM server`
+:::{dropdown} Connection refused or cannot connect to vLLM server
 
 **Check these**:
 
@@ -523,9 +523,9 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
 
 4. **Firewall rules**: Ensure the port is accessible from the machine running NeMo Gym.
 
-### Model Not Found
+:::
 
-**Symptom**: `Model not found` or `Invalid model identifier`
+:::{dropdown} Model not found or invalid model identifier
 
 **Solution**:
 
@@ -544,9 +544,9 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
 
 3. **Check vLLM logs**: Look for model loading errors or warnings.
 
-### Context Length Exceeded
+:::
 
-**Symptom**: Requests fail with "context length exceeded" errors
+:::{dropdown} Context length exceeded errors
 
 **How NeMo Gym handles this**: The vLLM adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
 
@@ -555,9 +555,9 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
 - Reduce conversation history length in your resource server
 - Configure vLLM with `--max-model-len` to match your needs
 
-### Reasoning Tokens Not Appearing
+:::
 
-**Symptom**: Reasoning items missing from responses even though model generates them
+:::{dropdown} Reasoning tokens not appearing in responses
 
 **Check**:
 
@@ -577,9 +577,9 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
 
 3. **Model generates reasoning**: Not all models produce reasoning tokens. Check model documentation.
 
-### Slow Inference Performance
+:::
 
-**Symptom**: Low throughput or high latency
+:::{dropdown} Slow inference or low throughput
 
 **Optimize**:
 
@@ -606,6 +606,8 @@ When using multiple vLLM servers, NeMo Gym routes requests based on session IDs:
    ```
 
 4. **Monitor vLLM metrics**: Check GPU utilization, batch sizes, and queue lengths.
+
+:::
 
 ---
 
