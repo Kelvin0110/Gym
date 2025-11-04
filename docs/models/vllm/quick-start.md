@@ -8,6 +8,10 @@ Get vLLM running with NeMo Gym in under 5 minutes.
 
 ## Before You Start
 
+:::{tip}
+**New to NeMo Gym?** Start with the [Get Started tutorials](../../get-started/index.md) using OpenAI first. Once you understand the workflow, return here to deploy your own models with vLLM.
+:::
+
 Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 
 ```{list-table}
@@ -31,10 +35,6 @@ Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 * - **Network Bandwidth**
   - Required for initial model download from Hugging Face
 ```
-
-:::{tip}
-**New to NeMo Gym?** Start with the [Get Started tutorials](../../get-started/index.md) using OpenAI first. Once you understand the workflow, return here to deploy your own models with vLLM.
-:::
 
 ---
 
@@ -101,9 +101,9 @@ Skip to [Step 4: Configure NeMo Gym](vllm-quickstart-configure) if you already h
        --port 10240
    ```
 
-:::{tip}
-**Reasoning tokens handled automatically**: NeMo Gym's vLLM adapter parses reasoning tokens (like `<think>` tags) transparently, so you don't need to configure vLLM's `--reasoning-parser` flag. This ensures compatibility with the Responses API format used throughout NeMo Gym.
-:::
+   :::{tip}
+   **Reasoning tokens handled automatically**: NeMo Gym's vLLM adapter parses reasoning tokens (like `<think>` tags) transparently, so you don't need to configure vLLM's `--reasoning-parser` flag. This ensures compatibility with the Responses API format used throughout NeMo Gym.
+   :::
 
 **✅ Success check**: Visit `http://localhost:10240/health` - you should see a health status response.
 
@@ -120,7 +120,60 @@ Skip to [Step 4: Configure NeMo Gym](vllm-quickstart-configure) if you already h
    policy_model_name: Qwen/Qwen3-30B-A3B       # Must match model loaded in vLLM
    ```
 
-2. Validate config. 
+2. **Validate your configuration** (optional but recommended):
+
+   :::{dropdown} Test vLLM connection before starting NeMo Gym
+   
+   Catch configuration issues early by testing your vLLM server:
+   
+   ```bash
+   python -c "
+   import openai
+   import yaml
+   import requests
+   
+   # Load your configuration
+   with open('env.yaml') as f:
+       config = yaml.safe_load(f)
+   
+   base_url = config['policy_base_url']
+   
+   # Test 1: Check vLLM health endpoint
+   print('🔍 Testing vLLM server health...')
+   health_url = base_url.replace('/v1', '/health')
+   health_response = requests.get(health_url)
+   print(f'✅ Health check: {health_response.status_code}')
+   
+   # Test 2: Verify model is loaded
+   print(f'\n🔍 Checking if model is loaded...')
+   client = openai.OpenAI(
+       api_key=config['policy_api_key'],
+       base_url=base_url
+   )
+   models = client.models.list()
+   available_models = [m.id for m in models.data]
+   print(f'✅ Available models: {available_models}')
+   
+   # Test 3: Simple completion
+   print(f'\n🔍 Testing completion with {config[\"policy_model_name\"]}...')
+   response = client.chat.completions.create(
+       model=config['policy_model_name'],
+       messages=[{'role': 'user', 'content': 'Say hello'}],
+       max_tokens=10
+   )
+   print(f'✅ Model response: {response.choices[0].message.content}')
+   print(f'\n✨ All checks passed! Your vLLM configuration is ready.')
+   "
+   ```
+   
+   **✅ Success check**: You should see three green checkmarks confirming health, model availability, and successful completion.
+   
+   **Common errors**:
+   - `Connection refused`: vLLM server not running or wrong port
+   - `Model not found`: Model name in `env.yaml` doesn't match vLLM
+   - `404 Not Found`: Check that `base_url` includes `/v1` path
+   
+   :::
 
 :::{dropdown} If you have an existing vLLM server elsewhere
 
