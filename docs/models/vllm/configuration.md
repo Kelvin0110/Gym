@@ -10,19 +10,32 @@ Complete reference for all vLLM adapter configuration options in NeMo Gym.
 
 The vLLM adapter uses a standard [Hydra configuration file](https://hydra.cc/docs/tutorials/basic/your_first_app/config_file/) with environment variable substitution:
 
-:::{dropdown} How configuration layers work
+Configuration values resolve through **three layers** with increasing precedence. Toggle between layers to compare:
 
-Configuration values resolve through **three layers** with increasing precedence:
+::::{tab-set}
 
-**Layer 1: `env.yaml` (base values)**
+:::{tab-item} Layer 1: env.yaml
+
+**Base values and secrets** (git-ignored)
+
 ```yaml
-# env.yaml - git-ignored, contains secrets
+# env.yaml
 policy_base_url: http://localhost:10240/v1
 policy_api_key: EMPTY
 policy_model_name: Qwen/Qwen3-30B-A3B
 ```
 
-**Layer 2: Config YAML (structure with variable substitution)**
+**When to use**:
+- Secrets and API keys
+- Environment-specific values (dev/staging/prod URLs)
+- Personal/local settings
+
+:::
+
+:::{tab-item} Layer 2: Config YAML
+
+**Structure with variable substitution** (version controlled)
+
 ```yaml
 # responses_api_models/vllm_model/configs/vllm_model.yaml
 policy_model:
@@ -32,23 +45,40 @@ policy_model:
       api_key: ${policy_api_key}
       model: ${policy_model_name}
       return_token_id_information: false
+      uses_reasoning_parser: true
 ```
 
-**Layer 3: Command-line overrides (highest precedence)**
+**When to use**:
+- Structural configuration (what servers to run)
+- Defaults for optional parameters
+- Relationships between components
+
+:::
+
+:::{tab-item} Layer 3: CLI Overrides
+
+**Runtime overrides** (highest precedence)
+
 ```bash
-# Override specific values at runtime
+# Override at runtime without changing files
 ng_run "+config_paths=[${config_paths}]" \
     +policy_model_name=meta-llama/Llama-3.1-8B-Instruct \
     +policy_model.responses_api_models.vllm_model.return_token_id_information=true
 ```
 
-**Common use cases**:
-- **env.yaml**: Secrets, environment-specific URLs (dev/staging/prod)
-- **Config YAML**: Structure, defaults, relationships between components
-- **CLI overrides**: Quick experiments, CI/CD deployments, one-off changes
+**When to use**:
+- Quick experiments with different models
+- CI/CD deployments with dynamic values
+- One-off changes without editing files
 
+**Syntax**: Use dotted path to nested values with `+` prefix
+
+:::
+
+::::
+
+:::{seealso}
 See [Configuration System](../../about/concepts/configuration-system.md) for complete details on precedence and composition.
-
 :::
 
 ```yaml
