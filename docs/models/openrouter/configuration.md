@@ -290,7 +290,7 @@ OpenRouter can automatically retry with alternative providers:
 
 ## API Endpoints
 
-OpenRouter exposes OpenAI-compatible endpoints:
+The OpenAI adapter exposes two OpenAI-compatible endpoints:
 
 ```{list-table}
 :header-rows: 1
@@ -299,32 +299,46 @@ OpenRouter exposes OpenAI-compatible endpoints:
 * - Endpoint
   - Description
 * - `/v1/chat/completions`
-  - Main inference endpoint (OpenAI-compatible)
-* - `/v1/completions`
-  - Legacy completions endpoint
-* - `/v1/models`
-  - List available models
+  - Chat Completions API for conversational inference (messages format)
+* - `/v1/responses`
+  - OpenAI Responses API for structured multi-turn conversations with tool calling
 ```
+
+:::{note}
+The OpenAI adapter proxies requests to OpenRouter's OpenAI-compatible endpoints. It does **not** implement `/v1/completions` (legacy) or `/v1/models` (model listing) endpoints. Use `/v1/chat/completions` for most use cases.
+:::
 
 :::{dropdown} Example request using ServerClient
 
 ```python
+from asyncio import run
 from nemo_gym.server_utils import ServerClient
 
 server_client = ServerClient.load_from_global_config()
 
-response = await server_client.post(
-    server_name="policy_model",
-    url_path="/v1/chat/completions",
-    json={
-        "model": "openai/gpt-4-turbo",
-        "messages": [
-            {"role": "user", "content": "What's the weather in San Francisco?"}
-        ],
-        "max_tokens": 100
-    }
-)
+
+async def main():
+    response = await server_client.post(
+        server_name="policy_model",
+        url_path="/v1/chat/completions",
+        json={
+            "model": "openai/gpt-4-turbo",
+            "messages": [
+                {"role": "user", "content": "What's the weather in San Francisco?"}
+            ],
+            "max_tokens": 100
+        }
+    )
+    print(await response.json())
+
+
+if __name__ == "__main__":
+    run(main())
 ```
+
+:::{note}
+**Model parameter behavior**: The `model` parameter in the request JSON is **ignored**. The model specified in your configuration (`openai_model` in the YAML) always takes precedence. This ensures consistent model usage across all requests.
+:::
 
 :::
 
