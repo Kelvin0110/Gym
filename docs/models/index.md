@@ -124,7 +124,7 @@ Each model type has specific configuration options and usage patterns—refer to
 :outline:
 :ref-type: ref
 
-← Learn Configuration System
+← Review Configuration Concepts
 :::
 
 ---

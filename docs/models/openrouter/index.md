@@ -73,6 +73,8 @@ For a complete walkthrough of rollout collection, see [Collecting Rollouts](../.
 
 ## Topics
 
+Connect OpenRouter to experiment with models from multiple providers. Set up your API gateway, configure provider preferences, or troubleshoot connectivity issues.
+
 ::::{grid} 1 1 2 2
 :gutter: 3
 

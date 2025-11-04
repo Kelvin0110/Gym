@@ -72,6 +72,8 @@ For a complete walkthrough of rollout collection, see [Collecting Rollouts](../.
 
 ## Topics
 
+Ready to deploy vLLM for your agent training? Start with the quick-start guide, explore configuration options for your infrastructure, optimize performance for production workloads, or troubleshoot common deployment issues.
+
 ::::{grid} 1 1 2 2
 :gutter: 3
 
