@@ -2,81 +2,42 @@
 
 # Production Scale
 
-Monitor throughput, handle interruptions, and distribute workloads for large-scale rollout generation.
+Scale rollout generation to millions of samples using NeMo Gym's built-in features and production-ready operational patterns.
 
 :::{card}
 
-**Task**: Apply production patterns to scale rollout generation: resume interrupted runs, distribute across machines, and optimize verification.
+**Task**: Generate large-scale training datasets (100K-1M+ rollouts) with monitoring, resilience, and distribution strategies.
 
 ^^^
 
 **This guide shows you how to**:
 
-1. Monitor throughput with built-in progress metrics
-2. Resume interrupted collections using append mode
-3. Distribute processing with chunked datasets
-4. Optimize verification for high-throughput scenarios
+1. Monitor progress with NeMo Gym's built-in metrics
+2. Resume interrupted runs using append mode
+3. Optimize verification for high throughput
+4. Distribute workloads across machines
 
 :::
 
 ---
 
-## Monitor and Measure
+## NeMo Gym Features
 
-Track metrics to validate improvements and detect regressions.
+Built-in capabilities for production-scale collection.
 
-### Real-Time Monitoring
+### Progress Monitoring
 
-During collection, watch the progress bar:
+Watch real-time throughput during collection:
 
 ```
 Collecting rollouts: 45%|████▌     | 450/1000 [02:15<02:45, 3.33it/s]
 ```
 
-**Key metric**: `it/s` (iterations per second) = samples per second
+**Key metric**: `it/s` = samples per second
 
-### Computing Throughput
+### Automatic Metrics
 
-::::{tab-set}
-
-:::{tab-item} Samples per Second
-```bash
-# Time your collection
-time ng_collect_rollouts \
-    +agent_name=my_agent \
-    +input_jsonl_fpath=benchmark.jsonl \
-    +output_jsonl_fpath=rollouts.jsonl \
-    +limit=1000
-
-# Calculate: 1000 samples / [total seconds] = samples/sec
-```
-
-Simple and commonly used metric.
-:::
-
-:::{tab-item} Tokens per Second
-```python
-import json
-
-total_tokens = 0
-with open('rollouts.jsonl') as f:
-    for line in f:
-        rollout = json.loads(line)
-        # Sum input + output tokens if available
-        total_tokens += rollout.get('usage', {}).get('total_tokens', 0)
-
-elapsed_seconds = 300  # From `time` command
-print(f"Tokens/sec: {total_tokens / elapsed_seconds:.2f}")
-```
-
-More precise metric that accounts for variable output lengths.
-:::
-
-::::
-
-### Aggregate Metrics
-
-After collection completes, NeMo Gym automatically displays aggregated metrics:
+After collection, NeMo Gym displays aggregated metrics:
 
 ```json
 {
@@ -86,61 +47,31 @@ After collection completes, NeMo Gym automatically displays aggregated metrics:
 }
 ```
 
-:::{dropdown} How Metric Aggregation Works
+```{dropdown} How This Works
 :icon: gear
 
 ```python
 metrics.update({k: v for k, v in result.items() if isinstance(v, (int, float))})
-
-# After collection:
 avg_metrics = {k: v / len(rows) for k, v in metrics.items()}
-print(json.dumps(avg_metrics, indent=4))
 ```
 
-Any numeric field returned by verification is automatically averaged across all rollouts.
-:::
-
-### Tracking Over Time
-
-Create a simple log for trend analysis:
-
-```bash
-# Append metrics to log file
-echo "$(date),1000,$elapsed_sec,$samples_per_sec,$avg_reward" >> throughput_log.csv
-
-# Later, analyze trends
-column -t -s, throughput_log.csv
+Any numeric field from verification is automatically averaged.
 ```
 
----
+### Resume Interrupted Runs
 
-## Production Patterns
-
-Strategies for large-scale generation in production environments.
-
-### Incremental Collection
-
-Append to existing files to resume interrupted jobs:
+NeMo Gym opens output files in **append mode**—you can safely resume:
 
 ```bash
-# Initial run (may be interrupted)
-ng_collect_rollouts \
-    +agent_name=my_agent \
-    +input_jsonl_fpath=large_dataset.jsonl \
-    +output_jsonl_fpath=rollouts.jsonl \
-    +limit=10000
+# Check how many completed
+wc -l rollouts.jsonl  # Output: 5432
 
-# If interrupted, check how many completed
-wc -l rollouts.jsonl
-# Output: 5432 rollouts.jsonl
-
-# Resume from where you left off
-tail -n +5433 large_dataset.jsonl > remaining.jsonl
+# Process remaining tasks
+tail -n +5433 input.jsonl > remaining.jsonl
 ng_collect_rollouts \
-    +agent_name=my_agent \
     +input_jsonl_fpath=remaining.jsonl \
-    +output_jsonl_fpath=rollouts.jsonl  # Appends due to 'a' mode
-    +limit=4568  # 10000 - 5432
+    +output_jsonl_fpath=rollouts.jsonl  # Appends automatically
+    +limit=4568
 ```
 
 ```{dropdown} Why This Works
@@ -150,94 +81,59 @@ ng_collect_rollouts \
 with open(config.output_jsonl_fpath, "a") as f:
 ```
 
-Output file opens in **append mode** by default, so you can safely resume by processing remaining tasks.
+Output file opens in append mode by default.
 ```
 
-### Chunked Processing
+### Parameter Overrides
 
-Split large datasets for parallel processing across machines:
+Override model parameters globally via CLI:
 
 ```bash
-# Split 100K dataset into 10 chunks
-split -l 10000 -d --additional-suffix=.jsonl huge_dataset.jsonl chunk_
-
-# Distribute chunks to different machines/GPUs
-# Machine 1:
 ng_collect_rollouts \
     +agent_name=my_agent \
-    +input_jsonl_fpath=chunk_00.jsonl \
-    +output_jsonl_fpath=rollouts_00.jsonl
-
-# Machine 2:
-ng_collect_rollouts \
-    +agent_name=my_agent \
-    +input_jsonl_fpath=chunk_01.jsonl \
-    +output_jsonl_fpath=rollouts_01.jsonl
-
-# ... continue for all chunks ...
-
-# Merge results
-cat rollouts_*.jsonl > final_rollouts.jsonl
+    +input_jsonl_fpath=tasks.jsonl \
+    +output_jsonl_fpath=rollouts.jsonl \
+    +responses_create_params.max_output_tokens=512
 ```
 
-### Continuous Generation
+```{dropdown} How Overrides Work
+:icon: code
 
-For long-running jobs, use tmux or screen for resilience:
-
-```bash
-# Start detachable session
-tmux new -s rollout_collection
-
-# Inside tmux, run collection
-ng_collect_rollouts \
-    +agent_name=my_agent \
-    +input_jsonl_fpath=million_tasks.jsonl \
-    +output_jsonl_fpath=rollouts.jsonl
-
-# Detach: Ctrl+b, then d
-# Reattach later: tmux attach -t rollout_collection
+```python
+row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
 ```
 
-Monitor with:
-```bash
-# Check progress
-watch -n 60 'wc -l rollouts.jsonl'
-
-# Monitor GPU usage
-watch -n 5 nvidia-smi
+CLI overrides merge with per-task parameters. CLI takes precedence.
 ```
 
 ---
 
 ## Verification Optimization
 
-Verification runs during collection—if it's slow, it becomes a bottleneck.
+If verification is slow, it bottlenecks collection.
 
-### Detecting Verification Bottleneck
+### Detecting the Bottleneck
 
 ```{list-table}
 :header-rows: 1
 :widths: 50 50
 
-* - Sign
-  - Interpretation
+* - Symptom
+  - Likely Cause
 * - Model responds fast, but `it/s` is slow
-  - Verification likely bottleneck
+  - Verification taking too long
 * - High CPU usage during collection
   - Compute-heavy verification
 * - Progress bar stalls between samples
-  - Verification waiting on external call
+  - External API calls in verification
 ```
 
-### Optimization Approaches
+### Optimization Patterns
 
 ::::{tab-set}
 
 :::{tab-item} Cache Lookups
-If verification repeats expensive operations:
-
 ```python
-# In your resource server's verify() function
 from functools import lru_cache
 
 @lru_cache(maxsize=1000)
@@ -251,8 +147,6 @@ def verify(self, task, response):
 :::
 
 :::{tab-item} Fast Mode
-Implement approximate verification for training data:
-
 ```python
 def verify(self, task, response):
     if self.config.get('fast_mode', False):
@@ -261,54 +155,90 @@ def verify(self, task, response):
         return precise_verification(response)
 ```
 
-Use fast mode for training collection, precise mode for evaluation.
+Use fast mode for training, precise for evaluation.
 :::
 
 :::{tab-item} Defer Verification
-Collect rollouts without verification, verify in batch later:
-
 1. Modify resource server to return placeholder reward
 2. Collect at full speed
-3. Run separate verification pass with higher parallelism
+3. Run separate verification pass later
 
-**Trade-off**: No real-time quality feedback during collection
+**Trade-off**: No real-time quality feedback
 :::
 
 ::::
 
 ---
 
-## Parameter Overrides
+## Operational Patterns
 
-NeMo Gym allows overriding model parameters via CLI to reduce latency:
+Strategies for large-scale, distributed generation.
+
+### Distribute Across Machines
+
+Split large datasets and process in parallel:
 
 ```bash
+# Split 100K dataset into 10 chunks
+split -l 10000 -d --additional-suffix=.jsonl dataset.jsonl chunk_
+
+# Machine 1:
 ng_collect_rollouts \
-    +agent_name=my_agent \
-    +input_jsonl_fpath=tasks.jsonl \
-    +output_jsonl_fpath=rollouts.jsonl \
-    +responses_create_params.max_output_tokens=512
+    +input_jsonl_fpath=chunk_00.jsonl \
+    +output_jsonl_fpath=rollouts_00.jsonl
+
+# Machine 2:
+ng_collect_rollouts \
+    +input_jsonl_fpath=chunk_01.jsonl \
+    +output_jsonl_fpath=rollouts_01.jsonl
+
+# Merge results
+cat rollouts_*.jsonl > final_rollouts.jsonl
 ```
 
-**Why this helps**: Shorter outputs = faster generation = higher throughput
+### Long-Running Jobs
 
-:::{dropdown} How Parameter Override Works
-:icon: code
+Use tmux for resilience:
+
+```bash
+# Start detachable session
+tmux new -s rollout_collection
+
+# Run collection
+ng_collect_rollouts \
+    +input_jsonl_fpath=million_tasks.jsonl \
+    +output_jsonl_fpath=rollouts.jsonl
+
+# Detach: Ctrl+b, then d
+# Reattach: tmux attach -t rollout_collection
+
+# Monitor progress
+watch -n 60 'wc -l rollouts.jsonl'
+```
+
+### Track Throughput
+
+Compute samples/sec or tokens/sec:
+
+```bash
+# Samples per second
+time ng_collect_rollouts +limit=1000 ...
+# Calculate: 1000 / total_seconds
+```
 
 ```python
-row["responses_create_params"] = row["responses_create_params"] | config.responses_create_params
+# Tokens per second (more precise)
+import json
+total_tokens = sum(
+    json.loads(line).get('usage', {}).get('total_tokens', 0)
+    for line in open('rollouts.jsonl')
+)
+tokens_per_sec = total_tokens / elapsed_seconds
 ```
-
-CLI overrides merge with per-task parameters. CLI values take precedence.
-```
-:::
 
 ---
 
 ## Next Steps
 
-Now that you understand production-scale patterns:
-
-**Tune data characteristics** → {doc}`../sampling-strategies/index` for temperature and sampling strategies  
-**See complete patterns** → {doc}`../collection-patterns/index` for copy-paste commands
-
+**Tune sampling** → {doc}`../sampling-strategies/index` for temperature and diversity  
+**Reference patterns** → {doc}`../collection-patterns/index` for copy-paste commands
