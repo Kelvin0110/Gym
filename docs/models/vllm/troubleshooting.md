@@ -2,11 +2,15 @@
 
 # Troubleshooting
 
-Common issues and solutions when working with vLLM in NeMo Gym.
+Common issues and solutions when working with vLLM in NeMo Gym, organized by issue type.
 
 ---
 
-:::{dropdown} Connection refused or cannot connect to vLLM server
+## Connection & Server Issues
+
+Problems that prevent basic connectivity or server communication.
+
+:::{dropdown} {octicon}`x-circle;1em;sd-mr-1;sd-text-danger` Connection refused or cannot connect to vLLM server
 
 **Check these**:
 
@@ -35,7 +39,7 @@ Common issues and solutions when working with vLLM in NeMo Gym.
 
 :::
 
-:::{dropdown} Model not found or invalid model identifier
+:::{dropdown} {octicon}`search;1em;sd-mr-1;sd-text-warning` Model not found or invalid model identifier
 
 **Solution**:
 
@@ -56,18 +60,13 @@ Common issues and solutions when working with vLLM in NeMo Gym.
 
 :::
 
-:::{dropdown} Context length exceeded errors
+---
 
-**How NeMo Gym handles this**: The vLLM adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
+## Configuration Issues
 
-**To fix**:
-- Use models with larger context windows
-- Reduce conversation history length in your resource server
-- Configure vLLM with `--max-model-len` to match your needs
+Settings that need to be configured correctly for specific features.
 
-:::
-
-:::{dropdown} Reasoning tokens not appearing in responses
+:::{dropdown} {octicon}`comment-discussion;1em;sd-mr-1;sd-text-info` Reasoning tokens not appearing in responses
 
 **Check**:
 
@@ -89,7 +88,63 @@ Common issues and solutions when working with vLLM in NeMo Gym.
 
 :::
 
-:::{dropdown} Slow inference or low throughput
+:::{dropdown} {octicon}`tools;1em;sd-mr-1;sd-text-warning` Tool calling not working
+
+**Check**:
+
+1. **vLLM started with tool parser**:
+   ```bash
+   vllm serve model --enable-auto-tool-choice --tool-call-parser hermes
+   ```
+
+2. **Model supports tool calling**: Not all models have tool-calling capabilities. Common models that do:
+   - Qwen/Qwen3-30B-A3B (use hermes parser)
+   - meta-llama/Llama-3.1-70B-Instruct (use hermes parser)
+   - mistralai models (use mistral parser)
+
+3. **Tool call parser matches model**: Use `--tool-call-parser hermes` for most models, `--tool-call-parser mistral` for Mistral family.
+
+:::
+
+:::{dropdown} {octicon}`code;1em;sd-mr-1;sd-text-info` Token IDs or log probabilities missing
+
+**Enable training mode**:
+
+```yaml
+# Use vllm_model_for_training.yaml
+policy_model:
+  responses_api_models:
+    vllm_model:
+      return_token_id_information: true  # Enable this
+```
+
+**Verify config loaded**:
+```bash
+ng_dump_config "+config_paths=[...]"  # Check configuration
+```
+
+See [Configuration Reference](configuration.md) for details on training mode configuration.
+
+:::
+
+---
+
+## Runtime & Performance Issues
+
+Problems that occur during execution or affect throughput and speed.
+
+:::{dropdown} {octicon}`stop;1em;sd-mr-1;sd-text-danger` Context length exceeded errors
+
+**How NeMo Gym handles this**: The vLLM adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
+
+**To fix**:
+- Use models with larger context windows
+- Reduce conversation history length in your resource server
+- Configure vLLM with `--max-model-len 16384` to match your needs (adjust value based on your model)
+
+:::
+
+:::{dropdown} {octicon}`clock;1em;sd-mr-1;sd-text-warning` Slow inference or low throughput
 
 **Optimize**:
 
@@ -112,51 +167,12 @@ Common issues and solutions when working with vLLM in NeMo Gym.
 
 3. **NeMo Gym concurrency**:
    ```bash
-   ng_collect_rollouts +concurrency=100  # Increase concurrent requests
+   ng_collect_rollouts +num_samples_in_parallel=100  # Increase concurrent requests
    ```
 
 4. **Monitor vLLM metrics**: Check GPU utilization, batch sizes, and queue lengths.
 
 See [Optimization Guide](optimization.md) for detailed performance tuning.
-
-:::
-
-:::{dropdown} Tool calling not working
-
-**Check**:
-
-1. **vLLM started with tool parser**:
-   ```bash
-   vllm serve model --enable-auto-tool-choice --tool-call-parser hermes
-   ```
-
-2. **Model supports tool calling**: Not all models have tool-calling capabilities. Common models that do:
-   - Qwen/Qwen3-30B-A3B (use hermes parser)
-   - meta-llama/Llama-3.1-70B-Instruct (use hermes parser)
-   - mistralai models (use mistral parser)
-
-3. **Tool call parser matches model**: Use `--tool-call-parser hermes` for most models, `--tool-call-parser mistral` for Mistral family.
-
-:::
-
-:::{dropdown} Token IDs or log probabilities missing
-
-**Enable training mode**:
-
-```yaml
-# Use vllm_model_for_training.yaml
-policy_model:
-  responses_api_models:
-    vllm_model:
-      return_token_id_information: true  # Enable this
-```
-
-**Verify config loaded**:
-```bash
-ng_dump_config "+config_paths=[...]"  # Check configuration
-```
-
-See [Configuration Reference](configuration.md) for details on training mode configuration.
 
 :::
 
