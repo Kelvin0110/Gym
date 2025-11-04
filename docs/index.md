@@ -96,6 +96,57 @@ Generate your first batch of rollouts and understand how they become training da
 
 ---
 
+## Training
+
+Scale up training data generation and integrate with RL frameworks. Master rollout collection, data quality, and framework integration for production workflows.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Rollout Collection
+:link: training/rollout-collection/index
+:link-type: doc
+Generate training rollouts at scale with optimized sampling and parallelization.
++++
+{bdg-secondary}`data-generation` {bdg-secondary}`throughput`
+:::
+
+:::{grid-item-card} {octicon}`trophy;1.5em;sd-mr-1` Verification
+:link: training/verification/index
+:link-type: doc
+Design reward signals and verification strategies that drive effective training.
++++
+{bdg-secondary}`rewards` {bdg-secondary}`reward-shaping`
+:::
+
+:::{grid-item-card} {octicon}`filter;1.5em;sd-mr-1` Data Quality
+:link: training/data-quality/index
+:link-type: doc
+Filter, curate, and balance rollouts to ensure high-quality training datasets.
++++
+{bdg-secondary}`filtering` {bdg-secondary}`curation`
+:::
+
+:::{grid-item-card} {octicon}`package-dependencies;1.5em;sd-mr-1` Datasets
+:link: training/datasets/index
+:link-type: doc
+Organize, validate, and prepare datasets for RL training frameworks.
++++
+{bdg-secondary}`formats` {bdg-secondary}`sft-dpo`
+:::
+
+:::{grid-item-card} {octicon}`plug;1.5em;sd-mr-1` Integration
+:link: training/integration/index
+:link-type: doc
+Connect to NeMo-RL, VeRL, OpenRLHF, TRL, and custom frameworks.
++++
+{bdg-secondary}`rl-frameworks` {bdg-secondary}`integration`
+:::
+
+::::
+
+---
+
 ## Models
 
 Configure model serving methods for generating agent responses and tool-calling decisions.
@@ -199,6 +250,19 @@ get-started/collecting-rollouts
 Overview <tutorials/index>
 tutorials/offline-training-w-rollouts
 tutorials/separate-policy-and-judge-models
+```
+
+```{toctree}
+:caption: Training
+:hidden:
+:maxdepth: 2
+
+Overview <training/index>
+Rollout Collection <training/rollout-collection/index>
+Verification <training/verification/index>
+Data Quality <training/data-quality/index>
+Datasets <training/datasets/index>
+Integration <training/integration/index>
 ```
 
 ```{toctree}
