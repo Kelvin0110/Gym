@@ -10,7 +10,9 @@ Common issues and solutions when working with NVIDIA NIM in NeMo Gym, organized 
 
 Problems that prevent basic connectivity or authentication.
 
-:::{dropdown} {octicon}`x-circle;1em;sd-mr-1;sd-text-danger` Connection refused or cannot connect to NIM server
+:::{dropdown} Connection refused or cannot connect to NIM server
+:icon: x-circle
+:color: danger
 
 **Check these**:
 
@@ -35,7 +37,9 @@ Problems that prevent basic connectivity or authentication.
 
 :::
 
-:::{dropdown} {octicon}`lock;1em;sd-mr-1;sd-text-danger` API key rejected or unauthorized access
+:::{dropdown} API key rejected or unauthorized access
+:icon: lock
+:color: danger
 
 **Solution**:
 
@@ -62,7 +66,9 @@ Problems that prevent basic connectivity or authentication.
 
 Settings that need to be configured correctly for specific features.
 
-:::{dropdown} {octicon}`search;1em;sd-mr-1;sd-text-warning` Model not found or not available
+:::{dropdown} Model not found or not available
+:icon: search
+:color: warning
 
 **Solution**:
 
@@ -85,7 +91,9 @@ Settings that need to be configured correctly for specific features.
 
 :::
 
-:::{dropdown} {octicon}`alert;1em;sd-mr-1;sd-text-warning` Incorrect API version or endpoint format
+:::{dropdown} Incorrect API version or endpoint format
+:icon: alert
+:color: warning
 
 **Check**:
 
@@ -101,7 +109,9 @@ Settings that need to be configured correctly for specific features.
 
 :::
 
-:::{dropdown} {octicon}`gear;1em;sd-mr-1;sd-text-info` Using wrong model adapter
+:::{dropdown} Using wrong model adapter
+:icon: gear
+:color: info
 
 **Problem**: Trying to use a NIM-specific adapter instead of OpenAI adapter.
 
@@ -123,7 +133,9 @@ config_paths="responses_api_models/nvidia_nim_model/configs/..."
 
 Problems that occur during execution or affect throughput and speed.
 
-:::{dropdown} {octicon}`clock;1em;sd-mr-1;sd-text-warning` Slow inference or unexpected latency
+:::{dropdown} Slow inference or unexpected latency
+:icon: clock
+:color: warning
 
 **Optimize**:
 
@@ -146,7 +158,9 @@ Problems that occur during execution or affect throughput and speed.
 
 :::
 
-:::{dropdown} {octicon}`stop;1em;sd-mr-1;sd-text-danger` Rate limiting or throttling
+:::{dropdown} Rate limiting or throttling
+:icon: stop
+:color: danger
 
 **Solution**:
 
@@ -165,7 +179,9 @@ Problems that occur during execution or affect throughput and speed.
 
 :::
 
-:::{dropdown} {octicon}`x;1em;sd-mr-1;sd-text-danger` Context length exceeded errors
+:::{dropdown} Context length exceeded errors
+:icon: x
+:color: danger
 
 **How NeMo Gym handles this**: The OpenAI adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
 
@@ -177,7 +193,9 @@ Problems that occur during execution or affect throughput and speed.
 
 :::
 
-:::{dropdown} {octicon}`alert;1em;sd-mr-1;sd-text-warning` Timeout errors
+:::{dropdown} Timeout errors
+:icon: alert
+:color: warning
 
 **Solution**:
 
@@ -197,7 +215,9 @@ Problems that occur during execution or affect throughput and speed.
 
 Issues specific to production deployments.
 
-:::{dropdown} {octicon}`graph;1em;sd-mr-1;sd-text-info` Inconsistent performance
+:::{dropdown} Inconsistent performance
+:icon: graph
+:color: info
 
 **Diagnose**:
 
@@ -213,7 +233,9 @@ Issues specific to production deployments.
 
 :::
 
-:::{dropdown} {octicon}`shield;1em;sd-mr-1;sd-text-warning` Security or compliance issues
+:::{dropdown} Security or compliance issues
+:icon: shield
+:color: warning
 
 **Address**:
 

@@ -10,7 +10,9 @@ Common issues and solutions when working with vLLM in NeMo Gym, organized by iss
 
 Problems that prevent basic connectivity or server communication.
 
-:::{dropdown} {octicon}`x-circle;1em;sd-mr-1;sd-text-danger` Connection refused or cannot connect to vLLM server
+:::{dropdown} Connection refused or cannot connect to vLLM server
+:icon: x-circle
+:color: danger
 
 **Check these**:
 
@@ -39,7 +41,9 @@ Problems that prevent basic connectivity or server communication.
 
 :::
 
-:::{dropdown} {octicon}`search;1em;sd-mr-1;sd-text-warning` Model not found or invalid model identifier
+:::{dropdown} Model not found or invalid model identifier
+:icon: search
+:color: warning
 
 **Solution**:
 
@@ -66,7 +70,9 @@ Problems that prevent basic connectivity or server communication.
 
 Settings that need to be configured correctly for specific features.
 
-:::{dropdown} {octicon}`comment-discussion;1em;sd-mr-1;sd-text-info` Reasoning tokens not appearing in responses
+:::{dropdown} Reasoning tokens not appearing in responses
+:icon: comment-discussion
+:color: info
 
 **Check**:
 
@@ -88,7 +94,9 @@ Settings that need to be configured correctly for specific features.
 
 :::
 
-:::{dropdown} {octicon}`tools;1em;sd-mr-1;sd-text-warning` Tool calling not working
+:::{dropdown} Tool calling not working
+:icon: tools
+:color: warning
 
 **Check**:
 
@@ -106,7 +114,9 @@ Settings that need to be configured correctly for specific features.
 
 :::
 
-:::{dropdown} {octicon}`code;1em;sd-mr-1;sd-text-info` Token IDs or log probabilities missing
+:::{dropdown} Token IDs or log probabilities missing
+:icon: code
+:color: info
 
 **Enable training mode**:
 
@@ -133,7 +143,9 @@ See [Configuration Reference](configuration.md) for details on training mode con
 
 Problems that occur during execution or affect throughput and speed.
 
-:::{dropdown} {octicon}`stop;1em;sd-mr-1;sd-text-danger` Context length exceeded errors
+:::{dropdown} Context length exceeded errors
+:icon: stop
+:color: danger
 
 **How NeMo Gym handles this**: The vLLM adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
 
@@ -144,7 +156,9 @@ Problems that occur during execution or affect throughput and speed.
 
 :::
 
-:::{dropdown} {octicon}`clock;1em;sd-mr-1;sd-text-warning` Slow inference or low throughput
+:::{dropdown} Slow inference or low throughput
+:icon: clock
+:color: warning
 
 **Optimize**:
 

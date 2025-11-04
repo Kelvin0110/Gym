@@ -10,7 +10,9 @@ Common issues and solutions when working with OpenAI in NeMo Gym, organized by i
 
 Problems with API keys and access.
 
-:::{dropdown} {octicon}`lock;1em;sd-mr-1;sd-text-danger` Authentication failure or invalid API key
+:::{dropdown} Authentication failure or invalid API key
+:icon: lock
+:color: danger
 
 **Solution**:
 
@@ -38,7 +40,9 @@ Problems with API keys and access.
 
 :::
 
-:::{dropdown} {octicon}`credit-card;1em;sd-mr-1;sd-text-danger` Insufficient quota or credits
+:::{dropdown} Insufficient quota or credits
+:icon: credit-card
+:color: danger
 
 **Problem**: API calls fail due to billing issues.
 
@@ -67,7 +71,9 @@ Problems with API keys and access.
 
 Problems with request throttling and API limits.
 
-:::{dropdown} {octicon}`stop;1em;sd-mr-1;sd-text-danger` Too many requests error (429)
+:::{dropdown} Too many requests error (429)
+:icon: stop
+:color: danger
 
 **Solution**:
 
@@ -93,7 +99,9 @@ Problems with request throttling and API limits.
 
 :::
 
-:::{dropdown} {octicon}`clock;1em;sd-mr-1;sd-text-warning` Request timeout errors
+:::{dropdown} Request timeout errors
+:icon: clock
+:color: warning
 
 **Solution**:
 
@@ -117,7 +125,9 @@ Problems with request throttling and API limits.
 
 Settings that need to be configured correctly.
 
-:::{dropdown} {octicon}`search;1em;sd-mr-1;sd-text-warning` Model not found or not available
+:::{dropdown} Model not found or not available
+:icon: search
+:color: warning
 
 **Solution**:
 
@@ -144,7 +154,9 @@ Settings that need to be configured correctly.
 
 :::
 
-:::{dropdown} {octicon}`alert;1em;sd-mr-1;sd-text-warning` Incorrect endpoint URL
+:::{dropdown} Incorrect endpoint URL
+:icon: alert
+:color: warning
 
 **Check**:
 
@@ -174,7 +186,9 @@ Settings that need to be configured correctly.
 
 Problems that occur during rollout collection.
 
-:::{dropdown} {octicon}`x;1em;sd-mr-1;sd-text-danger` Context length exceeded errors
+:::{dropdown} Context length exceeded errors
+:icon: x
+:color: danger
 
 **How NeMo Gym handles this**: The OpenAI adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
 
@@ -190,7 +204,9 @@ Problems that occur during rollout collection.
 
 :::
 
-:::{dropdown} {octicon}`report;1em;sd-mr-1;sd-text-warning` Content policy violations
+:::{dropdown} Content policy violations
+:icon: report
+:color: warning
 
 **Problem**: Requests rejected due to content policy.
 
@@ -212,7 +228,9 @@ Problems that occur during rollout collection.
 
 :::
 
-:::{dropdown} {octicon}`iterations;1em;sd-mr-1;sd-text-info` Inconsistent response quality
+:::{dropdown} Inconsistent response quality
+:icon: iterations
+:color: info
 
 **Diagnose**:
 
@@ -235,7 +253,9 @@ Problems that occur during rollout collection.
 
 Managing unexpected costs or budget concerns.
 
-:::{dropdown} {octicon}`graph;1em;sd-mr-1;sd-text-warning` Higher than expected costs
+:::{dropdown} Higher than expected costs
+:icon: graph
+:color: warning
 
 **Diagnose and fix**:
 
