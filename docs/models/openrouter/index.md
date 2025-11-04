@@ -8,7 +8,7 @@ Unified access to multiple LLM providers through a single API for flexible model
 
 ## What is OpenRouter?
 
-OpenRouter provides a unified API gateway to access models from multiple providers including OpenAI, Anthropic, Google, and others. NeMo Gym integrates with OpenRouter to enable flexible model selection and cost optimization across providers.
+OpenRouter provides a unified API gateway to access models from multiple providers including OpenAI, Anthropic, Google, and others. NeMo Gym integrates using OpenAI-compatible endpoints—you configure it using the `openai_model` adapter with the OpenRouter URL.
 
 ::::{tab-set}
 
@@ -43,7 +43,7 @@ OpenRouter provides a unified API gateway to access models from multiple provide
 
 ## Quick Example
 
-Once configured, using OpenRouter with NeMo Gym is straightforward:
+**OpenRouter uses OpenAI-compatible endpoints**, so you configure it using the `openai_model` adapter with the OpenRouter URL. Once configured, using OpenRouter with NeMo Gym is straightforward:
 
 ```bash
 # Start NeMo Gym with OpenRouter configuration
@@ -60,10 +60,6 @@ ng_collect_rollouts \
   +limit=100 \
   +concurrency=10
 ```
-
-:::{tip}
-**OpenRouter uses OpenAI-compatible endpoints**, so you configure it using the `openai_model` adapter with the OpenRouter URL.
-:::
 
 :::{seealso}
 For a complete walkthrough of rollout collection, see [Collecting Rollouts](../../get-started/collecting-rollouts.md).

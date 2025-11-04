@@ -8,7 +8,7 @@ Enterprise-grade model serving with production reliability, NVIDIA optimization,
 
 ## What is NVIDIA NIM?
 
-NVIDIA NIM (NVIDIA Inference Microservices) delivers production-ready AI model inference with enterprise features. NeMo Gym's NIM integration enables reliable, scalable model serving for training workflows requiring enterprise-grade reliability and support.
+NVIDIA NIM (NVIDIA Inference Microservices) delivers production-ready AI model inference with enterprise features. NeMo Gym integrates using OpenAI-compatible endpoints—you configure it using the `openai_model` adapter with your NIM endpoint URL.
 
 ::::{tab-set}
 
@@ -42,7 +42,7 @@ NVIDIA NIM (NVIDIA Inference Microservices) delivers production-ready AI model i
 
 ## Quick Example
 
-Once configured, using NVIDIA NIM with NeMo Gym is straightforward:
+Once configured, collecting rollouts with NVIDIA NIM is straightforward:
 
 ```bash
 # Start NeMo Gym with NVIDIA NIM configuration
@@ -59,10 +59,6 @@ ng_collect_rollouts \
   +limit=100 \
   +concurrency=50
 ```
-
-:::{tip}
-**NVIDIA NIM uses OpenAI-compatible endpoints**, so you configure it using the `openai_model` adapter with your NIM endpoint URL.
-:::
 
 :::{seealso}
 For a complete walkthrough of rollout collection, see [Collecting Rollouts](../../get-started/collecting-rollouts.md).

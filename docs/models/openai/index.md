@@ -8,7 +8,7 @@ Rapid prototyping and experimentation with OpenAI models through managed API ser
 
 ## What is OpenAI?
 
-OpenAI provides state-of-the-art language models through a managed API service. NeMo Gym integrates with OpenAI's endpoints using the Responses API format, enabling quick experimentation without infrastructure management.
+OpenAI provides state-of-the-art language models through a managed API service. NeMo Gym integrates using the `openai_model` adapter, enabling quick experimentation without infrastructure management.
 
 ::::{tab-set}
 
@@ -59,10 +59,6 @@ ng_collect_rollouts \
   +limit=100 \
   +concurrency=10
 ```
-
-:::{tip}
-**Start small**: OpenAI charges per token, so begin with lower concurrency (`+concurrency=10`) and small rollout counts while testing.
-:::
 
 :::{seealso}
 For a complete walkthrough of rollout collection, see [Collecting Rollouts](../../get-started/collecting-rollouts.md).

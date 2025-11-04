@@ -8,7 +8,7 @@ vLLM enables high-throughput inference with self-hosted open-source models for l
 
 ## What is vLLM?
 
-vLLM is a fast and memory-efficient inference engine for large language models. NeMo Gym's vLLM adapter lets you deploy open-source models (Llama, Qwen, Mistral, etc.) on your own infrastructure with optimized throughput for generating training rollouts.
+vLLM is a fast and memory-efficient inference engine for large language models. NeMo Gym integrates using the `vllm_model` adapter, letting you deploy open-source models (Llama, Qwen, Mistral, etc.) on your own infrastructure with optimized throughput for generating training rollouts.
 
 ::::{tab-set}
 

@@ -8,7 +8,7 @@ Enterprise-grade OpenAI models through Microsoft Azure with compliance, regional
 
 ## What is Azure OpenAI?
 
-Azure OpenAI Service provides OpenAI models through Microsoft Azure infrastructure, enabling enterprise deployments with Azure's security, compliance, and regional availability. NeMo Gym integrates with Azure OpenAI endpoints for agent training workflows in Azure-native environments.
+Azure OpenAI Service provides OpenAI models through Microsoft Azure infrastructure, enabling enterprise deployments with Azure's security, compliance, and regional availability. NeMo Gym integrates using the `azure_openai_model` adapter, which handles Azure-specific authentication and endpoint formatting.
 
 ::::{tab-set}
 
