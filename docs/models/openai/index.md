@@ -34,8 +34,12 @@ OpenAI provides state-of-the-art language models through a managed API service. 
 
 ::::
 
-:::{seealso}
-**Not sure which model serving method to use?** See the [Models Overview](../index.md#choosing-a-model-serving-method) for a comparison.
+:::{button-ref} /models/index
+:color: secondary
+:outline:
+:ref-type: doc
+
+← Not sure which model to use? See Models Overview
 :::
 
 ---
