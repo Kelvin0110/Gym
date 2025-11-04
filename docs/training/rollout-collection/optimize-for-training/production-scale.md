@@ -292,7 +292,7 @@ ng_collect_rollouts \
 
 **Why this helps**: Shorter outputs = faster generation = higher throughput
 
-```{dropdown} How Parameter Override Works
+:::{dropdown} How Parameter Override Works
 :icon: code
 
 ```python
@@ -301,6 +301,7 @@ row["responses_create_params"] = row["responses_create_params"] | config.respons
 
 CLI overrides merge with per-task parameters. CLI values take precedence.
 ```
+:::
 
 ---
 
