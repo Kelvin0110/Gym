@@ -6,7 +6,6 @@ Organize, validate, and prepare training datasets in formats compatible with RL 
 
 Your rollouts are curated—now prepare them in the correct format for your training framework.
 
----
 
 ## When You Need This
 
@@ -21,7 +20,6 @@ Use this section when you need to:
 For training framework integration, see {doc}`../integration/index` after preparing your datasets.
 :::
 
----
 
 ## Guides and References
 
@@ -57,7 +55,6 @@ For training framework integration, see {doc}`../integration/index` after prepar
 
 ::::
 
----
 
 ## Dataset Formats by Training Type
 
@@ -81,7 +78,6 @@ For training framework integration, see {doc}`../integration/index` after prepar
 
 See {doc}`prepare-for-training` for conversion examples.
 
----
 
 ## Dataset Pipeline
 
@@ -100,7 +96,6 @@ Training-Ready Data      → to RL framework integration
 **Previous**: {doc}`../data-quality/index` for curation  
 **Next**: {doc}`../integration/index` for framework integration
 
----
 
 ## Common Dataset Operations
 
@@ -136,7 +131,6 @@ rl_data = [{
 
 See {doc}`prepare-for-training` for complete implementations.
 
----
 
 ## Validation Workflow
 
@@ -157,7 +151,6 @@ ng_prepare_data \
 
 See {doc}`validate-format` for detailed usage.
 
----
 
 ## Dataset Organization Best Practices
 
@@ -175,7 +168,6 @@ training_data/
 
 **Benefits**: Reproducibility, version tracking, easy rollback
 
----
 
 ## Related Topics
 
@@ -192,7 +184,6 @@ training_data/
 * {doc}`../integration/openrlhf` - OpenRLHF format requirements
 * {doc}`../integration/trl` - TRL format requirements
 
----
 
 ## Next Steps
 

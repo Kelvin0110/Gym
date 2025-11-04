@@ -6,7 +6,6 @@ Connect your training data to reinforcement learning frameworks. This section pr
 
 Your data is prepared—now integrate with your chosen RL training framework.
 
----
 
 ## When You Need This
 
@@ -21,7 +20,6 @@ Use this section when you need to:
 **New to RL training?** Start with {doc}`framework-comparison` to understand which framework fits your needs, then follow the framework-specific guide.
 :::
 
----
 
 ## Supported RL Frameworks
 
@@ -84,7 +82,6 @@ Use this section when you need to:
 
 ::::
 
----
 
 ## Quick Framework Selection
 
@@ -116,7 +113,6 @@ Choose based on your environment and requirements:
 
 See {doc}`framework-comparison` for detailed comparison.
 
----
 
 ## Integration Pipeline
 
@@ -134,7 +130,6 @@ Trained Model Checkpoint
 
 **Previous**: {doc}`../datasets/index` for data preparation
 
----
 
 ## Common Integration Patterns
 
@@ -177,7 +172,6 @@ train_with_framework(formatted)
 
 See framework-specific guides for implementations.
 
----
 
 ## Data Format Requirements
 
@@ -206,7 +200,6 @@ Each framework expects specific data formats:
 
 See {doc}`../datasets/format-specification` and framework guides for details.
 
----
 
 ## End-to-End Example
 
@@ -235,7 +228,6 @@ python train_nemo_rl.py \
 
 See framework-specific guides for complete workflows.
 
----
 
 ## Related Topics
 
@@ -250,7 +242,6 @@ See framework-specific guides for complete workflows.
 * **Configuration Management** *(coming soon)* - System configuration for training pipelines
 * {doc}`../rollout-collection/configuration-reference` - Collection parameters
 
----
 
 ## Next Steps
 

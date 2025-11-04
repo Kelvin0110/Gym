@@ -6,7 +6,6 @@ Design effective reward signals and verification strategies that drive successfu
 
 You understand basic verification from {doc}`Get Started <../../get-started/verifying-agent-results>`—now learn advanced reward design for production training workflows.
 
----
 
 ## When You Need This
 
@@ -25,7 +24,6 @@ For deep understanding of verification theory, see {doc}`../../about/concepts/ve
 **Building custom verifiers from scratch?** That's covered in the Environments section *(coming soon)*. This section focuses on reward design using existing verifiers.
 :::
 
----
 
 ## Guides and References
 
@@ -61,7 +59,6 @@ For deep understanding of verification theory, see {doc}`../../about/concepts/ve
 
 ::::
 
----
 
 ## Quick Selection Guide
 
@@ -90,7 +87,6 @@ Choose verification pattern based on your training objective:
 
 See {doc}`reward-shaping` for detailed guidance.
 
----
 
 ## Reward Design Principles
 
@@ -114,7 +110,6 @@ Key principles for effective reward signals:
 
 See {doc}`reward-shaping` for implementation patterns.
 
----
 
 ## Verification in the Training Pipeline
 
@@ -132,7 +127,6 @@ Rollout Generation
 
 **Next**: {doc}`../data-quality/index` for filtering by reward thresholds
 
----
 
 ## Common Verification Patterns
 
@@ -159,7 +153,6 @@ reward = 0.6 * correctness + 0.3 * efficiency + 0.1 * style
 
 See {doc}`verification-patterns` for complete catalog.
 
----
 
 ## Related Topics
 
@@ -174,7 +167,6 @@ See {doc}`verification-patterns` for complete catalog.
 * **Building Custom Resource Servers** *(coming soon)* - Implement custom verifiers from scratch
 * {doc}`../../about/concepts/verifying-agent-results` - Deep dive on verification theory
 
----
 
 ## Next Steps
 

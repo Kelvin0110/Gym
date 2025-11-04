@@ -6,7 +6,6 @@ Generate training rollouts at scale with optimized sampling strategies, parallel
 
 You have learned basic rollout collection in {doc}`Get Started <../../get-started/collecting-rollouts>`—now scale up to production training workflows with optimizations for SFT, DPO, and RL data generation.
 
----
 
 ## When You Need This
 
@@ -21,7 +20,6 @@ Use this section when you need to:
 For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/rollout-collection-fundamentals`.
 :::
 
----
 
 ## Guides and References
 
@@ -66,7 +64,6 @@ For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/r
 
 ::::
 
----
 
 ## Quick Selection Guide
 
@@ -88,7 +85,6 @@ Choose your starting point based on your goal:
   - Tune parallelism, optimize model server, reduce verification overhead. See {doc}`optimize-for-training`
 ```
 
----
 
 ## Collection Pipeline Overview
 
@@ -110,7 +106,6 @@ Output Rollouts (JSONL)  → to Data Quality filtering
 
 **Next**: {doc}`../data-quality/index` for filtering and curation
 
----
 
 ## Related Topics
 
@@ -125,7 +120,6 @@ Output Rollouts (JSONL)  → to Data Quality filtering
 * {doc}`../data-quality/index` - Filter and curate generated rollouts
 * {doc}`../datasets/index` - Prepare data for training frameworks
 
----
 
 ## Next Steps
 

@@ -6,7 +6,6 @@ Ensure high-quality training data through filtering, curation, and balancing str
 
 Generated rollouts vary in quality—now learn to systematically curate training datasets that drive model improvement.
 
----
 
 ## When You Need This
 
@@ -21,7 +20,6 @@ Use this section when you need to:
 **Quality over quantity**: Training on fewer high-quality examples beats training on many noisy ones. These guides help you curate effectively.
 :::
 
----
 
 ## Guides and References
 
@@ -57,7 +55,6 @@ Use this section when you need to:
 
 ::::
 
----
 
 ## Quality Pipeline
 
@@ -78,7 +75,6 @@ Curated Training Data       → to datasets/prepare-for-training
 **Previous**: {doc}`../rollout-collection/index` for generation  
 **Next**: {doc}`../datasets/index` for formatting
 
----
 
 ## Quick Selection Guide
 
@@ -107,7 +103,6 @@ Choose quality strategy based on your training approach:
 
 See {doc}`filtering-strategies` for implementation details.
 
----
 
 ## Quality Metrics to Track
 
@@ -139,7 +134,6 @@ Key metrics for training data quality:
 
 See {doc}`quality-metrics` for tracking guidance.
 
----
 
 ## Filtering Patterns
 
@@ -166,7 +160,6 @@ pairs = [(r1, r2) for r1, r2 in pairs if abs(r1['reward'] - r2['reward']) >= 0.1
 
 See {doc}`filtering-strategies` for complete examples.
 
----
 
 ## Related Topics
 
@@ -181,7 +174,6 @@ See {doc}`filtering-strategies` for complete examples.
 * `ng_viewer` - Interactive rollout viewer for quality inspection (documented in Get Started)
 * `ng_prepare_data` - Dataset validation and statistics (see {doc}`../datasets/validate-format`)
 
----
 
 ## Next Steps
 

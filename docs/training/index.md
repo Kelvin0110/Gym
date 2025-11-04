@@ -6,8 +6,6 @@ Scale up your training data generation workflows and integrate with RL framework
 
 You have completed {doc}`Get Started <../get-started/index>` and understand rollout collection basics—now learn to optimize, curate, and prepare data for reinforcement learning frameworks.
 
----
-
 ## When You Need This Section
 
 This section is for practitioners who need to:
@@ -21,8 +19,6 @@ This section is for practitioners who need to:
 :::{tip}
 **Looking for system configuration or performance tuning?** Those topics are covered in the Setup and Deployment section (coming soon).
 :::
-
----
 
 ## Training Data Pipeline
 
@@ -78,8 +74,6 @@ Connect your training data to NeMo-RL, VeRL, OpenRLHF, TRL, and custom framework
 
 ::::
 
----
-
 ## Quick Decision Guide
 
 Not sure where to start? Choose based on your current need:
@@ -106,8 +100,6 @@ Not sure where to start? Choose based on your current need:
   - {doc}`Rollout Collection / Configuration Reference <rollout-collection/configuration-reference>` (reference)
 ```
 
----
-
 ## Training Workflow Patterns
 
 ### Pattern 1: SFT Data Generation
@@ -126,8 +118,6 @@ min_reward_threshold: 0.8
 
 **Guides**: {doc}`rollout-collection/sampling-strategies` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
 
----
-
 ### Pattern 2: DPO Pair Generation
 
 Generate diverse pairs for preference optimization:
@@ -144,8 +134,6 @@ min_quality_difference: 0.1
 
 **Guides**: {doc}`rollout-collection/sampling-strategies` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
 
----
-
 ### Pattern 3: RL Training Data
 
 Generate rollouts with shaped rewards for reinforcement learning:
@@ -161,8 +149,6 @@ reward_shaping: continuous  # 0.0-1.0 range
 ```
 
 **Guides**: {doc}`verification/reward-shaping` → {doc}`rollout-collection/optimize-for-training` → {doc}`integration/nemo-rl` (or your framework)
-
----
 
 ## Related Documentation
 
@@ -188,8 +174,6 @@ For **system-level** setup (not training-specific):
 * Configuration Management *(coming soon)* - Multi-model setups, environment configs, parameter reference
 * Performance & Scaling *(coming soon)* - System-level throughput optimization, distributed generation
 
----
-
 ## Next Steps
 
 :::{button-ref} rollout-collection/index
@@ -203,4 +187,3 @@ Start with Rollout Collection →
 :::{tip}
 **New to training workflows?** We recommend starting with Rollout Collection to understand data generation optimization, then moving to Data Quality to ensure your datasets are production-ready.
 :::
-
