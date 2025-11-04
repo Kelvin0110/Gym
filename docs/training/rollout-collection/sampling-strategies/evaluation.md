@@ -62,14 +62,19 @@ ng_collect_rollouts \
     +agent_name=my_agent \
     +input_jsonl_fpath=eval_benchmark.jsonl \
     +output_jsonl_fpath=eval_model_v1.jsonl \
-    +responses_create_params.temperature=<temperature> \
-    +responses_create_params.seed=<seed> \
-    +responses_create_params.top_p=<top_p> \
-    +num_samples_in_parallel=<parallelism> \
+    +responses_create_params.temperature=0.1 \
+    +responses_create_params.seed=42 \
+    +num_samples_in_parallel=5 \
     +limit=null
 ```
 
-**Configuration**: For evaluation, use very low temperature and fixed seed for reproducibility, single samples per task, and low parallelism to minimize variance. Refer to {doc}`parameters` for parameter explanations.
+**Configuration for reproducibility**:
+
+- **temperature=0.1**: Deterministic sampling (or 0.0 for maximum consistency)
+- **seed=42**: Fixed seed ensures identical results across runs
+- **parallelism=5**: Lower concurrency reduces variance from async effects
+
+Always set both temperature and seed explicitly. If you omit parameters, your model server's defaults are used—these vary between providers (OpenAI defaults to temperature=1.0) and can cause inconsistent results.
 
 ---
 
@@ -113,7 +118,7 @@ echo "model_v2: $(jq -s 'map(.reward) | add/length' eval_model_v2.jsonl)"
 echo "model_v3: $(jq -s 'map(.reward) | add/length' eval_model_v3.jsonl)"
 ```
 
-For statistical significance testing, use your preferred analysis tools (scipy, R, etc.).
+Results should be directly comparable when using identical temperature and seed across all models. For statistical significance testing, use your preferred analysis tools (scipy, R, etc.).
 
 ---
 
@@ -178,16 +183,32 @@ print(f'Mean: {statistics.mean(runs):.3f} ± {statistics.stdev(runs):.3f}')
 
 ## Verify Reproducibility
 
-Test that same seed produces consistent results:
-```bash
-# Run twice with same seed
-ng_collect_rollouts ... +responses_create_params.seed=42 \
-    +output_jsonl_fpath=eval_run1.jsonl
-ng_collect_rollouts ... +responses_create_params.seed=42 \
-    +output_jsonl_fpath=eval_run2.jsonl
+Test that identical configuration produces consistent results:
 
-# Compare results
+```bash
+# Run 1
+ng_collect_rollouts \
+    +agent_name=my_agent \
+    +input_jsonl_fpath=benchmark.jsonl \
+    +output_jsonl_fpath=eval_run1.jsonl \
+    +responses_create_params.temperature=0.1 \
+    +responses_create_params.seed=42
+
+# Run 2 (same parameters)
+ng_collect_rollouts \
+    +agent_name=my_agent \
+    +input_jsonl_fpath=benchmark.jsonl \
+    +output_jsonl_fpath=eval_run2.jsonl \
+    +responses_create_params.temperature=0.1 \
+    +responses_create_params.seed=42
+
+# Compare results (should be identical)
 diff <(jq '.reward' eval_run1.jsonl) <(jq '.reward' eval_run2.jsonl)
 ```
 
-If results differ, verify seed is being respected by your model server.
+If results differ:
+
+1. Verify your model server respects the seed parameter (some hosted APIs don't)
+2. Check that temperature is explicitly set in both runs (not defaulted)
+3. Ensure no non-deterministic operations in your verification logic
+4. Note that different model providers may produce different results with same settings

@@ -72,7 +72,7 @@ ng_collect_rollouts \
 
 ### Expected Output
 
-```
+```text
 Found 5000 rows!
 Repeating rows (in a pattern of abc to aabbcc) from 5000 to 15000!
 Querying with 10 concurrent requests
@@ -89,15 +89,42 @@ Collecting rollouts: 100%|████████████| 15000/15000 [15:
 
 ## Create Preference Pairs
 
-**NeMo Gym collects rollouts—you create the pairs.** The `aabbcc` pattern means every `num_repeats` consecutive rollouts share the same input prompt.
+**NeMo Gym collects rollouts—you create the pairs.** The collection guarantees every `num_repeats` consecutive rollouts share the same input, making grouping straightforward:
 
-Your pairing logic should:
-1. **Group**: Every 3 (or N) consecutive rollouts → 1 group
-2. **Sort**: Order by reward (highest = chosen, lower = rejected)
-3. **Filter**: Only create pairs with sufficient reward gap (e.g., ≥ 0.15)
-4. **Save**: Export as `{prompt, chosen, rejected}` format for your DPO trainer
+```python
+import json
+
+# Load rollouts
+with open('dpo_rollouts.jsonl') as f:
+    rollouts = [json.loads(line) for line in f]
+
+# Group: every 3 consecutive rollouts = 1 group
+num_repeats = 3
+groups = [rollouts[i:i+num_repeats] for i in range(0, len(rollouts), num_repeats)]
+
+# Create pairs from each group
+pairs = []
+for group in groups:
+    # Sort by reward
+    sorted_group = sorted(group, key=lambda x: x['reward'], reverse=True)
+    
+    # Skip if reward gap too small
+    if sorted_group[0]['reward'] - sorted_group[-1]['reward'] < 0.15:
+        continue
+    
+    # Create pair
+    pairs.append({
+        'prompt': sorted_group[0]['responses_create_params']['input'],
+        'chosen': sorted_group[0]['output'],
+        'rejected': sorted_group[-1]['output'],
+        'reward_gap': sorted_group[0]['reward'] - sorted_group[-1]['reward']
+    })
+
+print(f"Created {len(pairs)} preference pairs from {len(groups)} groups")
+```
 
 Check reward distributions to validate quality:
+
 ```bash
 # Check chosen vs rejected spread
 jq '.reward' dpo_rollouts.jsonl | sort -n | uniq -c
@@ -107,7 +134,12 @@ jq '.reward' dpo_rollouts.jsonl | sort -n | uniq -c
 
 ## Troubleshooting
 
-**Not enough diversity** (few rollouts differ enough to make quality pairs):
+::::{tab-set}
+
+:::{tab-item} Not Enough Diversity
+
+**Problem**: Few rollouts differ enough to make quality pairs
+
 ```bash
 # Increase temperature for more behavioral variance
 ng_collect_rollouts ... +responses_create_params.temperature=0.8
@@ -116,7 +148,12 @@ ng_collect_rollouts ... +responses_create_params.temperature=0.8
 ng_collect_rollouts ... +num_repeats=4
 ```
 
-**Responses too erratic** (nonsensical or off-task outputs):
+:::
+
+:::{tab-item} Responses Too Erratic
+
+**Problem**: Nonsensical or off-task outputs
+
 ```bash
 # Lower temperature
 ng_collect_rollouts ... +responses_create_params.temperature=0.6
@@ -124,3 +161,7 @@ ng_collect_rollouts ... +responses_create_params.temperature=0.6
 # Or filter out low-quality rollouts before pairing
 jq 'select(.reward >= 0.3)' dpo_rollouts.jsonl > dpo_filtered.jsonl
 ```
+
+:::
+
+::::

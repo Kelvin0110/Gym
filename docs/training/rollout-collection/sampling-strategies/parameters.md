@@ -226,27 +226,39 @@ Select the right number of repeats based on your training or research objective.
 
 **Cost Impact**: Linear increase—`num_repeats=3` with 1,000 tasks = 3,000 rollouts.
 
+**Configuration options**:
+
+- **Command-line**: `+num_repeats=3` (applies to entire run)
+- **Dataset config**: Set default per-dataset in config YAML
+
+  ```yaml
+  datasets:
+  - name: validation
+    num_repeats: 10  # Use pass@10 for code benchmarks
+  ```
+
 ```{dropdown} How Num Repeats Works
 :icon: gear
 :color: success
 
-- Each task from input dataset is processed `num_repeats` times
-- Repeats are processed in pattern: `abc → aabbcc`
-- Enables measuring variance and generating preference pairs
+Each task is repeated consecutively in the output—input `[A, B, C]` with `num_repeats=3` produces `[A, A, A, B, B, B, C, C, C]`.
 
-**Example**:
-~~~bash
-# Input dataset: 3 tasks [A, B, C]
-# With num_repeats=3
-# Processing order: A, A, A, B, B, B, C, C, C
+**Guaranteed grouping structure**:
+- Every `num_repeats` consecutive lines share the same input
+- Groups are stable and predictable (not random or interleaved)
+- Post-processing can rely on this structure
 
-# Output file contains:
-# Line 1: Task A (attempt 1)
-# Line 2: Task A (attempt 2)
-# Line 3: Task A (attempt 3)
-# Line 4: Task B (attempt 1)
+**Example with num_repeats=3**:
+~~~python
+# Every 3 consecutive rollouts = 1 group
+groups = [rollouts[i:i+3] for i in range(0, len(rollouts), 3)]
+
+# Group 1: rollouts[0], rollouts[1], rollouts[2] → same input
+# Group 2: rollouts[3], rollouts[4], rollouts[5] → same input
 # ...
 ~~~
+
+This makes DPO pairing straightforward—sort each group by reward and select chosen/rejected pairs.
 ```
 
 ```{dropdown} DPO Training Pattern
@@ -321,6 +333,88 @@ Parameters work together—understand their combined effects.
 :::
 
 ::::
+
+---
+
+## Parameter Sources and Defaults
+
+Understand where parameter values come from and how to ensure reproducibility.
+
+### Default Behavior
+
+If you don't specify a parameter, your **model server determines the default**:
+
+```{list-table}
+:header-rows: 1
+:widths: 30 25 45
+
+* - Parameter
+  - Common Defaults
+  - Recommendation
+* - **temperature**
+  - 1.0 (OpenAI)<br/>varies (vLLM)
+  - Always set explicitly for reproducibility
+* - **top_p**
+  - 1.0 (most servers)
+  - Set to 0.9-0.95 for controlled sampling
+* - **seed**
+  - None (random)
+  - Required for reproducible evaluation
+* - **max_output_tokens**
+  - Server-dependent
+  - Set to control cost and latency
+```
+
+For evaluation and benchmarking, explicitly set all parameters rather than relying on defaults.
+
+### Override Precedence
+
+Parameters can be set in multiple places—CLI overrides take highest priority:
+
+```bash
+# Input JSONL contains per-task settings
+{"responses_create_params": {"temperature": 0.5}, ...}
+
+# CLI override applies to all tasks
+ng_collect_rollouts ... +responses_create_params.temperature=0.7
+
+# Result: CLI value (0.7) is used for all tasks
+```
+
+**Precedence order** (highest to lowest):
+
+1. CLI parameters (`+responses_create_params.X`)
+2. Input JSONL per-task parameters
+3. Dataset config defaults
+4. Model server defaults
+
+This enables per-task customization while allowing global overrides when needed.
+
+---
+
+## Advanced Parameters
+
+Beyond temperature and top_p, additional parameters offer fine-grained control.
+
+```{dropdown} Additional Sampling Parameters
+:icon: gear
+:color: info
+
+**Penalty parameters** (reduce repetition):
+- `frequency_penalty` (0.0-2.0): Penalize tokens based on frequency
+- `presence_penalty` (0.0-2.0): Penalize tokens that appeared at all
+
+**Control parameters**:
+- `stop`: Stop sequences (string or list)
+- `max_output_tokens`: Output length limit
+- `seed`: Fixed seed for reproducibility
+
+**Model-specific**:
+- `reasoning_effort`: For reasoning models (low/medium/high)
+- `logit_bias`: Adjust specific token probabilities
+
+Most use cases only need temperature, top_p, and seed. Use advanced parameters when standard controls don't achieve desired behavior.
+```
 
 ---
 

@@ -51,6 +51,33 @@ Ensure you have these prerequisites before validating rollouts:
 
 ---
 
+## Automatic Metrics
+
+After collection completes, NeMo Gym displays aggregated metrics:
+
+```json
+{
+  "reward": 0.734,
+  "accuracy": 0.689,
+  "avg_tool_calls": 2.3,
+  "execution_time_ms": 1247.5
+}
+```
+
+**How it works**: The system automatically averages any numeric field returned by your resource server's verification. This means you can track custom metrics without extra processing—just return them from verification and they appear in the summary.
+
+**Common metrics** (depending on your resource server):
+
+- `reward` - Quality score (0.0-1.0)
+- `accuracy` - Binary correctness
+- `avg_tool_calls` - Tool usage count
+- `execution_time_ms` - Performance timing
+- Custom domain metrics (code execution time, token count, etc.)
+
+Use these instant metrics to validate collection quality before diving into detailed analysis.
+
+---
+
 ## Key Validation Metrics
 
 ### Reward Distribution
@@ -58,6 +85,8 @@ Ensure you have these prerequisites before validating rollouts:
 The shape of your reward distribution should match your strategy.
 
 **Check distribution**:
+
+
 ```bash
 jq '.reward' rollouts.jsonl | python -c "
 import sys
@@ -84,6 +113,13 @@ print(f'P75:    {p75:.3f}')
 
 Use these metrics to understand your data's characteristics for your specific task and strategy.
 
+**Expected patterns by strategy**:
+
+- **SFT**: High mean (0.7-0.9), low variance
+- **DPO**: Moderate mean (0.5-0.7), moderate variance for quality spread
+- **RL**: Initially low, should improve across iterations
+- **Evaluation**: Task-dependent, but should be stable across runs
+
 ---
 
 ## Response Diversity
@@ -91,6 +127,8 @@ Use these metrics to understand your data's characteristics for your specific ta
 Measure uniqueness of completions.
 
 **Count unique responses**:
+
+
 ```bash
 jq -r '.output[] | select(.type=="message") | .content' rollouts.jsonl | \
   sort | uniq | wc -l
@@ -120,27 +158,45 @@ echo "Success rate: $success / $total = $(python -c "print(f'{$success/$total:.1
 
 ## Troubleshooting
 
-**All rewards identical**:
-```bash
-jq '.reward' rollouts.jsonl | sort | uniq
-```
-If single value: check temperature > 0, verify verification logic isn't constant.
+::::{tab-set}
 
-**Very low success rate**:
+:::{tab-item} Very Low Success Rate
+
+**Problem**: >80% of rollouts fail quality threshold
+
 ```bash
 failure_rate=$(jq 'select(.reward < 0.3)' rollouts.jsonl | wc -l)
 total=$(wc -l < rollouts.jsonl)
 echo "Failure rate: $(python -c "print(f'{$failure_rate/$total:.1%}')")"
 ```
-If >80% failures: task may be too difficult, or verification too strict.
 
-**Nonsensical outputs**
+**Solution**: Task may be too difficult, or verification too strict. Adjust threshold or increase temperature.
 
-Sample and manually review:
+:::
+
+:::{tab-item} All Rewards Identical
+
+**Problem**: No variance in reward values
+
+```bash
+jq '.reward' rollouts.jsonl | sort | uniq
+```
+
+**Solution**: If single value, check temperature > 0 and verify verification logic isn't constant.
+
+:::
+
+:::{tab-item} Nonsensical Outputs
+
+**Problem**: Responses are gibberish or off-topic
 
 ```bash
 # Random sample of 5 rollouts
 jq '.output[] | select(.type=="message") | .content' rollouts.jsonl | shuf -n 5
 ```
 
-If responses are gibberish: reduce temperature or top_p.
+**Solution**: Reduce temperature or top_p.
+
+:::
+
+::::

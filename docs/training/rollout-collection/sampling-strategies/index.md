@@ -6,6 +6,8 @@ Configure temperature, diversity, and sampling parameters to match your training
 
 Different training algorithms need different data characteristics—learn how to tune rollout generation for SFT, DPO, RL, and evaluation.
 
+**What makes NeMo Gym sampling strategies effective**: Automatic metric aggregation from verification, guaranteed consecutive grouping for DPO pairing (`num_repeats`), parameter override flexibility for per-task customization, and built-in retry handling for high-parallelism collection.
+
 ---
 
 ## Quick Strategy Guide
@@ -158,11 +160,11 @@ ng_collect_rollouts \
     +agent_name=<agent_name> \
     +input_jsonl_fpath=<input_file> \
     +output_jsonl_fpath=<output_file> \
-    +responses_create_params.temperature=<temperature> \
-    +num_samples_in_parallel=<parallelism>
+    +responses_create_params.temperature=0.2 \
+    +num_samples_in_parallel=20
 ```
 
-**Typical settings**: Low temperature (consistency), high parallelism (scale)
+**Typical settings**: Low temperature (0.1-0.3) for consistency, high parallelism (15-30) for scale. Built-in retry logic handles rate limits automatically.
 
 :::
 
@@ -173,12 +175,12 @@ ng_collect_rollouts \
     +agent_name=<agent_name> \
     +input_jsonl_fpath=<input_file> \
     +output_jsonl_fpath=<output_file> \
-    +responses_create_params.temperature=<temperature> \
-    +num_repeats=<num_repeats> \
-    +num_samples_in_parallel=<parallelism>
+    +responses_create_params.temperature=0.7 \
+    +num_repeats=3 \
+    +num_samples_in_parallel=10
 ```
 
-**Typical settings**: Higher temperature (diversity), multiple repeats (3-4), moderate parallelism
+**Typical settings**: Higher temperature (0.6-0.8) for diversity, multiple repeats (3-4) creating consecutive groups for pairing, moderate parallelism
 
 :::
 
@@ -189,11 +191,11 @@ ng_collect_rollouts \
     +agent_name=<agent_name> \
     +input_jsonl_fpath=<input_file> \
     +output_jsonl_fpath=<output_file> \
-    +responses_create_params.temperature=<temperature> \
-    +num_samples_in_parallel=<parallelism>
+    +responses_create_params.temperature=0.5 \
+    +num_samples_in_parallel=15
 ```
 
-**Typical settings**: Moderate temperature (exploration/exploitation balance), medium-high parallelism
+**Typical settings**: Moderate temperature (0.4-0.6) for exploration/exploitation balance, medium-high parallelism
 
 :::
 
@@ -204,12 +206,12 @@ ng_collect_rollouts \
     +agent_name=<agent_name> \
     +input_jsonl_fpath=<input_file> \
     +output_jsonl_fpath=<output_file> \
-    +responses_create_params.temperature=<temperature> \
-    +responses_create_params.seed=<seed> \
-    +num_samples_in_parallel=<parallelism>
+    +responses_create_params.temperature=0.1 \
+    +responses_create_params.seed=42 \
+    +num_samples_in_parallel=5
 ```
 
-**Typical settings**: Very low temperature (determinism), fixed seed (reproducibility), low parallelism
+**Typical settings**: Very low temperature (0.0-0.1) for determinism, fixed seed for reproducibility, low parallelism. Always set parameters explicitly rather than relying on model server defaults.
 
 :::
 

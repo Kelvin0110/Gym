@@ -139,7 +139,12 @@ shuf sft_filtered.jsonl > sft_train_ready.jsonl
 
 ## Troubleshooting
 
-**Low success rate** (few rollouts pass filtering):
+::::{tab-set}
+
+:::{tab-item} Low Success Rate
+
+**Problem**: Few rollouts pass filtering
+
 ```bash
 # Lower filtering threshold
 jq 'select(.reward >= 0.6)' sft_rollouts.jsonl > sft_filtered.jsonl
@@ -148,13 +153,12 @@ jq 'select(.reward >= 0.6)' sft_rollouts.jsonl > sft_filtered.jsonl
 ng_collect_rollouts ... +responses_create_params.temperature=0.3
 ```
 
-**Responses too repetitive**:
-```bash
-# Increase temperature
-ng_collect_rollouts ... +responses_create_params.temperature=0.4
-```
+:::
 
-**Collection too slow**:
+:::{tab-item} Collection Too Slow
+
+**Problem**: <10 samples/sec throughput
+
 ```bash
 # Increase parallelism
 ng_collect_rollouts ... +num_samples_in_parallel=30
@@ -164,3 +168,18 @@ ng_collect_rollouts ... +responses_create_params.max_output_tokens=512
 ```
 
 See {doc}`../optimize-for-training/index` for comprehensive optimization.
+
+:::
+
+:::{tab-item} Responses Too Repetitive
+
+**Problem**: Many identical completions
+
+```bash
+# Increase temperature
+ng_collect_rollouts ... +responses_create_params.temperature=0.4
+```
+
+:::
+
+::::
