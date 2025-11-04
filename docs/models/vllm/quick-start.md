@@ -30,14 +30,12 @@ Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 
 ---
 
-## Choose a Path
+:::{admonition} Already have a vLLM server running?
+:class: tip
+Skip to [Step 4: Configure NeMo Gym](#step-4-configure-nemo-gym) if you already have a vLLM server deployed and just need to connect NeMo Gym to it.
+:::
 
-Choose your path based on whether you need to start a vLLM server or already have one running.
-
-::::{tab-set}
-
-:::{tab-item} I need to start a vLLM server
-**Step 1: Install vLLM**
+## Step 1: Install vLLM
 
 ```bash
 # Create a virtual environment
@@ -48,7 +46,9 @@ source .venv/bin/activate
 uv pip install hf_transfer datasets vllm --torch-backend=auto
 ```
 
-**Step 2: Download a model**
+---
+
+## Step 2: Download a Model
 
 ```bash
 # Example: Download Qwen3-30B-A3B (supports tool calling)
@@ -57,7 +57,29 @@ HF_HUB_ENABLE_HF_TRANSFER=1 \
     hf download Qwen/Qwen3-30B-A3B
 ```
 
-**Step 3: Start vLLM server**
+:::{dropdown} Popular models for NeMo Gym
+
+**Models with tool calling support** (recommended):
+- `Qwen/Qwen3-30B-A3B` - 30B parameters, excellent tool calling
+- `meta-llama/Llama-3.1-70B-Instruct` - 70B parameters, high quality
+- `meta-llama/Llama-3.1-8B-Instruct` - 8B parameters, fastest inference
+
+**For gated models** (Llama, Gemma):
+```bash
+# Login to Hugging Face first
+huggingface-cli login
+
+# Then download
+HF_HOME=.cache/ HF_HUB_ENABLE_HF_TRANSFER=1 \
+    hf download meta-llama/Llama-3.1-8B-Instruct
+```
+
+See [vLLM supported models](https://docs.vllm.ai/en/latest/models/supported_models.html) for the complete list.
+:::
+
+---
+
+## Step 3: Start vLLM Server
 
 ```bash
 HF_HOME=.cache/ \
@@ -78,17 +100,38 @@ vllm serve \
 
 **✅ Success check**: Visit `http://localhost:10240/health` - you should see a health status response.
 
-**Step 4: Configure NeMo Gym**
+---
 
-Create `env.yaml` in your NeMo Gym repository:
+(step-4-configure-nemo-gym)=
+## Step 4: Configure NeMo Gym
+
+Create or update `env.yaml` in your NeMo Gym repository root:
 
 ```yaml
-policy_base_url: http://localhost:10240/v1
-policy_api_key: EMPTY
-policy_model_name: Qwen/Qwen3-30B-A3B
+policy_base_url: http://localhost:10240/v1  # Your vLLM server URL
+policy_api_key: EMPTY                       # Use EMPTY if no auth configured
+policy_model_name: Qwen/Qwen3-30B-A3B       # Must match model loaded in vLLM
 ```
 
-**Step 5: Start NeMo Gym servers**
+:::{dropdown} If you have an existing vLLM server elsewhere
+
+Update the configuration to point to your server:
+
+```yaml
+policy_base_url: http://your-vllm-server:8000/v1
+policy_api_key: EMPTY  # or your API key
+policy_model_name: meta-llama/Llama-3.1-8B-Instruct  # match your model
+```
+
+Verify your server is accessible:
+```bash
+curl http://your-vllm-server:8000/v1/models
+```
+:::
+
+---
+
+## Step 5: Start NeMo Gym Servers
 
 ```bash
 config_paths="responses_api_models/vllm_model/configs/vllm_model.yaml,\
@@ -99,38 +142,9 @@ ng_run "+config_paths=[${config_paths}]"
 
 **✅ Success check**: You should see multiple servers starting, including the head server on port 11000.
 
-:::
+---
 
-:::{tab-item} I have a vLLM server running
-**Step 1: Get your vLLM endpoint details**
-
-You need:
-- vLLM server URL (e.g., `http://your-server:8000/v1`)
-- Model name loaded in vLLM (e.g., `meta-llama/Llama-3.1-8B-Instruct`)
-- API key (use `EMPTY` if authentication not configured)
-
-**Step 2: Configure NeMo Gym**
-
-Create or update `env.yaml` in your repository root:
-
-```yaml
-policy_base_url: http://your-vllm-server:8000/v1
-policy_api_key: EMPTY  # or your API key
-policy_model_name: meta-llama/Llama-3.1-8B-Instruct
-```
-
-**Step 3: Start NeMo Gym servers**
-
-```bash
-config_paths="responses_api_models/vllm_model/configs/vllm_model.yaml,\
-resources_servers/simple_weather/configs/simple_weather.yaml"
-
-ng_run "+config_paths=[${config_paths}]"
-```
-
-**✅ Success check**: Verify servers start without connection errors.
-
-**Step 4: Test the integration**
+## Step 6: Test the Integration
 
 ```bash
 ng_test +entrypoint=responses_api_models/vllm_model
@@ -138,22 +152,13 @@ ng_test +entrypoint=responses_api_models/vllm_model
 
 **✅ Success check**: All tests should pass.
 
-:::
-
-::::
-
 ---
 
-## What's Next?
+## Next Steps
 
 Now that vLLM is configured, you can:
 
 - **[Collect rollouts](../../get-started/collecting-rollouts.md)** for training data generation
 - **[Configure additional parameters](configuration.md)** like token IDs for training
 - **[Set up load balancing](optimization.md)** for production throughput
-- **[Switch from OpenAI](optimization.md#switch-from-openai-to-vllm)** if migrating from API-based models
-
-:::{tip}
-**New to NeMo Gym?** Complete the [Setup and Installation](../../get-started/setup-installation.md) tutorial first to understand the full workflow.
-:::
 
