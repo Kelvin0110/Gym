@@ -62,10 +62,6 @@ ng_collect_rollouts \
   +concurrency=10
 ```
 
-:::{tip}
-**API version required**: Azure OpenAI requires specifying an API version. Use the latest stable version from [Azure documentation](https://learn.microsoft.com/azure/ai-services/openai/reference).
-:::
-
 :::{seealso}
 For a complete walkthrough of rollout collection, see [Collecting Rollouts](../../get-started/collecting-rollouts.md).
 :::
