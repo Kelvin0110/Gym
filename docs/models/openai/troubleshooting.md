@@ -197,7 +197,7 @@ Problems that occur during rollout collection.
 - Use models with appropriate context lengths
 - Monitor conversation history length
 - Implement truncation in your resource server logic
-- Consider context window sizes (as of November 2024):
+- Consider context window sizes:
   - `gpt-3.5-turbo`: 16K tokens
   - `gpt-4`: 8K tokens (base model)
   - `gpt-4-32k`: 32K tokens
