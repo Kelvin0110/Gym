@@ -6,7 +6,6 @@ Connect your training data to reinforcement learning frameworks. This section pr
 
 Your data is prepared—now integrate with your chosen RL training framework.
 
-
 ## When You Need This
 
 Use this section when you need to:
@@ -19,7 +18,6 @@ Use this section when you need to:
 :::{tip}
 **New to RL training?** Start with {doc}`framework-comparison` to understand which framework fits your needs, then follow the framework-specific guide.
 :::
-
 
 ## Supported RL Frameworks
 
@@ -257,48 +255,35 @@ Start with Framework Comparison →
 
 Already know your framework? Jump directly to the integration guide:
 
-::::{grid} 1 1 2 2
-:gutter: 2
-
-:::{grid-item}
-:::{button-ref} nemo-rl
-:color: secondary
+::::{button-ref} nemo-rl
+:color: primary
 :outline:
 :ref-type: doc
 
 NeMo-RL Guide →
-:::
-:::
+::::
 
-:::{grid-item}
-:::{button-ref} verl
-:color: secondary
+::::{button-ref} verl
+:color: primary
 :outline:
 :ref-type: doc
 
 VeRL Guide →
-:::
-:::
+::::
 
-:::{grid-item}
-:::{button-ref} openrlhf
-:color: secondary
+::::{button-ref} openrlhf
+:color: primary
 :outline:
 :ref-type: doc
 
 OpenRLHF Guide →
-:::
-:::
+::::
 
-:::{grid-item}
-:::{button-ref} trl
-:color: secondary
+::::{button-ref} trl
+:color: primary
 :outline:
 :ref-type: doc
 
 TRL Guide →
-:::
-:::
-
 ::::
 
