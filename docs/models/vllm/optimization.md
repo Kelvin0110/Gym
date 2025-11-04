@@ -16,9 +16,9 @@ Specify multiple vLLM endpoints using either comma-separated values or YAML list
 
 ::::{tab-set}
 
-:::{tab-item} Comma-separated (env.yaml)
+:::{tab-item} Layer 1: env.yaml
 
-Simple comma-separated URLs in your environment file:
+Comma-separated URLs in your environment file:
 
 ```yaml
 # env.yaml
@@ -27,13 +27,13 @@ policy_api_key: EMPTY
 policy_model_name: meta-llama/Llama-3.1-8B-Instruct
 ```
 
-**When to use**: Quick setup with standard config files.
+**When to use**: Quick setup, works with standard vLLM config files.
 
 :::
 
-:::{tab-item} YAML list (config file)
+:::{tab-item} Layer 2: Config YAML
 
-Explicit list syntax in your config file:
+Explicit list syntax in the config file:
 
 ```yaml
 # responses_api_models/vllm_model/configs/vllm_model.yaml
@@ -49,7 +49,7 @@ policy_model:
       model: ${policy_model_name}
 ```
 
-**When to use**: Custom config files or when you prefer explicit list formatting.
+**When to use**: Custom config files, when you prefer explicit YAML list syntax.
 
 :::
 
