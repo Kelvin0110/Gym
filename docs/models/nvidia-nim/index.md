@@ -34,12 +34,12 @@ NVIDIA NIM (NVIDIA Inference Microservices) delivers production-ready AI model i
 
 ::::
 
-:::{button-ref} /models/index
+:::{button-ref} models-comparison-table
 :color: secondary
 :outline:
-:ref-type: doc
+:ref-type: ref
 
-← Not sure which model to use? See Models Overview
+← Compare Options
 :::
 
 ---

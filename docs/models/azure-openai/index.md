@@ -35,12 +35,12 @@ Azure OpenAI Service provides OpenAI models through Microsoft Azure infrastructu
 
 ::::
 
-:::{button-ref} /models/index
+:::{button-ref} models-comparison-table
 :color: secondary
 :outline:
-:ref-type: doc
+:ref-type: ref
 
-← Not sure which model to use? See Models Overview
+← Compare Options
 :::
 
 ---

@@ -64,6 +64,7 @@ Unified access to multiple model providers through OpenRouter.
 
 ---
 
+(models-comparison-table)=
 ## Choosing a Model Serving Method
 
 Consider these factors when selecting your model serving approach:
@@ -135,4 +136,3 @@ Start with vLLM for Self-Hosted Models →
 :::{tip}
 **Not sure which to choose?** Start with OpenAI for quick experimentation, then move to vLLM or NVIDIA NIM for production workloads.
 :::
-

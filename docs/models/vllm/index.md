@@ -34,12 +34,12 @@ vLLM is a fast and memory-efficient inference engine for large language models. 
 
 ::::
 
-:::{button-ref} /models/index
+:::{button-ref} models-comparison-table
 :color: secondary
 :outline:
-:ref-type: doc
+:ref-type: ref
 
-← Not sure which model to use? See Models Overview
+← Compare Options
 :::
 
 ---

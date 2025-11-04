@@ -35,12 +35,12 @@ OpenRouter provides a unified API gateway to access models from multiple provide
 
 ::::
 
-:::{button-ref} /models/index
+:::{button-ref} models-comparison-table
 :color: secondary
 :outline:
-:ref-type: doc
+:ref-type: ref
 
-← Not sure which model to use? See Models Overview
+← Compare Options
 :::
 
 ---
