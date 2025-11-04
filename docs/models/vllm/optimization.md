@@ -90,10 +90,40 @@ vllm serve model \
 ```
 
 **Key parameters**:
-- `--tensor-parallel-size`: Number of GPUs to use (4 or 8 typical)
-- `--gpu-memory-utilization`: How much GPU memory to use (0.90-0.95 recommended)
-- `--max-num-seqs`: Maximum batch size for concurrent requests
-- `--enable-prefix-caching`: Reuse KV cache for common prompt prefixes
+
+```{list-table}
+:header-rows: 1
+:widths: 30 15 20 35
+
+* - Parameter
+  - Type
+  - Typical Value
+  - Description
+* - `--tensor-parallel-size`
+  - int
+  - 4 or 8
+  - Number of GPUs to use for tensor parallelism
+* - `--gpu-memory-utilization`
+  - float
+  - 0.90-0.95
+  - Fraction of GPU memory to allocate (higher = more capacity, less headroom)
+* - `--max-num-seqs`
+  - int
+  - 256
+  - Maximum batch size for concurrent sequence processing
+* - `--enable-prefix-caching`
+  - flag
+  - -
+  - Enable KV cache reuse for common prompt prefixes
+* - `--enable-auto-tool-choice`
+  - flag
+  - -
+  - Enable automatic tool selection for function calling
+* - `--tool-call-parser`
+  - string
+  - `hermes` or `mistral`
+  - Parser format for tool calling (model-dependent)
+```
 
 ---
 
