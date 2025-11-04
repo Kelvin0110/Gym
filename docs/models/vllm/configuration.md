@@ -28,8 +28,26 @@ Configuration values resolve through **three layers** with increasing precedence
 
 ::::{tab-set}
 
+:::{tab-item} Layer 1: env.yaml
+
+**Base values and secrets** (git-ignored)
+
+```yaml
+# env.yaml
+policy_base_url: http://localhost:10240/v1
+policy_api_key: EMPTY
+policy_model_name: Qwen/Qwen3-30B-A3B
+```
+
+**When to use**:
+- Secrets and API keys
+- Environment-specific values (dev/staging/prod URLs)
+- Personal/local settings
+
+:::
+
 :::{tab-item} Layer 2: Config YAML
-:sync: layer2
+:selected:
 
 **Structure with variable substitution** (version controlled)
 
@@ -49,29 +67,7 @@ policy_model:
 
 :::
 
-:::{tab-item} Layer 1: env.yaml
-:sync: layer1
-
-**Base values and secrets** (git-ignored)
-
-```yaml
-# env.yaml
-policy_base_url: http://localhost:10240/v1
-policy_api_key: EMPTY
-policy_model_name: Qwen/Qwen3-30B-A3B
-```
-
-**When to use**:
-- Secrets and API keys
-- Environment-specific values (dev/staging/prod URLs)
-- Personal/local settings
-
-**Note**: These variables are referenced in Layer 2 via `${variable}` syntax.
-
-:::
-
 :::{tab-item} Layer 3: CLI Overrides
-:sync: layer3
 
 **Runtime overrides** (highest precedence)
 
