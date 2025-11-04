@@ -52,7 +52,7 @@ Ensure you have these prerequisites before configuring OpenAI with NeMo Gym:
    ```
 
    :::{tip}
-   **Cost optimization**: Start with `gpt-3.5-turbo` for initial testing - it's 10-30x cheaper than GPT-4 models and still very capable for many tasks.
+   **Cost optimization**: Start with `gpt-3.5-turbo` for initial testing - it's typically cheaper than GPT-4 models and still very capable for many tasks.
    :::
 
 2. Validate Configuration (optional but recommended):
@@ -148,6 +148,6 @@ Ensure you have these prerequisites before configuring OpenAI with NeMo Gym:
    ```
 
    :::{tip}
-   **Cost management**: Start with lower concurrency (`+num_samples_in_parallel=10`) to control costs. OpenAI charges per token, so monitor usage in the OpenAI dashboard as you scale up.
+   **Cost management**: Start with lower concurrency (`+num_samples_in_parallel=10`) to control costs. Monitor usage in the OpenAI dashboard as you scale up.
    :::
 
