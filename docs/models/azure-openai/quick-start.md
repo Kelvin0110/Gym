@@ -42,33 +42,15 @@ Ensure you have these prerequisites before configuring Azure OpenAI with NeMo Gy
 
 ## Set Up Azure OpenAI Resource
 
-If you don't have an Azure OpenAI resource yet:
+**Prerequisites**: You need an Azure OpenAI resource with a deployed model. If you haven't set this up yet, follow Microsoft's guide: [Create an Azure OpenAI Resource and Deploy a Model](https://learn.microsoft.com/en-us/microsoft-cloud/dev/tutorials/openai-acs-msgraph/02-openai-create-resource).
 
-1. Create Azure OpenAI Resource:
+Once you have your Azure OpenAI resource, you'll need:
+- **Endpoint URL**: From Azure portal → Your resource → Keys and Endpoint
+- **API Key**: Key 1 or Key 2 from the same location
+- **Deployment name**: The custom name you gave your model deployment (e.g., `my-gpt-4-deployment`)
 
-   - Navigate to [Azure portal](https://portal.azure.com)
-   - Search for "Azure OpenAI"
-   - Click "Create" and fill in resource details
-   - Choose region (consider data residency requirements)
-   - Wait for deployment to complete
-
-2. Deploy a Model:
-
-   - Open your Azure OpenAI resource
-   - Navigate to "Model deployments"
-   - Click "Create new deployment"
-   - Choose model (e.g., `gpt-4`, `gpt-35-turbo`)
-   - Give it a deployment name (e.g., `my-gpt-4-deployment`)
-   - Note the deployment name - you'll use this in configuration
-
-3. Get Endpoint and Key:
-
-   - Navigate to "Keys and Endpoint"
-   - Copy "Endpoint" URL
-   - Copy one of the keys (Key 1 or Key 2)
-
-:::{tip}
-**Deployment names are custom**: Unlike standard OpenAI, Azure uses your custom deployment names, not base model names like `gpt-4`.
+:::{important}
+**Deployment names are custom**: Azure uses your custom deployment names (e.g., `my-gpt-4-deployment`), not base model names like `gpt-4`. Make sure to use the deployment name you created, not the model name.
 :::
 
 ---
