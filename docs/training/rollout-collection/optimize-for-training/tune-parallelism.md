@@ -56,7 +56,7 @@ async with semaphore:
 
 Use a systematic doubling approach to find your throughput ceiling.
 
-### Step 1: Establish Baseline
+### 1. Establish Baseline
 
 ```bash
 ng_collect_rollouts \
@@ -74,7 +74,7 @@ Collecting rollouts: 100%|████| 200/200 [02:00<00:00, 1.67it/s]
 
 **Record the result**: 1.67 samples/sec
 
-### Step 2: Double and Measure
+### 2. Double and Measure
 
 ```bash
 ng_collect_rollouts \
@@ -87,7 +87,7 @@ ng_collect_rollouts \
 
 **Expect**: ~3.0 samples/sec (if parallelism was limiting)
 
-### Step 3: Continue Until Plateau
+### 3. Continue Until Plateau
 
 Keep doubling (20, 40, 80) until:
 
@@ -97,7 +97,7 @@ Keep doubling (20, 40, 80) until:
 
 **Optimal value**: Use 80% of peak to leave headroom for stability.
 
-### Step 4: Validate Stability
+### 4. Validate Stability
 
 ```bash
 ng_collect_rollouts \
