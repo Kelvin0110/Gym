@@ -4,24 +4,11 @@
 
 Generate training rollouts at scale with optimized sampling strategies, parallelization, and collection patterns tailored to your training objectives.
 
-You have learned basic rollout collection in {doc}`Get Started <../../get-started/collecting-rollouts>`—now scale up to production training workflows with optimizations for SFT, DPO, and RL data generation.
-
-
-## When You Need This
-
-Use this section when you need to:
-
-* **Generate large training datasets** - Thousands or millions of rollouts for RL, SFT, or DPO
-* **Optimize generation speed** - Maximize throughput for your infrastructure
-* **Control data characteristics** - Tune temperature, diversity, and sampling for your training approach
-* **Choose collection strategies** - Understand tradeoffs between consistency, diversity, and efficiency
-
 :::{seealso}
 For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/rollout-collection-fundamentals`.
 :::
 
-
-## Guides and References
+## Topics
 
 ::::{grid} 1 1 1 2
 :gutter: 3
@@ -36,16 +23,16 @@ For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/r
 :::
 
 :::{grid-item-card} {octicon}`versions;1.5em;sd-mr-1` Sampling Strategies
-:link: sampling-strategies
+:link: sampling-strategies/index
 :link-type: doc
 
-**How-to guide** for choosing temperature, diversity, and sampling parameters based on your training objective (SFT, DPO, RL).
+**Topic guide** for configuring temperature, diversity, and sampling parameters for SFT, DPO, RL, evaluation, and research.
 +++
 {bdg-secondary}`how-to` {bdg-secondary}`temperature` {bdg-secondary}`diversity`
 :::
 
 :::{grid-item-card} {octicon}`checklist;1.5em;sd-mr-1` Collection Patterns
-:link: collection-patterns
+:link: collection-patterns/index
 :link-type: doc
 
 **Reference** of common collection patterns and configurations for different training scenarios and use cases.
@@ -54,7 +41,6 @@ For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/r
 :::
 
 ::::
-
 
 ## Quick Selection Guide
 
@@ -67,15 +53,14 @@ Choose your starting point based on your goal:
 * - Training Goal
   - Recommended Configuration
 * - **SFT (Supervised Fine-Tuning)**
-  - Low temperature (0.1-0.3), high parallelism, single sample per task. See {doc}`sampling-strategies`
+  - Low temperature (0.1-0.3), high parallelism, single sample per task. See {doc}`sampling-strategies/index`
 * - **DPO (Direct Preference Optimization)**
-  - Higher temperature (0.6-0.8), multiple samples per task (2+), focus on diversity. See {doc}`sampling-strategies`
+  - Higher temperature (0.6-0.8), multiple samples per task (2+), focus on diversity. See {doc}`sampling-strategies/index`
 * - **RL (Reinforcement Learning)**
   - Moderate temperature (0.4-0.6), shaped rewards, balanced exploration. See {doc}`collection-patterns`
 * - **Maximize Speed**
   - Tune parallelism, optimize model server, reduce verification overhead. See {doc}`optimize-for-training`
 ```
-
 
 ## Collection Pipeline Overview
 
@@ -95,24 +80,10 @@ Input Dataset (JSONL)
 Output Rollouts (JSONL)  → to Data Quality filtering
 ```
 
-**Next**: {doc}`../data-quality/index` for filtering and curation
-
-
-## Related Topics
-
-### Configuration and Performance
-
-* **Configuration Management** *(coming soon)* - System-level configuration patterns
-* **Performance & Scaling** *(coming soon)* - System throughput optimization and distributed generation
-
-### Data Pipeline
-
-* {doc}`../verification/index` - Design reward signals for training
-* {doc}`../data-quality/index` - Filter and curate generated rollouts
-* {doc}`../datasets/index` - Prepare data for training frameworks
-
-
 ## Next Steps
+
+Start with **{doc}`optimize-for-training`** to understand parallelization and throughput, then move to **{doc}`sampling-strategies/index`** to tune data characteristics.
+:::
 
 :::{button-ref} optimize-for-training
 :color: primary
@@ -122,16 +93,11 @@ Output Rollouts (JSONL)  → to Data Quality filtering
 Start with Optimize for Training →
 :::
 
-:::{tip}
-**First time scaling up?** Start with {doc}`optimize-for-training` to understand parallelization and throughput, then move to {doc}`sampling-strategies` to tune data characteristics.
-:::
-
 ```{toctree}
 :hidden:
-:maxdepth: 1
+:maxdepth: 2
 
-optimize-for-training
-sampling-strategies
+optimize-for-training/index
+sampling-strategies/index
 collection-patterns
 ```
-

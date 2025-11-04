@@ -1,6 +1,13 @@
+(training-rollout-patterns)=
+
 # Collection Patterns
 
-*Content coming soon.*
+```{toctree}
+:maxdepth: 2
 
-Reference catalog of rollout collection patterns (high-throughput SFT, diverse DPO, etc.).
+collection-patterns/index
+```
 
+This section has moved to a dedicated subdirectory for better organization.
+
+**Go to**: {doc}`collection-patterns/index`

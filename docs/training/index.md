@@ -4,22 +4,6 @@
 
 Scale up your training data generation workflows and integrate with RL frameworks. This section focuses on practical guidance for generating high-quality training data at production scale.
 
-You have completed {doc}`Get Started <../get-started/index>` and understand rollout collection basics—now learn to optimize, curate, and prepare data for reinforcement learning frameworks.
-
-## When You Need This Section
-
-This section is for practitioners who need to:
-
-* **Scale up data generation** - Generate thousands or millions of rollouts for training
-* **Ensure data quality** - Filter, curate, and balance training datasets
-* **Shape rewards effectively** - Design verification strategies that produce strong training signals
-* **Integrate with RL frameworks** - Connect rollouts to NeMo-RL, VeRL, OpenRLHF, TRL, or custom frameworks
-* **Optimize throughput** - Maximize rollouts per hour for production workflows
-
-:::{tip}
-**Looking for system configuration or performance tuning?** Those topics are covered in the Setup and Deployment section (coming soon).
-:::
-
 ## Training Data Pipeline
 
 Follow the training data pipeline from generation to framework integration:
@@ -100,7 +84,11 @@ Not sure where to start? Choose based on your current need:
 
 ## Training Workflow Patterns
 
-### Pattern 1: SFT Data Generation
+Common end-to-end workflows combining data generation, quality filtering, and framework integration for different training objectives.
+
+::::{tab-set}
+
+:::{tab-item} SFT Data Generation
 
 Generate high-quality demonstration data for supervised fine-tuning:
 
@@ -114,9 +102,11 @@ responses_create_params:
 min_reward_threshold: 0.8
 ```
 
-**Guides**: {doc}`rollout-collection/sampling-strategies` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
+**Guides**: {doc}`rollout-collection/sampling-strategies/sft` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
 
-### Pattern 2: DPO Pair Generation
+:::
+
+:::{tab-item} DPO Pair Generation
 
 Generate diverse pairs for preference optimization:
 
@@ -130,9 +120,11 @@ responses_create_params:
 min_quality_difference: 0.1
 ```
 
-**Guides**: {doc}`rollout-collection/sampling-strategies` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
+**Guides**: {doc}`rollout-collection/sampling-strategies/dpo` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
 
-### Pattern 3: RL Training Data
+:::
+
+:::{tab-item} RL Training Data
 
 Generate rollouts with shaped rewards for reinforcement learning:
 
@@ -148,31 +140,13 @@ reward_shaping: continuous  # 0.0-1.0 range
 
 **Guides**: {doc}`verification/reward-shaping` → {doc}`rollout-collection/optimize-for-training` → {doc}`integration/nemo-rl` (or your framework)
 
-## Related Documentation
+:::
 
-### Concepts and Background
-
-For understanding **why** these practices matter:
-
-* {doc}`../about/concepts/rollout-collection-fundamentals` - Deep dive on rollout generation
-* {doc}`../about/concepts/verifying-agent-results` - Theory behind verification and rewards
-* {doc}`../about/concepts/configuration-system` - Configuration hierarchy explained
-
-### Tutorials and Learning
-
-For **learning-oriented** experiences:
-
-* {doc}`../get-started/collecting-rollouts` - Your first rollout collection (prerequisite)
-* {doc}`../tutorials/offline-training-w-rollouts` - End-to-end SFT/DPO tutorial
-
-### System Configuration
-
-For **system-level** setup (not training-specific):
-
-* Configuration Management *(coming soon)* - Multi-model setups, environment configs, parameter reference
-* Performance & Scaling *(coming soon)* - System-level throughput optimization, distributed generation
+::::
 
 ## Next Steps
+
+We recommend starting with **Rollout Collection** to understand data generation optimization, then moving to **Data Quality** to ensure your datasets are production-ready.
 
 :::{button-ref} rollout-collection/index
 :color: primary
@@ -180,8 +154,4 @@ For **system-level** setup (not training-specific):
 :ref-type: doc
 
 Start with Rollout Collection →
-:::
-
-:::{tip}
-**New to training workflows?** We recommend starting with Rollout Collection to understand data generation optimization, then moving to Data Quality to ensure your datasets are production-ready.
 :::
