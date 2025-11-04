@@ -10,19 +10,27 @@ Get vLLM running with NeMo Gym in under 5 minutes.
 
 Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 
-**Software Requirements**:
-- **NeMo Gym installed** - Complete [Setup and Installation](../../get-started/setup-installation.md) first
-- **Python 3.10+** - Required by vLLM (check with `python3 --version`)
-- **CUDA-capable GPU** - NVIDIA GPU with CUDA support for inference
-- **Hugging Face account** (optional) - Only required for gated models like Llama
+```{list-table}
+:header-rows: 1
+:widths: 30 70
 
-**Hardware Requirements**:
-- **GPU Memory**: Varies by model size
-  - 8B parameter models: ~16GB VRAM minimum
-  - 30B parameter models: ~60GB VRAM (2-4 GPUs with tensor parallelism)
-  - 70B parameter models: ~140GB VRAM (4-8 GPUs)
-- **Disk Space**: 10-100GB+ depending on model (weights are stored locally)
-- **Network Bandwidth**: For initial model download from Hugging Face
+* - Requirement
+  - Details
+* - **NeMo Gym installed**
+  - Complete [Setup and Installation](../../get-started/setup-installation.md) first
+* - **Python 3.10+**
+  - Required by vLLM (check with `python3 --version`)
+* - **CUDA-capable GPU**
+  - NVIDIA GPU with CUDA support for inference
+* - **Hugging Face account**
+  - Optional - only required for gated models like Llama
+* - **GPU Memory**
+  - 8B models: ~16GB VRAM • 30B models: ~60GB VRAM (2-4 GPUs) • 70B models: ~140GB VRAM (4-8 GPUs)
+* - **Disk Space**
+  - 10-100GB+ depending on model size (weights stored locally)
+* - **Network Bandwidth**
+  - Required for initial model download from Hugging Face
+```
 
 :::{tip}
 **New to NeMo Gym?** Start with the [Get Started tutorials](../../get-started/index.md) using OpenAI first. Once you understand the workflow, return here to deploy your own models with vLLM.
@@ -35,7 +43,7 @@ Ensure you have these prerequisites before deploying vLLM with NeMo Gym:
 Skip to [Step 4: Configure NeMo Gym](#step-4-configure-nemo-gym) if you already have a vLLM server deployed and just need to connect NeMo Gym to it.
 :::
 
-## Step 1: Install vLLM
+## 1. Install vLLM
 
 ```bash
 # Create a virtual environment
@@ -48,7 +56,7 @@ uv pip install hf_transfer datasets vllm --torch-backend=auto
 
 ---
 
-## Step 2: Download a Model
+## 2. Download a Model
 
 ```bash
 # Example: Download Qwen3-30B-A3B (supports tool calling)
@@ -79,7 +87,7 @@ See [vLLM supported models](https://docs.vllm.ai/en/latest/models/supported_mode
 
 ---
 
-## Step 3: Start vLLM Server
+## 3. Start vLLM Server
 
 ```bash
 HF_HOME=.cache/ \
@@ -103,7 +111,7 @@ vllm serve \
 ---
 
 (step-4-configure-nemo-gym)=
-## Step 4: Configure NeMo Gym
+## 4. Configure NeMo Gym
 
 Create or update `env.yaml` in your NeMo Gym repository root:
 
@@ -131,7 +139,7 @@ curl http://your-vllm-server:8000/v1/models
 
 ---
 
-## Step 5: Start NeMo Gym Servers
+## 5. Start NeMo Gym Servers
 
 ```bash
 config_paths="responses_api_models/vllm_model/configs/vllm_model.yaml,\
@@ -144,7 +152,7 @@ ng_run "+config_paths=[${config_paths}]"
 
 ---
 
-## Step 6: Test the Integration
+## 6. Test the Integration
 
 ```bash
 ng_test +entrypoint=responses_api_models/vllm_model
