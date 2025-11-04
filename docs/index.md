@@ -96,6 +96,57 @@ Generate your first batch of rollouts and understand how they become training da
 
 ---
 
+## Models
+
+Configure model serving methods for generating agent responses and tool-calling decisions.
+
+::::{grid} 1 2 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` vLLM
+:link: models/vllm
+:link-type: doc
+Self-hosted open models with high-throughput inference.
++++
+{bdg-secondary}`self-hosted` {bdg-secondary}`high-performance`
+:::
+
+:::{grid-item-card} {octicon}`shield-check;1.5em;sd-mr-1` NVIDIA NIM
+:link: models/nvidia-nim
+:link-type: doc
+Enterprise-grade model deployment with NVIDIA NIM microservices.
++++
+{bdg-secondary}`enterprise` {bdg-secondary}`production`
+:::
+
+:::{grid-item-card} {octicon}`cloud;1.5em;sd-mr-1` OpenAI
+:link: models/openai
+:link-type: doc
+Use OpenAI models through the Responses API format.
++++
+{bdg-secondary}`managed` {bdg-secondary}`cloud`
+:::
+
+:::{grid-item-card} {octicon}`cloud;1.5em;sd-mr-1` Azure OpenAI
+:link: models/azure-openai
+:link-type: doc
+Access Azure OpenAI endpoints for LLM inference.
++++
+{bdg-secondary}`azure` {bdg-secondary}`enterprise`
+:::
+
+:::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` OpenRouter
+:link: models/openrouter
+:link-type: doc
+Unified access to multiple model providers.
++++
+{bdg-secondary}`multi-provider` {bdg-secondary}`flexible`
+:::
+
+::::
+
+---
+
 ## Resources
 
 Quick reference materials to support your work with NeMo Gym.
@@ -141,6 +192,19 @@ get-started/collecting-rollouts
 ```
 
 ```{toctree}
+:caption: Models
+:hidden:
+:maxdepth: 1
+
+Overview <models/index>
+models/vllm
+models/nvidia-nim
+models/openai
+models/azure-openai
+models/openrouter
+```
+
+```{toctree}
 :caption: Tutorials
 :hidden:
 :maxdepth: 1
@@ -149,7 +213,6 @@ Overview <tutorials/index>
 tutorials/offline-training-w-rollouts
 tutorials/separate-policy-and-judge-models
 ```
-
 
 ```{toctree}
 :caption: Development
@@ -167,4 +230,3 @@ README
 Overview <resources/index>
 resources/glossary
 ```
-
