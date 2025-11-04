@@ -24,7 +24,7 @@ You've generated rollouts in the get-started series—now learn how to transform
 :outline:
 :ref-type: doc
 
-← New to NeMo Gym? Start with Get Started
+← New? Try Get Started
 :::
 
 ## Before You Start

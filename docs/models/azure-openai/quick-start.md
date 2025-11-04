@@ -35,7 +35,7 @@ Ensure you have these prerequisites before configuring Azure OpenAI with NeMo Gy
 :outline:
 :ref-type: doc
 
-← New to NeMo Gym? Start with Get Started
+← New? Try Get Started
 :::
 
 ---

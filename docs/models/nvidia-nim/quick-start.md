@@ -33,7 +33,7 @@ Ensure you have these prerequisites before configuring NVIDIA NIM with NeMo Gym:
 :outline:
 :ref-type: doc
 
-← New to NeMo Gym? Start with Get Started
+← New? Try Get Started
 :::
 
 ---

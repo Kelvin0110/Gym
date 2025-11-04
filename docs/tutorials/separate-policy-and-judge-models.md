@@ -27,7 +27,7 @@ This tutorial walks you through configuring a dual-model setup using **math prob
 :outline:
 :ref-type: doc
 
-← New to NeMo Gym? Start with Get Started
+← New? Try Get Started
 :::
 
 ## Before You Start
