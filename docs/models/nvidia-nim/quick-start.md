@@ -155,10 +155,10 @@ Ensure you have these prerequisites before configuring NVIDIA NIM with NeMo Gym:
      +input_jsonl_fpath=resources_servers/simple_weather/data/example.jsonl \
      +output_jsonl_fpath=results/nim_rollouts.jsonl \
      +limit=1000 \
-     +concurrency=50
+     +num_samples_in_parallel=50
    ```
 
    :::{tip}
-   **Production tip**: NIM's enterprise infrastructure handles high-concurrency workloads well. Start with `+concurrency=50` and increase based on your NIM deployment capacity and rate limits.
+   **Production tip**: NIM's enterprise infrastructure handles high-concurrency workloads well. Start with `+num_samples_in_parallel=50` and increase based on your NIM deployment capacity and rate limits.
    :::
 
