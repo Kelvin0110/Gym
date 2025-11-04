@@ -222,4 +222,4 @@ vllm serve model --enable-auto-tool-choice --tool-call-parser hermes
 vllm serve model --enable-auto-tool-choice --tool-call-parser mistral
 ```
 
-Refer to [vLLM tool calling documentation](https://docs.vllm.ai/) for supported models and parsers.
+Refer to [vLLM tool calling documentation](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#tool-calling) for supported models and parsers.
