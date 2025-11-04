@@ -392,6 +392,68 @@ This enables per-task customization while allowing global overrides when needed.
 
 ---
 
+## Verification Speed Considerations
+
+Your resource server's verification approach affects collection throughput and strategy viability.
+
+### Verification Types
+
+Resource servers verify rollouts using different approaches with distinct performance characteristics:
+
+```{list-table}
+:header-rows: 1
+:widths: 25 40 35
+
+* - Verification Type
+  - Examples
+  - Characteristics
+* - **Binary/Pattern Matching**
+  - MCQA answer extraction, boxed answer detection, string comparison
+  - Fast (< 10ms)<br/>✅ Ideal for high-volume collection
+* - **Execution-Based**
+  - Code execution (comp_coding), Python evaluation, sandbox testing
+  - Moderate (10-500ms)<br/>⚠️ May need lower parallelism
+* - **LLM Judge**
+  - Equivalence checking via external LLM, semantic comparison
+  - Slow (500ms-2s)<br/>⚠️ Can bottleneck high-throughput strategies
+```
+
+### Impact on Sampling Strategies
+
+**High-Throughput Strategies** (SFT, RL iterations):
+- Fast verification enables aggressive parallelism (20-40 concurrent)
+- Slow verification may require reduced parallelism (5-10 concurrent)
+- LLM judge verification can bottleneck RL's iterative collection loops
+
+**Lower-Volume Strategies** (DPO, Evaluation):
+- Verification speed less critical with moderate parallelism
+- Quality of verification more important than speed
+
+### Optimization Tips
+
+```{dropdown} If Verification is Bottlenecking
+:icon: tools
+:color: info
+
+**For Execution-Based Verification**:
+- Run resource server on separate machine from model server
+- Use parallelism tuning: {doc}`../optimize-for-training/tune-parallelism`
+
+**For LLM Judge Verification**:
+- Cache judge results for repeated comparisons
+- Consider async judge calls with result batching
+- Use faster judge models (e.g., smaller reasoning models)
+- For high-volume RL: Consider hybrid approach (fast pre-filter + judge sample)
+
+**Diagnosis**:
+- Check {doc}`../optimize-for-training/identify-bottleneck` to confirm verification is limiting factor
+- Monitor resource server response times during collection
+```
+
+**Note**: Verification design belongs in resource server development. This section focuses on how verification speed affects your sampling strategy choices.
+
+---
+
 ## Advanced Parameters
 
 Beyond temperature and top_p, additional parameters offer fine-grained control.
