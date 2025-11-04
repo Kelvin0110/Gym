@@ -42,9 +42,10 @@ Ensure you have these prerequisites before configuring Azure OpenAI with NeMo Gy
 
 ## Set Up Azure OpenAI Resource
 
-**Prerequisites**: You need an Azure OpenAI resource with a deployed model. If you haven't set this up yet, follow Microsoft's guide: [Create an Azure OpenAI Resource and Deploy a Model](https://learn.microsoft.com/en-us/microsoft-cloud/dev/tutorials/openai-acs-msgraph/02-openai-create-resource).
+You need an Azure OpenAI resource with a deployed model. If you haven't set this up yet, follow Microsoft's guide: [Create an Azure OpenAI Resource and Deploy a Model](https://learn.microsoft.com/en-us/microsoft-cloud/dev/tutorials/openai-acs-msgraph/02-openai-create-resource).
 
-Once you have your Azure OpenAI resource, you'll need:
+Once you have your Azure OpenAI resource, you'll need to obtain all of the following:
+
 - **Endpoint URL**: From Azure portal → Your resource → Keys and Endpoint
 - **API Key**: Key 1 or Key 2 from the same location
 - **Deployment name**: The custom name you gave your model deployment (e.g., `my-gpt-4-deployment`)

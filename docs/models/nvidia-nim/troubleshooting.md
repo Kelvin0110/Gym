@@ -147,7 +147,7 @@ Problems that occur during execution or affect throughput and speed.
 2. **Adjust concurrency**:
    ```bash
    # Start conservative and increase
-   ng_collect_rollouts +concurrency=25  # Lower concurrency
+   ng_collect_rollouts +num_samples_in_parallel=25  # Lower concurrency
    ```
 
 3. **Review network latency**: If NIM is in different region/cloud, network latency may be significant.
@@ -168,7 +168,7 @@ Problems that occur during execution or affect throughput and speed.
 
 2. **Reduce concurrency**:
    ```bash
-   ng_collect_rollouts +concurrency=10  # Lower value
+   ng_collect_rollouts +num_samples_in_parallel=10  # Lower value
    ```
 
 3. **Implement backoff**: NeMo Gym handles retries, but very aggressive concurrency may hit limits.
@@ -183,13 +183,14 @@ Problems that occur during execution or affect throughput and speed.
 :icon: x
 :color: danger
 
-**How NeMo Gym handles this**: The OpenAI adapter automatically catches context length errors and returns an empty response, allowing rollout collection to continue.
+**How NeMo Gym handles this**: Context length errors from NIM are returned as HTTP errors. These errors will cause the individual rollout to fail, but rollout collection continues with remaining tasks.
 
 **To fix**:
 - Use models with larger context windows
 - Reduce conversation history length in your resource server
 - Check NIM model documentation for context limits
 - Configure truncation strategies in your agent logic
+- Monitor rollout logs for context length failures
 
 :::
 

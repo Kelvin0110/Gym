@@ -16,9 +16,9 @@ policy_model:
   responses_api_models:
     openai_model:
       entrypoint: app.py
-      base_url: ${policy_base_url}
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 Configuration values resolve through **three layers** with increasing precedence.
@@ -53,9 +53,9 @@ policy_model_name: openai/gpt-4-turbo
 policy_model:
   responses_api_models:
     openai_model:
-      base_url: ${policy_base_url}      # ← substitutes from Layer 1
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}      # ← substitutes from Layer 1
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 **Note**: OpenRouter uses OpenAI-compatible endpoints, so you use the `openai_model` adapter.
@@ -100,13 +100,13 @@ All available parameters for OpenRouter integration:
 * - Parameter
   - Type
   - Description
-* - `base_url`
+* - `openai_base_url`
   - `str`
   - OpenRouter API endpoint (always `https://openrouter.ai/api/v1`)
-* - `api_key`
+* - `openai_api_key`
   - `str`
   - Your OpenRouter API key (starts with `sk-or-`)
-* - `model`
+* - `openai_model`
   - `str`
   - Model identifier in `provider/model-name` format
 ```

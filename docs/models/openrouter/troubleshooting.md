@@ -203,7 +203,7 @@ Problems during rollout collection.
 
 2. Reduce concurrency:
    ```bash
-   ng_collect_rollouts +concurrency=5  # Lower value
+   ng_collect_rollouts +num_samples_in_parallel=5  # Lower value
    ```
 
 3. Upgrade plan if needed:

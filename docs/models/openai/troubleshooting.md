@@ -80,7 +80,7 @@ Problems with request throttling and API limits.
 1. Reduce concurrency:
    ```bash
    # Lower concurrent requests
-   ng_collect_rollouts +concurrency=5  # Start low
+   ng_collect_rollouts +num_samples_in_parallel=5  # Start low
    ```
 
 2. Check rate limits for your tier:
@@ -91,7 +91,7 @@ Problems with request throttling and API limits.
 3. Implement delays:
    - NeMo Gym handles retries automatically
    - Very high concurrency may still hit limits
-   - Gradually increase concurrency to find your limit
+   - Gradually increase `+num_samples_in_parallel` to find your limit
 
 4. Upgrade tier if needed:
    - Pay-as-you-go has higher limits than free tier

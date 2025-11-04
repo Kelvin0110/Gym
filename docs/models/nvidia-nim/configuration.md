@@ -16,9 +16,9 @@ policy_model:
   responses_api_models:
     openai_model:
       entrypoint: app.py
-      base_url: ${policy_base_url}
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 Configuration values resolve through **three layers** with increasing precedence.
@@ -53,9 +53,9 @@ policy_model_name: meta/llama-3.1-8b-instruct
 policy_model:
   responses_api_models:
     openai_model:
-      base_url: ${policy_base_url}      # ← substitutes from Layer 1
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}      # ← substitutes from Layer 1
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 **Note**: NVIDIA NIM uses OpenAI-compatible endpoints, so you use the `openai_model` adapter.
@@ -100,13 +100,13 @@ All available parameters for the NVIDIA NIM integration:
 * - Parameter
   - Type
   - Description
-* - `base_url`
+* - `openai_base_url`
   - `str`
   - NVIDIA NIM endpoint URL including `/v1` path (e.g., `https://nim.example.com/v1`)
-* - `api_key`
+* - `openai_api_key`
   - `str`
   - API key from your NIM deployment for authentication
-* - `model`
+* - `openai_model`
   - `str`
   - Model identifier available in your NIM instance (e.g., `meta/llama-3.1-8b-instruct`)
 ```

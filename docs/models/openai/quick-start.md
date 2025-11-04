@@ -144,10 +144,10 @@ Ensure you have these prerequisites before configuring OpenAI with NeMo Gym:
      +input_jsonl_fpath=resources_servers/simple_weather/data/example.jsonl \
      +output_jsonl_fpath=results/openai_rollouts.jsonl \
      +limit=100 \
-     +concurrency=10
+     +num_samples_in_parallel=10
    ```
 
    :::{tip}
-   **Cost management**: Start with lower concurrency (`+concurrency=10`) to control costs. OpenAI charges per token, so monitor usage in the OpenAI dashboard as you scale up.
+   **Cost management**: Start with lower concurrency (`+num_samples_in_parallel=10`) to control costs. OpenAI charges per token, so monitor usage in the OpenAI dashboard as you scale up.
    :::
 

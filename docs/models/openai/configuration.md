@@ -16,9 +16,9 @@ policy_model:
   responses_api_models:
     openai_model:
       entrypoint: app.py
-      base_url: ${policy_base_url}
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 Configuration values resolve through **three layers** with increasing precedence.
@@ -53,9 +53,9 @@ policy_model_name: gpt-4-turbo
 policy_model:
   responses_api_models:
     openai_model:
-      base_url: ${policy_base_url}      # ← substitutes from Layer 1
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
+      openai_base_url: ${policy_base_url}      # ← substitutes from Layer 1
+      openai_api_key: ${policy_api_key}
+      openai_model: ${policy_model_name}
 ```
 
 **This is the OpenAI adapter configuration** - what parameters are available and their structure.
@@ -100,13 +100,13 @@ All available parameters for the OpenAI adapter:
 * - Parameter
   - Type
   - Description
-* - `base_url`
+* - `openai_base_url`
   - `str`
   - OpenAI API endpoint URL (default: `https://api.openai.com/v1`)
-* - `api_key`
+* - `openai_api_key`
   - `str`
   - Your OpenAI API key (starts with `sk-`)
-* - `model`
+* - `openai_model`
   - `str`
   - OpenAI model identifier (e.g., `gpt-4-turbo`, `gpt-3.5-turbo`)
 ```

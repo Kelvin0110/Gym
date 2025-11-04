@@ -68,7 +68,7 @@ policy_model:
 
 :::{tip}
 Load balancing is most effective when:
-- Running high concurrency rollout collection (`+concurrency=100+`)
+- Running high concurrency rollout collection (`+num_samples_in_parallel=100+`)
 - Each vLLM server has similar capacity
 - All servers have the same model loaded
 :::
