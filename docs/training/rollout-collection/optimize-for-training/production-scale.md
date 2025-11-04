@@ -37,7 +37,9 @@ Collecting rollouts: 45%|████▌     | 450/1000 [02:15<02:45, 3.33it/s]
 
 ### Computing Throughput
 
-**Samples per second**:
+::::{tab-set}
+
+:::{tab-item} Samples per Second
 ```bash
 # Time your collection
 time ng_collect_rollouts \
@@ -49,7 +51,10 @@ time ng_collect_rollouts \
 # Calculate: 1000 samples / [total seconds] = samples/sec
 ```
 
-**Tokens per second** (more precise):
+Simple and commonly used metric.
+:::
+
+:::{tab-item} Tokens per Second
 ```python
 import json
 
@@ -63,6 +68,11 @@ with open('rollouts.jsonl') as f:
 elapsed_seconds = 300  # From `time` command
 print(f"Tokens/sec: {total_tokens / elapsed_seconds:.2f}")
 ```
+
+More precise metric that accounts for variable output lengths.
+:::
+
+::::
 
 ### Aggregate Metrics
 
