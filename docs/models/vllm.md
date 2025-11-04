@@ -38,7 +38,6 @@ Get vLLM running with NeMo Gym in under 5 minutes.
 ::::{tab-set}
 
 :::{tab-item} I need to start a vLLM server
-
 **Step 1: Install vLLM**
 
 ```bash
@@ -104,7 +103,6 @@ ng_run "+config_paths=[${config_paths}]"
 :::
 
 :::{tab-item} I have a vLLM server running
-
 **Step 1: Get your vLLM endpoint details**
 
 You need:
@@ -279,7 +277,6 @@ See [Collecting Rollouts](../get-started/collecting-rollouts.md) for a complete 
 ::::{tab-set}
 
 :::{tab-item} Scenario: Single vLLM server
-
 Use the same vLLM model for both policy decisions and verification:
 
 ```yaml
@@ -305,7 +302,6 @@ ng_run "+config_paths=[${config_paths}]"
 :::
 
 :::{tab-item} Scenario: Separate models
-
 Use different vLLM models for policy and judge:
 
 ```yaml
