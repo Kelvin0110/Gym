@@ -168,7 +168,7 @@ Or using Python:
 import openai
 
 client = openai.OpenAI(
-    api_key="your-api-key",
+    api_key="your-api-key",  # pragma: allowlist secret
     base_url="https://your-nim-endpoint.nvidia.com/v1"
 )
 
