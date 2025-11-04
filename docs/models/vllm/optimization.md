@@ -127,70 +127,6 @@ vllm serve model \
 
 ---
 
-## NeMo Gym Concurrency Tuning
-
-Increase concurrent requests to maximize vLLM throughput:
-
-```bash
-ng_collect_rollouts \
-  +agent_name=simple_weather_simple_agent \
-  +input_jsonl_fpath=resources_servers/simple_weather/data/example.jsonl \
-  +output_jsonl_fpath=results/vllm_rollouts.jsonl \
-  +limit=1000 \
-  +concurrency=100  # Increase for higher throughput
-```
-
-**Finding optimal concurrency**:
-1. Start with `+concurrency=50`
-2. Monitor vLLM server GPU utilization
-3. Increase concurrency until GPU reaches 90-95% utilization
-4. If latency increases significantly, reduce concurrency
-
-:::{note}
-Optimal concurrency depends on:
-- vLLM server GPU count and memory
-- Model size and batch configuration
-- Network latency between NeMo Gym and vLLM
-:::
-
----
-
-## Separate Policy and Judge Servers
-
-Use different vLLM models or servers for policy decisions vs verification:
-
-```yaml
-# env.yaml
-# Policy model (larger, more capable)
-policy_base_url: http://policy-server:8000/v1
-policy_api_key: EMPTY
-policy_model_name: meta-llama/Llama-3.1-70B-Instruct
-
-# Judge model (smaller, faster)
-judge_base_url: http://judge-server:8000/v1
-judge_api_key: EMPTY
-judge_model_name: Qwen/Qwen3-30B-A3B
-```
-
-```bash
-config_paths="responses_api_models/vllm_model/configs/vllm_model.yaml,\
-responses_api_models/vllm_model/configs/vllm_judge_model.yaml,\
-resources_servers/equivalence_llm_judge/configs/equivalence_llm_judge.yaml"
-
-ng_run "+config_paths=[${config_paths}]"
-```
-
-**Benefits**:
-- Use larger model for policy (quality)
-- Use smaller/faster model for judge (throughput)
-- Independent scaling of policy vs judge workloads
-
-:::{seealso}
-See [Separate Policy and Judge Models](../../tutorials/separate-policy-and-judge-models.md) for comprehensive patterns and examples.
-:::
-
----
-
 ## Switch from OpenAI to vLLM
 
 Migrating from OpenAI? Switch by changing one configuration file reference:
@@ -225,17 +161,4 @@ nvidia-smi -l 1  # Monitor GPU usage
 curl http://localhost:8000/metrics  # Prometheus metrics endpoint
 ```
 
-**NeMo Gym throughput**: Track rollouts generated per second
-```bash
-# Monitor output file growth
-watch -n 1 "wc -l results/vllm_rollouts.jsonl"
-```
-
----
-
-## Next Steps
-
-- **[Configuration reference](configuration.md)** - All vLLM adapter parameters
-- **[Troubleshooting](troubleshooting.md)** - Performance issues and solutions
-- **[Collect rollouts](../../get-started/collecting-rollouts.md)** - Start generating training data
-
+Monitor these metrics to identify bottlenecks and optimize vLLM server configuration for your workload.
