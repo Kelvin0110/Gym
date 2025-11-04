@@ -54,11 +54,10 @@ async with semaphore:
 
 ## Finding Optimal Value
 
-Use a systematic doubling approach to find your throughput ceiling:
+Use a systematic doubling approach to find your throughput ceiling.
 
-::::{tab-set}
+### Step 1: Establish Baseline
 
-:::{tab-item} Step 1: Baseline
 ```bash
 ng_collect_rollouts \
     +agent_name=my_agent \
@@ -73,10 +72,10 @@ Watch the progress bar for throughput:
 Collecting rollouts: 100%|████| 200/200 [02:00<00:00, 1.67it/s]
 ```
 
-**Record**: 1.67 samples/sec
-:::
+**Record the result**: 1.67 samples/sec
 
-:::{tab-item} Step 2: Double
+### Step 2: Double and Measure
+
 ```bash
 ng_collect_rollouts \
     +agent_name=my_agent \
@@ -87,42 +86,29 @@ ng_collect_rollouts \
 ```
 
 **Expect**: ~3.0 samples/sec (if parallelism was limiting)
-:::
 
-:::{tab-item} Step 3: Repeat
-Continue doubling (20, 40, 80) until:
+### Step 3: Continue Until Plateau
 
-```{list-table}
-:header-rows: 1
-:widths: 50 50
+Keep doubling (20, 40, 80) until:
 
-* - Stop When...
-  - Action
-* - **Throughput plateaus**
-  - Found ceiling
-* - **Throughput degrades**
-  - Exceeded capacity
-* - **Errors appear**
-  - Reduce parallelism
-```
+- **Throughput plateaus** → Found your ceiling
+- **Throughput degrades** → Exceeded capacity, back off
+- **Errors appear** → Reduce parallelism
 
-**Optimal value**: 80% of peak to leave headroom
-:::
+**Optimal value**: Use 80% of peak to leave headroom for stability.
 
-:::{tab-item} Step 4: Validate
+### Step 4: Validate Stability
+
 ```bash
 ng_collect_rollouts \
     +agent_name=my_agent \
     +input_jsonl_fpath=larger_dataset.jsonl \
     +output_jsonl_fpath=/tmp/stability_test.jsonl \
     +limit=1000 \
-    +num_samples_in_parallel=[your_value]
+    +num_samples_in_parallel=[your_optimal_value]
 ```
 
-Run longer test to ensure stability at scale.
-:::
-
-::::
+Run a longer test to ensure stability at scale
 
 ---
 
