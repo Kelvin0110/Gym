@@ -10,11 +10,47 @@ Complete reference for all vLLM adapter configuration options in NeMo Gym.
 
 The vLLM adapter uses a standard [Hydra configuration file](https://hydra.cc/docs/tutorials/basic/your_first_app/config_file/) with environment variable substitution:
 
-Configuration values resolve through **three layers** with increasing precedence. Toggle between layers to compare:
+```yaml
+# responses_api_models/vllm_model/configs/vllm_model.yaml
+policy_model:
+  responses_api_models:
+    vllm_model:
+      entrypoint: app.py
+      base_url: ${policy_base_url}
+      api_key: ${policy_api_key}
+      model: ${policy_model_name}
+      return_token_id_information: false
+      uses_reasoning_parser: true
+      replace_developer_role_with_system: false
+```
+
+Configuration values resolve through **three layers** with increasing precedence.
 
 ::::{tab-set}
 
+:::{tab-item} Layer 2: Config YAML
+:sync: layer2
+
+**Structure with variable substitution** (version controlled)
+
+```yaml
+# responses_api_models/vllm_model/configs/vllm_model.yaml
+policy_model:
+  responses_api_models:
+    vllm_model:
+      base_url: ${policy_base_url}      # ← substitutes from Layer 1
+      api_key: ${policy_api_key}
+      model: ${policy_model_name}
+      return_token_id_information: false
+      uses_reasoning_parser: true
+```
+
+**This is the vLLM adapter configuration** - what parameters are available and their structure.
+
+:::
+
 :::{tab-item} Layer 1: env.yaml
+:sync: layer1
 
 **Base values and secrets** (git-ignored)
 
@@ -30,32 +66,12 @@ policy_model_name: Qwen/Qwen3-30B-A3B
 - Environment-specific values (dev/staging/prod URLs)
 - Personal/local settings
 
-:::
-
-:::{tab-item} Layer 2: Config YAML
-
-**Structure with variable substitution** (version controlled)
-
-```yaml
-# responses_api_models/vllm_model/configs/vllm_model.yaml
-policy_model:
-  responses_api_models:
-    vllm_model:
-      base_url: ${policy_base_url}      # ← substitutes from env.yaml
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
-      return_token_id_information: false
-      uses_reasoning_parser: true
-```
-
-**When to use**:
-- Structural configuration (what servers to run)
-- Defaults for optional parameters
-- Relationships between components
+**Note**: These variables are referenced in Layer 2 via `${variable}` syntax.
 
 :::
 
 :::{tab-item} Layer 3: CLI Overrides
+:sync: layer3
 
 **Runtime overrides** (highest precedence)
 
@@ -80,20 +96,6 @@ ng_run "+config_paths=[${config_paths}]" \
 :::{seealso}
 See [Configuration System](../../about/concepts/configuration-system.md) for complete details on precedence and composition.
 :::
-
-```yaml
-# responses_api_models/vllm_model/configs/vllm_model.yaml
-policy_model:
-  responses_api_models:
-    vllm_model:
-      entrypoint: app.py
-      base_url: ${policy_base_url}
-      api_key: ${policy_api_key}
-      model: ${policy_model_name}
-      return_token_id_information: false
-      uses_reasoning_parser: true
-      replace_developer_role_with_system: false
-```
 
 ---
 
