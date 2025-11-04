@@ -111,34 +111,6 @@ jq '.output[] | select(.type=="function_call") | .name' successes.jsonl | \
   sort | uniq -c | sort -rn
 ```
 
-### Measure Variance Per Task
-
-```python
-import json
-from collections import defaultdict
-import statistics
-
-# Group by task (every 5 rollouts)
-groups = defaultdict(list)
-with open('research_exploration.jsonl') as f:
-    for i, line in enumerate(f):
-        rollout = json.loads(line)
-        task_id = i // 5
-        groups[task_id].append(rollout['reward'])
-
-# Compute variance
-for task_id, rewards in groups.items():
-    print(f"Task {task_id}: "
-          f"μ={statistics.mean(rewards):.2f}, "
-          f"σ={statistics.stdev(rewards):.2f}, "
-          f"range=[{min(rewards):.2f}, {max(rewards):.2f}]")
-```
-
-**Insights**:
-- **High variance tasks**: Agent uncertain, needs improvement
-- **Low variance, low mean**: Consistently failing
-- **Low variance, high mean**: Well-solved
-
 ---
 
 ## Research Questions
@@ -159,29 +131,6 @@ jq '.output[] | select(.type=="function_call") | .name' research_exploration.jso
 ```
 
 **Insight**: Agent heavily prefers calculator, underutilizes other tools.
-
-### Question: How does response length correlate with success?
-
-```python
-import json
-import matplotlib.pyplot as plt
-
-data = []
-with open('research_exploration.jsonl') as f:
-    for line in f:
-        rollout = json.loads(line)
-        final_msg = [m for m in rollout['output'] if m.get('type') == 'message'][-1]
-        length = len(final_msg.get('content', ''))
-        reward = rollout['reward']
-        data.append((length, reward))
-
-lengths, rewards = zip(*data)
-plt.scatter(lengths, rewards, alpha=0.5)
-plt.xlabel('Response Length (chars)')
-plt.ylabel('Reward')
-plt.title('Length vs Success')
-plt.savefig('length_vs_reward.png')
-```
 
 ### Question: What reasoning patterns emerge?
 
@@ -205,23 +154,20 @@ done
 
 ### Debugging Agent Prompts
 
-Test prompt variations:
+Test prompt variations with high diversity:
 
 ```bash
-# Create test dataset with different system prompts
-python create_prompt_variants.py --output prompt_test.jsonl
-
-# Collect with high diversity
 ng_collect_rollouts \
     +agent_name=my_agent \
-    +input_jsonl_fpath=prompt_test.jsonl \
+    +input_jsonl_fpath=prompt_variants.jsonl \
     +output_jsonl_fpath=prompt_exploration.jsonl \
     +responses_create_params.temperature=0.9 \
     +num_repeats=3 \
     +limit=20
 
-# Compare success rates by prompt variant
-python analyze_by_prompt.py --input prompt_exploration.jsonl
+# Compare success rates
+jq -r '.prompt_variant + "," + (.reward | tostring)' prompt_exploration.jsonl | \
+  awk -F',' '{sum[$1]+=$2; count[$1]++} END {for (v in sum) print v, sum[v]/count[v]}'
 ```
 
 ### Capability Discovery

@@ -104,63 +104,16 @@ for model in "${MODELS[@]}"; do
 done
 ```
 
-### Step 2: Statistical Comparison
+### Step 2: Compare Results
 
-```python
-import json
-import statistics
-
-def load_eval_results(jsonl_path):
-    """Load evaluation rollouts and extract rewards."""
-    with open(jsonl_path) as f:
-        return [json.loads(line)['reward'] for line in f]
-
-# Load results
-v1_rewards = load_eval_results('eval_model_v1.jsonl')
-v2_rewards = load_eval_results('eval_model_v2.jsonl')
-v3_rewards = load_eval_results('eval_model_v3.jsonl')
-
-# Compare
-results = {
-    'model_v1': {
-        'mean': statistics.mean(v1_rewards),
-        'median': statistics.median(v1_rewards),
-        'stdev': statistics.stdev(v1_rewards)
-    },
-    'model_v2': {
-        'mean': statistics.mean(v2_rewards),
-        'median': statistics.median(v2_rewards),
-        'stdev': statistics.stdev(v2_rewards)
-    },
-    'model_v3': {
-        'mean': statistics.mean(v3_rewards),
-        'median': statistics.median(v3_rewards),
-        'stdev': statistics.stdev(v3_rewards)
-    }
-}
-
-# Print comparison
-for model, metrics in results.items():
-    print(f"{model}: μ={metrics['mean']:.3f}, median={metrics['median']:.3f}, σ={metrics['stdev']:.3f}")
+```bash
+# Simple comparison
+echo "model_v1: $(jq -s 'map(.reward) | add/length' eval_model_v1.jsonl)"
+echo "model_v2: $(jq -s 'map(.reward) | add/length' eval_model_v2.jsonl)"
+echo "model_v3: $(jq -s 'map(.reward) | add/length' eval_model_v3.jsonl)"
 ```
 
-### Step 3: Significance Testing
-
-```python
-from scipy import stats
-
-# Paired t-test (since same test set)
-t_stat, p_value = stats.ttest_rel(v2_rewards, v1_rewards)
-
-print(f"Model v2 vs v1: t={t_stat:.3f}, p={p_value:.4f}")
-
-if p_value < 0.05:
-    print("Difference is statistically significant")
-    if statistics.mean(v2_rewards) > statistics.mean(v1_rewards):
-        print("Model v2 is significantly better")
-else:
-    print("No significant difference")
-```
+For statistical significance testing, use your preferred analysis tools (scipy, R, etc.).
 
 ---
 
@@ -223,93 +176,18 @@ print(f'Mean: {statistics.mean(runs):.3f} ± {statistics.stdev(runs):.3f}')
 
 ---
 
-## Validation
+## Verify Reproducibility
 
-Verify evaluation reproducibility and consistency.
+Test that same seed produces consistent results:
+```bash
+# Run twice with same seed
+ng_collect_rollouts ... +responses_create_params.seed=42 \
+    +output_jsonl_fpath=eval_run1.jsonl
+ng_collect_rollouts ... +responses_create_params.seed=42 \
+    +output_jsonl_fpath=eval_run2.jsonl
 
-```{dropdown} Expected Variance
-:icon: graph
-:color: info
-
-**Target**: <0.02 difference across runs with same seed
-
-~~~bash
-# Compare two runs with same seed
-diff_rate=$(python -c "
-import json
-with open('eval_run1.jsonl') as f1, open('eval_run2.jsonl') as f2:
-    r1 = [json.loads(line)['reward'] for line in f1]
-    r2 = [json.loads(line)['reward'] for line in f2]
-    diff = sum(abs(a - b) for a, b in zip(r1, r2)) / len(r1)
-    print(f'{diff:.4f}')
-")
-echo "Average difference: $diff_rate"
-~~~
-
-**If variance high**:
-- Check if seed actually being used
-- Verify no other sources of randomness
-- Check for resource contention
-
+# Compare results
+diff <(jq '.reward' eval_run1.jsonl) <(jq '.reward' eval_run2.jsonl)
 ```
 
-```{dropdown} Reproducibility Check
-:icon: sync
-:color: info
-
-~~~python
-def check_reproducibility(run1_path, run2_path, tolerance=0.01):
-    """Verify two evaluation runs are nearly identical."""
-    with open(run1_path) as f1, open(run2_path) as f2:
-        for i, (line1, line2) in enumerate(zip(f1, f2), 1):
-            r1 = json.loads(line1)
-            r2 = json.loads(line2)
-            
-            if abs(r1['reward'] - r2['reward']) > tolerance:
-                print(f"Mismatch at line {i}: {r1['reward']} vs {r2['reward']}")
-                return False
-    
-    print("Runs are reproducible within tolerance")
-    return True
-
-check_reproducibility('eval_seed42_run1.jsonl', 'eval_seed42_run2.jsonl')
-~~~
-
-```
-
----
-
-## Evaluation Metrics
-
-### Beyond Average Reward
-
-```python
-def compute_comprehensive_metrics(eval_jsonl):
-    """Extract multiple evaluation metrics."""
-    with open(eval_jsonl) as f:
-        rollouts = [json.loads(line) for line in f]
-    
-    rewards = [r['reward'] for r in rollouts]
-    
-    return {
-        # Central tendency
-        'mean_reward': statistics.mean(rewards),
-        'median_reward': statistics.median(rewards),
-        
-        # Spread
-        'std_reward': statistics.stdev(rewards),
-        'min_reward': min(rewards),
-        'max_reward': max(rewards),
-        
-        # Success rates at different thresholds
-        'perfect_rate': sum(1 for r in rewards if r == 1.0) / len(rewards),
-        'success_rate_0.8': sum(1 for r in rewards if r >= 0.8) / len(rewards),
-        'failure_rate': sum(1 for r in rewards if r < 0.3) / len(rewards),
-        
-        # Task coverage
-        'num_tasks': len(rollouts)
-    }
-
-metrics = compute_comprehensive_metrics('eval_model_v2.jsonl')
-print(json.dumps(metrics, indent=2))
-```
+If results differ, verify seed is being respected by your model server.
