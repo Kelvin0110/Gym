@@ -124,18 +124,19 @@ Settings specific to Azure OpenAI deployment.
 1. Verify URL format:
    ```yaml
    # Correct format
-   policy_base_url: https://your-resource.openai.azure.com
+   policy_base_url: https://your-resource.openai.azure.com/v1/azure
    
    # Common mistakes
-   policy_base_url: https://api.openai.com/v1                # OpenAI, not Azure
-   policy_base_url: https://your-resource.azure.com          # Missing .openai
-   policy_base_url: https://your-resource.openai.azure.com/  # Trailing slash
+   policy_base_url: https://api.openai.com/v1                          # OpenAI, not Azure
+   policy_base_url: https://your-resource.azure.com                    # Missing .openai
+   policy_base_url: https://your-resource.openai.azure.com             # Missing /v1/azure suffix
+   policy_base_url: https://your-resource.openai.azure.com/v1/azure/   # Trailing slash
    ```
 
 2. Find correct endpoint:
    - Azure portal → Your resource → Keys and Endpoint
-   - Copy "Endpoint" URL exactly as shown
-   - Should end with `.openai.azure.com`
+   - Copy "Endpoint" URL (ends with `.openai.azure.com`)
+   - Add `/v1/azure` suffix for NeMo Gym configuration
 
 3. Check resource name:
    - Must match your Azure OpenAI resource name

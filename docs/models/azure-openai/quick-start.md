@@ -109,8 +109,8 @@ If you don't have an Azure OpenAI resource yet:
    print('🔍 Testing Azure OpenAI connection...')
    client = openai.AzureOpenAI(
        api_key=config['policy_api_key'],
-       api_version='2024-10-21',  # Use latest from Azure docs
-       azure_endpoint=config['policy_base_url']
+       api_version='2024-10-21',  # Example version - check Azure docs for latest
+       azure_endpoint=config['policy_base_url'].replace('/v1/azure', '')  # Azure client expects base URL only
    )
    
    try:
