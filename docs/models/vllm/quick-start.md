@@ -222,7 +222,7 @@ If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym
    ng_run "+config_paths=[${config_paths}]"
    ```
 
-    **✅ Success check**: You should see multiple servers starting, including the head server on port 11000.
+    **✅ Success check**: You should see multiple servers starting, including the head server (default port 11000).
 
 2. Test with a simple agent interaction:
 
@@ -235,9 +235,4 @@ If you already have a vLLM server running elsewhere, skip to [Configure NeMo Gym
      +limit=1
    ```
 
-   **✅ Success check**: You should see the agent complete one interaction and write to `results/vllm_test.jsonl`. This confirms vLLM is responding through NeMo Gym.
-   
-   :::{tip}
-   This tests the complete flow: NeMo Gym servers → vLLM adapter → vLLM inference → agent response. If this works, you're ready for production rollout collection!
-   :::
-
+   **✅ Success check**: This tests the complete flow: NeMo Gym servers → vLLM adapter → vLLM inference → agent response. You should see the agent complete one interaction and write to `results/vllm_test.jsonl`. This confirms vLLM is responding through NeMo Gym. If this works, you're ready for [rollout collection](gs-collecting-rollouts)!
