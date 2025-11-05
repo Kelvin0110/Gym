@@ -532,7 +532,7 @@ Start Collecting Rollouts →
 
 **If validation failed**:
 
-:::{button-ref} server-selection
+:::{button-ref} ../resource-servers/index
 :color: secondary
 :outline:
 :ref-type: doc

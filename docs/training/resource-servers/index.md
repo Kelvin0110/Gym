@@ -1,8 +1,37 @@
-(training-verification-server-selection)=
+(training-resource-servers)=
 
-# Server Selection Guide
+# Resource Servers
 
-Pick the resource server that matches your task and training needs.
+Choose which resource server to use for your training task. Resource servers provide tools, datasets, and verification for specific domains.
+
+:::{card}
+
+**What you'll find here**:
+
+Select from 13 built-in resource servers covering MCQA, math, code generation, open-ended QA, and more.
+
+^^^
+
+**Choose by**:
+- Task type (what your agent needs to do)
+- Training algorithm (SFT, DPO, PPO)
+- Reward pattern (binary, continuous, multi-metric)
+
+:::
+
+---
+
+## What Resource Servers Provide
+
+Each resource server is a complete package:
+
+**Tools**: Functions agents can call (weather API, search, code execution, etc.)
+
+**Datasets**: Example tasks in JSONL format (training, validation, examples)
+
+**Verification**: Scoring logic that evaluates agent performance and returns reward signals
+
+**When you pick a resource server**, you're choosing all three components together.
 
 ---
 
@@ -71,12 +100,6 @@ Choose based on what your agent needs to do:
   - Varies
   - Testing and prototyping environment
 ```
-
-**Quick picks**:
-- MCQA/Classification → `mcqa`
-- Math → `library_judge_math`
-- Code → `comp_coding`
-- Open-ended text → `equivalence_llm_judge`
 
 ---
 
@@ -333,106 +356,30 @@ Browse individual server documentation:
 
 Or browse all servers: [resources_servers/](../../../resources_servers/)
 
----
-
-## Not Finding Your Task?
-
-If none of the 13 built-in servers match your needs:
-
-### Step 1: Check Server Configurations
-
-Many servers have options for different formats and strategies:
-
-```yaml
-# Example: mcqa supports multiple extraction modes
-grading_mode: lenient_boxed  # Try different modes
-```
-
-### Step 2: Try Similar Server
-
-Use a close match and see if it works:
-- Math-like tasks → `library_judge_math`
-- Text-like tasks → `equivalence_llm_judge`  
-- Code-like tasks → `comp_coding`
-
-### Step 3: Build Custom Verification
-
-For specialized domains, build custom resource server:
-
-**Quick start**:
-```bash
-# Create new server structure
-ng_init_resources_server +entrypoint=resources_servers/my_custom/
-```
-
-**Then**:
-1. Start with tutorial: {doc}`../../get-started/verifying-agent-results`
-2. Copy pattern from cookbook: {doc}`custom-patterns-cookbook`
-3. Adapt for your domain
-4. Test with sample data
-5. Validate with {doc}`validate-verification`
-
----
-
-## Decision Flowchart
-
-```
-Start: What type of task?
-    ↓
-┌───────────────────────────────┐
-│ Multiple choice / exact match │ → mcqa (binary)
-│ Math problems                  │ → library_judge_math (continuous)
-│ Code generation                │ → comp_coding (binary)
-│ Open-ended QA                  │ → equivalence_llm_judge (continuous)
-│ Other / unsure                 │ → Check full table above
-└───────────────────────────────┘
-    ↓
-What training algorithm?
-    ↓
-┌───────────────────────────────┐
-│ SFT (correct examples only)   │ → Need binary rewards
-│ DPO (preference pairs)         │ → Need continuous rewards
-│ PPO (policy gradients)         │ → Need continuous + variance
-└───────────────────────────────┘
-    ↓
-Selected server → Validate it works
-    ↓
-See: validate-verification.md
-```
-
----
-
-## Quick Start Checklist
-
-- [ ] Identified task type from table
-- [ ] Selected server based on task
-- [ ] Confirmed reward type matches training algorithm
-- [ ] Located server README for configuration options
-- [ ] Ready to validate selection
 
 ---
 
 ## Next Steps
 
-**After selecting a server**:
+**After selecting a resource server**:
 
-:::{button-ref} validate-verification
+:::{button-ref} ../rollout-collection/index
 :color: primary
 :outline:
 :ref-type: doc
 
-Validate Your Selection →
+Start Collecting Rollouts →
 :::
 
-**If building custom**:
+**After collecting samples**:
 
-:::{button-ref} custom-patterns-cookbook
+:::{button-ref} ../verification/validate-verification
 :color: secondary
 :outline:
 :ref-type: doc
 
-Custom Patterns Cookbook →
+Validate Verification →
 :::
 
-Or return to {doc}`index` for verification overview.
+**For custom domains**: See {doc}`../verification/custom-patterns-cookbook` to build custom verification.
 

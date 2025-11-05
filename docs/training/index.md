@@ -68,10 +68,12 @@ Not sure where to start? Choose based on your current need:
 
 * - If You Need To...
   - Start Here
+* - Choose a resource server
+  - {doc}`Resource Servers <resource-servers/index>` (by task type, training algorithm)
 * - Generate training data faster
   - {doc}`Rollout Collection / Optimize for Training <rollout-collection/optimize-for-training/index>`
-* - Design better reward signals
-  - {doc}`Verification / Reward Shaping <verification/reward-shaping>`
+* - Validate verification works
+  - {doc}`Verification / Validate <verification/validate-verification>` (check reward signals)
 * - Improve training data quality
   - {doc}`Data Quality <data-quality/index>`
 * - Prepare data for SFT or DPO
@@ -79,7 +81,7 @@ Not sure where to start? Choose based on your current need:
 * - Connect to your RL framework
   - {doc}`Integration / Framework Comparison <integration/framework-comparison>` then select your framework
 * - Build custom verification
-  - {doc}`Verification / Custom Patterns <verification/custom-patterns-cookbook>` (cookbook)
+  - {doc}`Verification / Custom Patterns <verification/custom-patterns-cookbook>` (advanced)
 ```
 
 ## Training Workflow Patterns

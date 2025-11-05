@@ -17,7 +17,7 @@ Convert `rollouts.jsonl` with reward scores into the specific format required by
 * - **Collected rollouts**
   - You have `rollouts.jsonl` with reward scores from {doc}`../rollout-collection/index`
 * - **Understand reward signals**
-  - Familiar with how your resource server scores responses (see {doc}`../verification/index`)
+  - Familiar with how your resource server scores responses (see {doc}`../resource-servers/index`)
 * - **Know your training algorithm**
   - SFT, DPO, or PPO—each needs different data preparation
 * - **Understand reward patterns**
@@ -250,7 +250,7 @@ If distribution is too binary, consider intermediate resource server:
 # [0.12, 0.35, 0.88, 0.41, 0.92, 0.87] - rich signal
 ```
 
-See {doc}`../verification/index` for resource server selection guidance.
+See {doc}`../resource-servers/index` for resource server selection guidance.
 
 ---
 
@@ -376,7 +376,10 @@ See {doc}`../verification/multi-objective-scoring` for detailed multi-metric str
 
 ## Tools and Scripts
 
-### Built-in Analysis
+::::{tab-set}
+
+:::{tab-item} Built-in Analysis
+**Quick aggregated metrics**
 
 ```bash
 # View aggregated metrics from rollouts
@@ -384,8 +387,10 @@ python scripts/print_aggregate_results.py +jsonl_fpath=rollouts.jsonl
 ```
 
 Shows averages, min, max for all numeric fields automatically.
+:::
 
-### Custom Analysis Script
+:::{tab-item} Custom Analysis Script
+**Comprehensive rollout analysis**
 
 ```python
 import json
@@ -419,96 +424,9 @@ def analyze_rollouts(jsonl_path):
 # Usage
 rollouts = analyze_rollouts('rollouts.jsonl')
 ```
-
----
-
-## Integration with Training Frameworks
-
-After preparing data, integrate with your chosen RL framework:
-
-### VeRL
-
-See {doc}`../integration/verl` for VeRL-specific data format.
-
-### NeMo-RL
-
-See {doc}`../integration/nemo-rl` for NeMo-RL integration.
-
-### OpenRLHF
-
-See {doc}`../integration/openrlhf` for OpenRLHF data preparation.
-
-### TRL
-
-See {doc}`../integration/trl` for TRL (Transformers Reinforcement Learning) format.
-
----
-
-## Troubleshooting
-
-:::{dropdown} Not Enough High-Quality Examples for SFT
-**Problem**: After filtering, too few examples remain
-
-**Solutions**:
-- Lower threshold (0.95 → 0.90)
-- Collect more rollouts
-- Check if verification is too strict
-- Use different resource server
 :::
 
-:::{dropdown} Insufficient Reward Separation for DPO
-**Problem**: Can't find pairs with gap ≥0.2
-
-**Solutions**:
-- Use continuous reward server instead of binary
-- Collect more diverse rollouts
-- Lower minimum gap requirement (0.15)
-- Collect more rollouts per prompt
-:::
-
-:::{dropdown} Reward Distribution Too Narrow for PPO
-**Problem**: All rewards cluster at 0.5
-
-**Solutions**:
-- Check verification logic (may be noisy)
-- Use different resource server
-- Adjust task difficulty
-- Verify resource server configuration
-:::
-
-:::{dropdown} Multi-Metric Confusion
-**Problem**: Multiple metrics give conflicting signals
-
-**Solutions**:
-- Use `reward` field (primary training signal)
-- Understand what each metric measures
-- Filter by primary metric first
-- See {doc}`../verification/multi-objective-scoring`
-:::
-
----
-
-## Best Practices
-
-**Before large-scale collection**:
-- [ ] Collect small sample (100 rollouts)
-- [ ] Analyze reward distribution
-- [ ] Test filtering/pairing with sample
-- [ ] Validate prepared data quality
-- [ ] Scale to full collection
-
-**For production training**:
-- [ ] Version your rollouts (`rollouts_v1.jsonl`, `rollouts_v2.jsonl`)
-- [ ] Keep preparation scripts in version control
-- [ ] Log preparation parameters (thresholds, gaps)
-- [ ] Validate prepared data before training
-- [ ] Monitor metrics during training
-
-**Quality checks**:
-- [ ] Spot-check high-reward examples (look good?)
-- [ ] Spot-check low-reward examples (look bad?)
-- [ ] Verify pairs have clear quality difference
-- [ ] Ensure distribution matches algorithm needs
+::::
 
 ---
 
