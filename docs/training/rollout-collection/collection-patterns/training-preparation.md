@@ -6,6 +6,60 @@ Proven patterns for generating training data for supervised fine-tuning (SFT), p
 
 ---
 
+## Quick Comparison
+
+Choose your training objective and understand the key parameter differences:
+
+```{list-table}
+:header-rows: 1
+:widths: 18 12 12 10 15 15 18
+
+* - Training Type
+  - Scale
+  - Temperature
+  - Repeats
+  - Infrastructure
+  - Post-Processing
+  - Output
+* - **SFT Dataset**
+  - 10K-1M
+  - 0.2 (low)
+  - 1
+  - High throughput
+  - Filter by reward threshold
+  - Single high-quality demonstrations
+* - **DPO Preference Pairs**
+  - 10K-200K total (5K-100K pairs)
+  - 0.7 (medium)
+  - 3-4
+  - Medium throughput
+  - Group and select chosen/rejected
+  - Preference pairs with reward gap
+* - **RL Training Buffer**
+  - 1K-10K per iteration
+  - 0.5 (balanced)
+  - 1
+  - Fast inference (local GPU)
+  - Minimal (use directly)
+  - Exploration data for online RL
+* - **Evaluation Benchmark**
+  - 100-5K
+  - 0.1 (deterministic)
+  - 1
+  - Any (speed less critical)
+  - None
+  - Reproducible evaluation metrics
+```
+
+**Key Decision Factors**:
+
+- **Need high-quality demos?** → SFT with low temp (0.2) and reward filtering
+- **Training preference model?** → DPO with medium temp (0.7) and multiple repeats
+- **Online RL training?** → RL buffer with balanced temp (0.5) and fast iteration
+- **Comparing models?** → Evaluation with deterministic temp (0.1) for reproducibility
+
+---
+
 ## SFT Dataset Generation
 
 **Use Case**: Generate supervised fine-tuning demonstrations  

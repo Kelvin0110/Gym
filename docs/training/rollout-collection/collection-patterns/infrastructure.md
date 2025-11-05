@@ -6,6 +6,55 @@ Proven patterns for different infrastructure configurations: local GPUs, hosted 
 
 ---
 
+## Quick Comparison
+
+Choose your infrastructure based on available resources and scale requirements:
+
+```{list-table}
+:header-rows: 1
+:widths: 20 15 15 12 15 23
+
+* - Infrastructure
+  - Hardware
+  - Throughput
+  - Cost Model
+  - Target Scale
+  - Best For
+* - **Local vLLM**
+  - 1x A100/H100 80GB
+  - 15-25 samples/sec (70B)
+  - Hardware upfront
+  - 10K-500K
+  - Maximum throughput from owned GPU, no API costs
+* - **Hosted OpenAI API**
+  - None
+  - 5-10 samples/sec
+  - Pay per token
+  - 1K-50K
+  - Quick prototyping, no infrastructure setup
+* - **Distributed Multi-Machine**
+  - Nx GPUs (distributed)
+  - Scales linearly
+  - Hardware × N
+  - 1M+
+  - Million-scale generation, parallel processing
+* - **Cost-Optimized Cloud API**
+  - None
+  - Moderate
+  - Pay per token
+  - 10K-500K
+  - Budget-conscious cloud usage, lower parallelism
+```
+
+**Key Decision Factors**:
+
+- **Have GPU?** → Local vLLM for maximum throughput
+- **Need to prototype fast?** → Hosted OpenAI API
+- **Generating millions of rollouts?** → Distributed multi-machine
+- **Budget-constrained with cloud API?** → Cost-optimized patterns
+
+---
+
 ## Local vLLM (Single GPU)
 
 **Use Case**: Maximum throughput from local model server  
