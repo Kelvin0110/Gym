@@ -10,11 +10,13 @@ For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/r
 
 ## Topics
 
-::::{grid} 1 1 1 2
+Explore the three core aspects of training data collection: performance optimization, sampling configuration, and collection patterns.
+
+::::{grid} 1 1 2 2
 :gutter: 3
 
 :::{grid-item-card} {octicon}`zap;1.5em;sd-mr-1` Optimize for Training
-:link: optimize-for-training
+:link: optimize-for-training/index
 :link-type: doc
 
 **How-to guide** for maximizing training data generation throughput with configuration tuning and parallelization strategies.

@@ -4,8 +4,6 @@
 
 Maximize rollout generation throughput when building large-scale training datasets.
 
-Three key optimization levers: diagnose bottlenecks, tune parallelism, and apply production patterns for scale.
-
 :::{seealso}
 New to rollout collection? Complete {doc}`../../../get-started/collecting-rollouts` first to get servers running.
 :::
@@ -14,7 +12,9 @@ New to rollout collection? Complete {doc}`../../../get-started/collecting-rollou
 
 ## Optimization Workflow
 
-::::{grid} 1 1 2 3
+Follow this three-step process to systematically identify and resolve throughput bottlenecks.
+
+::::{grid} 1 1 1 1
 :gutter: 3
 
 :::{grid-item-card} {octicon}`search;1.5em;sd-mr-1` 1. Identify Bottleneck
@@ -49,6 +49,8 @@ Apply resume patterns, verification optimization, and parameter overrides for mi
 ---
 
 ## Quick Reference
+
+Use this table to quickly navigate to the optimization guide that matches your specific goal.
 
 ```{list-table}
 :header-rows: 1

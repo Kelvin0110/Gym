@@ -8,7 +8,7 @@ Scale up your training data generation workflows and integrate with RL framework
 
 Follow the training data pipeline from generation to framework integration:
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 1 1
 :gutter: 3
 
 :::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Rollout Collection
