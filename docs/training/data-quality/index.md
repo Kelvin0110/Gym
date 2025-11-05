@@ -2,199 +2,173 @@
 
 # Data Quality for Training
 
-Ensure high-quality training data through filtering, curation, and balancing strategies. Learn to assess quality metrics, remove poor rollouts, and create balanced datasets for effective training.
+Validate training data quality using NeMo Gym's automatic metrics and prepare data for RL frameworks.
 
-Generated rollouts vary in quality—now learn to systematically curate training datasets that drive model improvement.
-
+Generated rollouts need quality validation before training—learn to quickly assess your data.
 
 ## When You Need This
 
 Use this section when you need to:
 
-* **Filter low-quality rollouts** - Remove poor examples before training
-* **Monitor data quality** - Track quality metrics during generation
-* **Balance datasets** - Ensure diverse task representation and difficulty distribution
-* **Set quality thresholds** - Determine appropriate reward cutoffs for your use case
+* **Validate rollout quality** - Check if data is ready for training
+* **Interpret automatic metrics** - Understand NeMo Gym's metric aggregation
+* **Assess quality by RL algorithm** - Ensure data meets PPO, DPO, or other algorithm needs
+* **Catch verification issues** - Identify broken verification before wasting training compute
 
 :::{note}
-**Quality over quantity**: Training on fewer high-quality examples beats training on many noisy ones. These guides help you curate effectively.
+**NeMo Gym's role**: Generate high-quality rollouts at scale. Your RL framework (VeRL, NeMo-RL, OpenRLHF, TRL) handles training. This section covers the validation handoff between them.
 :::
 
+---
 
-## Guides and References
+## Quality Validation Guide
 
-::::{grid} 1 1 1 2
+::::{grid} 1
 :gutter: 3
-
-:::{grid-item-card} {octicon}`filter;1.5em;sd-mr-1` Filtering Strategies
-:link: filtering-strategies
-:link-type: doc
-
-**How-to guide** for filtering rollouts based on quality thresholds, success criteria, and domain-specific requirements.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`filtering` {bdg-secondary}`thresholds`
-:::
 
 :::{grid-item-card} {octicon}`graph;1.5em;sd-mr-1` Quality Metrics
 :link: quality-metrics
 :link-type: doc
 
-**How-to guide** for tracking and monitoring quality during rollout collection using reward distributions and statistics.
+**How-to guide** for validating rollout quality using NeMo Gym's automatic metrics and quick checks before passing to RL frameworks.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`metrics` {bdg-secondary}`monitoring`
-:::
-
-:::{grid-item-card} {octicon}`rows;1.5em;sd-mr-1` Dataset Balancing
-:link: dataset-balancing
-:link-type: doc
-
-**How-to guide** for balancing task types, difficulty levels, and diversity to prevent overfitting and improve generalization.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`balancing` {bdg-secondary}`diversity`
+{bdg-secondary}`how-to` {bdg-secondary}`metrics` {bdg-secondary}`validation`
 :::
 
 ::::
 
+---
 
 ## Quality Pipeline
 
-Data quality workflow in the training pipeline:
+Data quality validation in the training pipeline:
 
 ```
-Generated Rollouts (raw)
+Generated Rollouts (NeMo Gym)
     ↓
-[1. Analyze Distributions]  ← reward, length, task type
+[Validate Quality]  ← NeMo Gym automatic metrics
     ↓
-[2. Apply Filters]          ← min reward, success rate, validity
+[Format Check]      ← ng_prepare_data
     ↓
-[3. Balance Dataset]        ← task diversity, difficulty distribution
-    ↓
-Curated Training Data       → to datasets/prepare-for-training
+RL Framework        → VeRL, NeMo-RL, OpenRLHF, TRL
 ```
 
 **Previous**: {doc}`../rollout-collection/index` for generation  
-**Next**: {doc}`../datasets/index` for formatting
+**Next**: {doc}`../datasets/index` for format validation  
+**Then**: {doc}`../integration/index` for RL framework training
 
+---
 
-## Quick Selection Guide
+## Quick Quality Checks
 
-Choose quality strategy based on your training approach:
+Use NeMo Gym's built-in features to validate before training:
+
+### Automatic Metric Aggregation
+
+```bash
+ng_collect_rollouts +input_jsonl_fpath=tasks.jsonl +output_jsonl_fpath=rollouts.jsonl
+
+# Automatically displays after collection:
+# {
+#   "reward": 0.73,
+#   "accuracy": 0.68,
+#   "avg_tool_calls": 2.1
+# }
+```
+
+### Quick Statistics
+
+```bash
+python scripts/print_aggregate_results.py +jsonl_fpath=rollouts.jsonl
+```
+
+### Smoke Tests
+
+See {doc}`../rollout-collection/optimize-for-training/production-scale` for quick quality checks during collection.
+
+---
+
+## Quality by RL Algorithm
+
+Different algorithms have different data requirements:
 
 ```{list-table}
 :header-rows: 1
-:widths: 30 35 35
+:widths: 25 35 40
 
-* - Training Type
-  - Quality Strategy
-  - Typical Thresholds
-* - **SFT**
-  - High-quality filtering only
-  - reward ≥ 0.8, strict success criteria
+* - Algorithm
+  - Data Requirement
+  - Expected Quality Signal
+* - **PPO**
+  - Diverse quality range
+  - Reward spread 0.3-0.9, not clustered
 * - **DPO**
-  - Filter pairs with sufficient quality gap
-  - quality_difference ≥ 0.1-0.2
-* - **RL**
-  - Keep diverse quality range
-  - reward ≥ 0.3, focus on distribution
-* - **Curriculum Learning**
-  - Balance by difficulty
-  - Stratify easy/medium/hard tasks
+  - Preference pairs with gaps
+  - Both high (>0.7) and low (<0.5) rewards
+* - **SFT**
+  - High-quality demonstrations
+  - Mean reward ≥ 0.8, success rate ≥ 80%
 ```
 
-See {doc}`filtering-strategies` for implementation details.
+See {doc}`quality-metrics` for validation by algorithm type.
 
+---
 
-## Quality Metrics to Track
+## Custom Filtering and Balancing
 
-Key metrics for training data quality:
+**NeMo Gym does not provide built-in filtering or balancing utilities.**
 
-```{list-table}
-:header-rows: 1
-:widths: 25 50 25
+If your RL framework or training objectives require filtering or balancing:
 
-* - Metric
-  - What It Measures
-  - Good Target
-* - **Average Reward**
-  - Overall quality of rollouts
-  - ≥ 0.7 for SFT, varied for RL
-* - **Success Rate**
-  - Percentage passing threshold
-  - ≥ 80% for SFT
-* - **Reward Distribution**
-  - Diversity of quality levels
-  - Not all 0.0 or 1.0
-* - **Length Distribution**
-  - Consistency of interactions
-  - No extreme outliers
-* - **Task Diversity**
-  - Coverage of task types
-  - Balanced representation
-```
+1. **Implement based on your RL framework's requirements**
+   - Each framework (VeRL, NeMo-RL, OpenRLHF, TRL) has different data preferences
+   - See your framework's documentation for recommended preprocessing
 
-See {doc}`quality-metrics` for tracking guidance.
+2. **Use quality metrics to guide custom filtering**
+   - NeMo Gym's automatic metrics help identify thresholds
+   - Apply filtering based on your training objectives
 
+3. **Consider framework-native preprocessing**
+   - Many RL frameworks include data filtering and balancing
+   - Leverage framework capabilities rather than custom pipelines
 
-## Filtering Patterns
+**Example filtering patterns** are shown in {doc}`../tutorials/offline-training-w-rollouts` tutorial.
 
-### Conservative Filtering (SFT)
-```python
-# Keep only high-quality examples
-filtered = [r for r in rollouts if r['reward'] >= 0.8 and r['success']]
-```
-**Result**: Smaller, cleaner dataset. Good for supervised fine-tuning.
-
-### Permissive Filtering (RL)
-```python
-# Keep diverse quality range
-filtered = [r for r in rollouts if r['reward'] >= 0.3]
-```
-**Result**: Larger, diverse dataset. Good for RL exploration.
-
-### Pair Filtering (DPO)
-```python
-# Keep pairs with quality difference
-pairs = [(r1, r2) for r1, r2 in pairs if abs(r1['reward'] - r2['reward']) >= 0.1]
-```
-**Result**: Preference pairs with clear winners. Good for DPO training.
-
-See {doc}`filtering-strategies` for complete examples.
-
+---
 
 ## Related Topics
 
 ### Data Pipeline
 
-* {doc}`../rollout-collection/index` - Generate rollouts (before quality filtering)
+* {doc}`../rollout-collection/index` - Generate rollouts (before quality validation)
 * {doc}`../verification/index` - Design rewards that enable quality filtering
-* {doc}`../datasets/index` - Format filtered data for training
+* {doc}`../datasets/index` - Format and validate data for training
 
 ### Analysis Tools
 
-* `ng_viewer` - Interactive rollout viewer for quality inspection (documented in Get Started)
-* `ng_prepare_data` - Dataset validation and statistics (see {doc}`../datasets/validate-format`)
+* `ng_collect_rollouts` - Automatic metric aggregation (built-in)
+* `ng_prepare_data` - Dataset format validation (see {doc}`../datasets/validate-format`)
+* `scripts/print_aggregate_results.py` - Quick metric summaries (built-in)
 
+---
 
 ## Next Steps
 
-:::{button-ref} filtering-strategies
+:::{button-ref} quality-metrics
 :color: primary
 :outline:
 :ref-type: doc
 
-Start with Filtering Strategies →
+Start with Quality Metrics →
 :::
 
 :::{tip}
-**Unsure about quality thresholds?** Start with {doc}`quality-metrics` to understand your data distribution, then apply filters based on observed quality patterns.
+**Unsure about quality?** Start with {doc}`quality-metrics` to understand your data distribution, then proceed to {doc}`../datasets/validate-format` for format validation before training.
 :::
 
 ```{toctree}
 :hidden:
 :maxdepth: 1
 
-filtering-strategies
 quality-metrics
-dataset-balancing
 ```
-
