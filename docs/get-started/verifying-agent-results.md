@@ -35,7 +35,7 @@ In the last tutorial, you ran your weather agent and saw it call the `get_weathe
 
 ## Examine the Current Verification Function
 
-Your weather agent's resource server already has a `verify()` function, but it doesn't actually check anything—it just returns a fixed [reward](../resources/glossary.md#reward) of 1.0 regardless of performance.
+Your weather agent's resource server already has a `verify()` function, but it doesn't actually check anything—it just returns a fixed {term}`reward` of 1.0 regardless of performance.
 
 Open `resources_servers/simple_weather/app.py` and locate the verify function:
 
@@ -368,7 +368,7 @@ What you just implemented mirrors real RL training workflows:
 4. **Reward assigned** → Numerical score (0.0–1.0) returned
 5. **In RL training** → This reward would update model parameters
 
-The verification logic you wrote defines what the agent should learn to optimize for. This connection between verification scores and model improvement is at the heart of [reinforcement learning](../resources/glossary.md#reinforcement-learning-rl)—the agent learns to take actions that maximize the [reward signal](../resources/glossary.md#reward) provided by verification.
+The verification logic you wrote defines what the agent should learn to optimize for. This connection between verification scores and model improvement is at the heart of {term}`reinforcement learning <rl>`—the agent learns to take actions that maximize the {term}`reward signal <reward>` provided by verification.
 
 :::{tip}
 For production verification patterns including correctness checking, LLM judges, hybrid scoring, and design considerations, refer to the [Verification Concepts](../about/concepts/verifying-agent-results.md) guide.

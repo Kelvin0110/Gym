@@ -29,7 +29,7 @@ You've generated rollouts in the get-started series—now learn how to transform
 
 ## Before You Start
 
-This tutorial assumes you've completed the [Get Started](../get-started/index.md) series and understand how to [collect rollouts](../get-started/collecting-rollouts.md). If you need a deeper understanding of rollout collection strategies, refer to [Rollout Collection Fundamentals](../about/concepts/rollout-collection-fundamentals.md).
+This tutorial assumes you've completed the {doc}`../get-started/index` series and understand how to {doc}`collect rollouts <../get-started/collecting-rollouts>`. If you need a deeper understanding of rollout collection strategies, refer to {ref}`concepts-rc-fundamentals`.
 
 ---
 
@@ -118,7 +118,7 @@ Choose the training approach that matches your goal:
 
 The offline training pipeline follows this logical flow:
 
-1. **Collect rollouts** using strategies from the {doc}`../get-started/collecting-rollouts` guide and {doc}`../about/concepts/rollout-collection-fundamentals` reference
+1. **Collect rollouts** using strategies from the {doc}`../get-started/collecting-rollouts` guide and {ref}`concepts-rc-fundamentals` reference
 2. **Filter for quality** - Remove poor rollouts before processing
 3. **Format for training** - Convert to SFT or DPO format based on your goals
 
@@ -568,7 +568,7 @@ You now have hands-on experience with:
 
 You've completed offline training data preparation! Continue with:
 
-- **[Separate Policy and Judge Models](separate-policy-and-judge-models.md)**: Learn advanced multi-model configuration patterns
-- **[Rollout Collection Fundamentals](../about/concepts/rollout-collection-fundamentals.md)**: Deep dive into advanced collection strategies
+- {doc}`Separate Policy and Judge Models <separate-policy-and-judge-models>`: Learn advanced multi-model configuration patterns
+- {ref}`Rollout Collection Fundamentals <concepts-rc-fundamentals>`: Deep dive into advanced collection strategies
 
-Or explore the [Concepts](../about/concepts/index.md) section for deeper understanding of the framework.
+Or explore the {doc}`Concepts <../about/concepts/index>` section for deeper understanding of the framework.

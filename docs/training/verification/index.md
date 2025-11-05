@@ -4,26 +4,9 @@
 
 Design effective reward signals and verification strategies that drive successful reinforcement learning. Learn reward shaping patterns, verification approaches, and multi-objective scoring for training.
 
-You understand basic verification from {doc}`Get Started <../../get-started/verifying-agent-results>`—now learn advanced reward design for production training workflows.
-
-
-## When You Need This
-
-Use this section when you need to:
-
-* **Design reward signals** - Create effective rewards that guide training toward desired behaviors
-* **Shape rewards for RL** - Move beyond binary success/failure to nuanced scoring
-* **Combine multiple signals** - Balance multiple objectives or metrics in a single reward
-* **Choose verification patterns** - Understand tradeoffs between different verification approaches
-
 :::{seealso}
 For deep understanding of verification theory, see {doc}`../../about/concepts/verifying-agent-results`.
 :::
-
-:::{note}
-**Building custom verifiers from scratch?** That's covered in the Environments section *(coming soon)*. This section focuses on reward design using existing verifiers.
-:::
-
 
 ## Guides and References
 

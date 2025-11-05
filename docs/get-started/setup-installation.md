@@ -112,6 +112,8 @@ If this step fails, you will see a clear error message (like quota exceeded or i
 
 :::
 
+(step-3-start-the-servers)=
+
 ## 3. Start the Servers
 
 ```bash

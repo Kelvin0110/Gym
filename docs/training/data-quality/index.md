@@ -22,7 +22,7 @@ Validate training data quality using NeMo Gym's automatic metrics before passing
 
 ## Automatic Metrics
 
-NeMo Gym automatically aggregates metrics after collection. Refer to {doc}`../about/concepts/rollout-collection-fundamentals` for detailed explanation of how automatic metric aggregation works.
+NeMo Gym automatically aggregates metrics after collection. Refer to {ref}`concepts-rc-fundamentals` for detailed explanation of how automatic metric aggregation works.
 
 **Quick summary**: Any numeric field from your resource server's `verify()` is averaged across all rollouts.
 
@@ -161,7 +161,7 @@ If your RL framework or training objectives require custom filtering or balancin
    - Many RL frameworks include data filtering and balancing
    - Use framework capabilities rather than custom pipelines
 
-**Example filtering patterns** shown in {doc}`../tutorials/offline-training-w-rollouts`.
+**Example filtering patterns** shown in {doc}`../../tutorials/offline-training-w-rollouts`.
 
 ---
 

@@ -165,7 +165,7 @@ Each line has a `responses_create_params` field that matches what you sent to th
 
 ## Start Your Servers
 
-Make sure your NeMo Gym servers are running (Same as [Tutorial 1: Setup and Installation](setup-installation.md#step-3-start-the-servers)):
+Make sure your NeMo Gym servers are running (Same as {ref}`Tutorial 1: Setup and Installation <step-3-start-the-servers>`):
 
 ```bash
 # If servers aren't already running

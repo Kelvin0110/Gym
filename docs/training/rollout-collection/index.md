@@ -5,7 +5,7 @@
 Generate training rollouts at scale with optimized sampling strategies, parallelization, and collection patterns tailored to your training objectives.
 
 :::{seealso}
-For deep understanding of rollout fundamentals, see {doc}`../../about/concepts/rollout-collection-fundamentals`.
+For deep understanding of rollout fundamentals, see {ref}`concepts-rc-fundamentals`.
 :::
 
 ## Topics
@@ -59,9 +59,9 @@ Choose your starting point based on your goal:
 * - **DPO (Direct Preference Optimization)**
   - Higher temperature (0.6-0.8), multiple samples per task (2+), focus on diversity. See {doc}`sampling-strategies/index`
 * - **RL (Reinforcement Learning)**
-  - Moderate temperature (0.4-0.6), shaped rewards, balanced exploration. See {doc}`collection-patterns`
+  - Moderate temperature (0.4-0.6), shaped rewards, balanced exploration. See {doc}`collection-patterns/index`
 * - **Maximize Speed**
-  - Tune parallelism, optimize model server, reduce verification overhead. See {doc}`optimize-for-training`
+  - Tune parallelism, optimize model server, reduce verification overhead. See {doc}`optimize-for-training/index`
 ```
 
 ## Collection Pipeline Overview
@@ -84,10 +84,10 @@ Output Rollouts (JSONL)  → to Data Quality filtering
 
 ## Next Steps
 
-Start with **{doc}`optimize-for-training`** to understand parallelization and throughput, then move to **{doc}`sampling-strategies/index`** to tune data characteristics.
+Start with **{doc}`optimize-for-training/index`** to understand parallelization and throughput, then move to **{doc}`sampling-strategies/index`** to tune data characteristics.
 :::
 
-:::{button-ref} optimize-for-training
+:::{button-ref} optimize-for-training/index
 :color: primary
 :outline:
 :ref-type: doc

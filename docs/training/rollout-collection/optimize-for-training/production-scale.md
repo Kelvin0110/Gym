@@ -56,7 +56,7 @@ NeMo Gym automatically displays aggregated metrics after collection completes:
 
 Any numeric field from your resource server's verification is automatically averaged.
 
-Refer to {doc}`../../about/concepts/rollout-collection-fundamentals` for detailed explanation of how automatic metric aggregation works.
+Refer to {ref}`concepts-rc-fundamentals` for detailed explanation of how automatic metric aggregation works.
 
 ### Resume Interrupted Runs
 
@@ -290,7 +290,7 @@ if min(rewards) == max(rewards):
 - **Extreme outliers**: Check for bugs in reward calculation
 
 :::{note}
-This is a quick smoke test. For comprehensive quality analysis, reward thresholds, and filtering strategies, see {doc}`../../data-quality/quality-metrics` and {doc}`../../data-quality/filtering-strategies`.
+This is a quick smoke test. For comprehensive quality analysis, reward thresholds, and filtering strategies, see {doc}`../../data-quality/index`.
 :::
 
 ### Detect Obviously Broken Rollouts
@@ -338,9 +338,7 @@ if issues:
 
 After collection completes and quick checks pass:
 
-**Comprehensive quality analysis** → {doc}`../../data-quality/quality-metrics`  
-**Filtering and thresholds** → {doc}`../../data-quality/filtering-strategies`  
-**Dataset balancing** → {doc}`../../data-quality/dataset-balancing`
+**Data quality analysis and filtering** → {doc}`../../data-quality/index`
 
 :::{seealso}
 **Pipeline flow**: Optimize throughput (this guide) → Collect rollouts → Quick checks (above) → Comprehensive quality analysis ({doc}`../../data-quality/index`) → Format for training ({doc}`../../datasets/index`)

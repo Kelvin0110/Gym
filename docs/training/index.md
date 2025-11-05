@@ -69,11 +69,11 @@ Not sure where to start? Choose based on your current need:
 * - If You Need To...
   - Start Here
 * - Generate training data faster
-  - {doc}`Rollout Collection / Optimize for Training <rollout-collection/optimize-for-training>`
+  - {doc}`Rollout Collection / Optimize for Training <rollout-collection/optimize-for-training/index>`
 * - Design better reward signals
   - {doc}`Verification / Reward Shaping <verification/reward-shaping>`
 * - Improve training data quality
-  - {doc}`Data Quality / Filtering Strategies <data-quality/filtering-strategies>`
+  - {doc}`Data Quality <data-quality/index>`
 * - Prepare data for SFT or DPO
   - {doc}`Datasets / Prepare for Training <datasets/prepare-for-training>`
 * - Connect to your RL framework
@@ -102,7 +102,7 @@ responses_create_params:
 min_reward_threshold: 0.8
 ```
 
-**Guides**: {doc}`rollout-collection/sampling-strategies/sft` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
+**Guides**: {doc}`rollout-collection/sampling-strategies/sft` → {doc}`data-quality/index` → {doc}`datasets/prepare-for-training`
 
 :::
 
@@ -120,7 +120,7 @@ responses_create_params:
 min_quality_difference: 0.1
 ```
 
-**Guides**: {doc}`rollout-collection/sampling-strategies/dpo` → {doc}`data-quality/filtering-strategies` → {doc}`datasets/prepare-for-training`
+**Guides**: {doc}`rollout-collection/sampling-strategies/dpo` → {doc}`data-quality/index` → {doc}`datasets/prepare-for-training`
 
 :::
 
@@ -138,7 +138,7 @@ responses_create_params:
 reward_shaping: continuous  # 0.0-1.0 range
 ```
 
-**Guides**: {doc}`verification/reward-shaping` → {doc}`rollout-collection/optimize-for-training` → {doc}`integration/nemo-rl` (or your framework)
+**Guides**: {doc}`verification/reward-shaping` → {doc}`rollout-collection/optimize-for-training/index` → {doc}`integration/nemo-rl` (or your framework)
 
 :::
 

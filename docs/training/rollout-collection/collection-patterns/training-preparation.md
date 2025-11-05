@@ -12,39 +12,39 @@ Choose your training objective and understand the key parameter differences:
 
 ```{list-table}
 :header-rows: 1
-:widths: 18 12 12 10 15 15 18
+:widths: 18 17 6 6 17 18 18
 
 * - Training Type
   - Scale
-  - Temperature
-  - Repeats
-  - Infrastructure
+  - Temp
+  - Reps
+  - Infra
   - Post-Processing
   - Output
 * - **SFT Dataset**
   - 10K-1M
-  - 0.2 (low)
+  - 0.2 
   - 1
   - High throughput
   - Filter by reward threshold
   - Single high-quality demonstrations
 * - **DPO Preference Pairs**
   - 10K-200K total (5K-100K pairs)
-  - 0.7 (medium)
+  - 0.7
   - 3-4
   - Medium throughput
   - Group and select chosen/rejected
   - Preference pairs with reward gap
 * - **RL Training Buffer**
   - 1K-10K per iteration
-  - 0.5 (balanced)
+  - 0.5
   - 1
   - Fast inference (local GPU)
   - Minimal (use directly)
   - Exploration data for online RL
 * - **Evaluation Benchmark**
   - 100-5K
-  - 0.1 (deterministic)
+  - 0.1 
   - 1
   - Any (speed less critical)
   - None
