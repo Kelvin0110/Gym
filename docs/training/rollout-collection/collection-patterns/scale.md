@@ -6,7 +6,7 @@ Proven patterns for large-scale rollout generation: resume interrupted runs, mil
 
 ---
 
-## Pattern 6.1: Incremental Collection with Resume
+## Incremental Collection with Resume
 
 **Use Case**: Resume interrupted long-running collection  
 **Goal**: Avoid losing progress
@@ -53,7 +53,7 @@ wc -l rollouts.jsonl
 
 ---
 
-## Pattern 6.2: Million-Scale Generation
+## Million-Scale Generation
 
 **Use Case**: Generate 1M+ rollouts for large-scale training  
 **Strategy**: Chunk, parallelize, track progress
@@ -132,7 +132,7 @@ jq -s 'map(.reward) | add/length' final_million_rollouts.jsonl
 
 ---
 
-## Pattern 6.3: Continuous Collection
+## Continuous Collection
 
 **Use Case**: Long-running collection job (hours/days)  
 **Goal**: Resilience and monitoring
@@ -185,7 +185,7 @@ grep "Collecting rollouts" collection.log
 
 ---
 
-## Pattern 6.4: Multi-Dataset Workflow
+## Multi-Dataset Workflow
 
 **Use Case**: Different sampling strategies for different data sources  
 **Goal**: Combined training dataset with varied characteristics

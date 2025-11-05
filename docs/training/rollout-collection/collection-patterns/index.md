@@ -8,24 +8,6 @@ This reference provides proven patterns with complete commands, expected outputs
 
 ---
 
-## How to Use This Reference
-
-**What you will find**:
-- Complete, copy-paste ready commands
-- Expected outputs and metrics
-- Post-processing workflows
-- Infrastructure-specific configurations
-
-**Pattern format**:
-- **Use Case**: When to use this pattern
-- **Command**: Complete `ng_collect_rollouts` invocation
-- **Expected**: What to expect (throughput, metrics)
-- **Post-processing**: Optional follow-up steps
-
-**To use**: Find your scenario, copy the command, update `agent_name` and file paths.
-
----
-
 ## Topics
 
 ::::{grid} 1 2 2 2

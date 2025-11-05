@@ -6,7 +6,7 @@ Proven patterns for different infrastructure configurations: local GPUs, hosted 
 
 ---
 
-## Pattern 4.1: Local vLLM (Single GPU)
+## Local vLLM (Single GPU)
 
 **Use Case**: Maximum throughput from local model server  
 **Hardware**: 1x A100/H100 80GB  
@@ -55,7 +55,7 @@ ng_collect_rollouts \
 
 ---
 
-## Pattern 4.2: Hosted OpenAI API
+## Hosted OpenAI API
 
 **Use Case**: Quick prototyping without infrastructure  
 **Service**: OpenAI GPT-4o, GPT-4o-mini  
@@ -123,7 +123,7 @@ print(f"Estimated cost for {num_tasks} rollouts: ${estimated_cost:.2f}")
 
 ---
 
-## Pattern 4.3: Distributed Generation (Multi-Machine)
+## Distributed Generation (Multi-Machine)
 
 **Use Case**: Million+ rollout generation  
 **Infrastructure**: N machines with independent model servers  
@@ -198,7 +198,7 @@ echo "Total rollouts: $(wc -l < final_rollouts.jsonl)"
 
 ---
 
-## Pattern 4.4: Cost-Optimized Cloud API
+## Cost-Optimized Cloud API
 
 **Use Case**: Balance cost and speed for cloud APIs  
 **Service**: Azure OpenAI, hosted NIM, or similar  

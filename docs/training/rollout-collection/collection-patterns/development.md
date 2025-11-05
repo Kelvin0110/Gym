@@ -6,7 +6,7 @@ Proven patterns for rapid development, debugging, parameter tuning, and verifica
 
 ---
 
-## Pattern 5.1: Quick Debug (5 Samples)
+## Quick Debug (5 Samples)
 
 **Use Case**: Rapid iteration when developing agents  
 **Goal**: <30 second feedback loop
@@ -39,7 +39,7 @@ ng_viewer +input_jsonl_fpath=/tmp/debug_rollouts.jsonl
 
 ---
 
-## Pattern 5.2: Parameter Sweep
+## Parameter Sweep
 
 **Use Case**: Find optimal temperature or other parameters  
 **Goal**: Compare multiple configurations
@@ -89,7 +89,7 @@ Pick `temp=0.5` (highest reward) for production.
 
 ---
 
-## Pattern 5.3: Behavioral Exploration
+## Behavioral Exploration
 
 **Use Case**: Understand agent capabilities and failure modes  
 **Goal**: Surface diverse strategies and edge cases
@@ -150,7 +150,7 @@ for task_id, rewards in groups.items():
 
 ---
 
-## Pattern 5.4: Verification Testing
+## Verification Testing
 
 **Use Case**: Iterate on verification function  
 **Goal**: Quick feedback on reward signal changes

@@ -6,7 +6,7 @@ Proven patterns for generating training data for supervised fine-tuning (SFT), p
 
 ---
 
-## Pattern 3.1: SFT Dataset Generation
+## SFT Dataset Generation
 
 **Use Case**: Generate supervised fine-tuning demonstrations  
 **Scale**: 10K-1M rollouts  
@@ -69,7 +69,7 @@ jq -r '.responses_create_params.input[0].content | match("Category: ([A-Z]+)").c
 
 ---
 
-## Pattern 3.2: DPO Preference Pairs
+## DPO Preference Pairs
 
 **Use Case**: Generate chosen/rejected pairs for Direct Preference Optimization  
 **Scale**: 5K-100K pairs (10K-200K total rollouts with `num_repeats=2-4`)  
@@ -189,7 +189,7 @@ print(f"Gap:      μ={statistics.mean(gaps):.3f}, σ={statistics.stdev(gaps):.3f
 
 ---
 
-## Pattern 3.3: RL Training Buffer
+## RL Training Buffer
 
 **Use Case**: Collect exploration data for online reinforcement learning  
 **Scale**: 1K-10K rollouts per iteration  
@@ -262,7 +262,7 @@ Iteration 010: reward=0.687
 
 ---
 
-## Pattern 3.4: Evaluation Benchmark
+## Evaluation Benchmark
 
 **Use Case**: Reproducible model evaluation on test set  
 **Scale**: 100-5K test examples  
