@@ -51,6 +51,7 @@ class TranslationMetricxResourcesServerConfig(BaseResourcesServerConfig):
     device_map: str = "cpu"
     max_input_length: int = 1536
     output_dir: str = str(Path(CACHE_DIR) / "metricx_output")
+    reasoning_split_word: str = "</think>"
 
 
 class TranslationMetricxVerifyRequest(BaseVerifyRequest):
@@ -186,7 +187,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
 
     def _extract_answer(self, model_response: str) -> str:
         # Strip any thinking
-        no_think_response = model_response.split("</think>")[-1]
+        no_think_response = model_response.split(self.config.reasoning_split_word)[-1]
         no_think_response = no_think_response.strip()
         return no_think_response
 

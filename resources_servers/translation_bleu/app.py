@@ -25,7 +25,7 @@ from nemo_gym.base_resources_server import (
 
 
 class TranslationBleuResourcesServerConfig(BaseResourcesServerConfig):
-    pass
+    reasoning_split_word: str = "</think>"
 
 
 class TranslationBleuVerifyRequest(BaseVerifyRequest):
@@ -101,7 +101,7 @@ class TranslationBleuResourcesServer(SimpleResourcesServer):
 
     def _extract_answer(self, model_response: str) -> str:
         # Strip any thinking
-        no_think_response = model_response.split("</think>")[-1]
+        no_think_response = model_response.split(self.config.reasoning_split_word)[-1]
         no_think_response = no_think_response.strip()
         return no_think_response
 
