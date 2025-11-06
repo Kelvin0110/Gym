@@ -6,10 +6,19 @@ Generate high-quality training data at scale with optimized rollout collection, 
 
 ## Training Data Pipeline
 
-Follow the training data pipeline from generation to framework integration:
+Follow the training data pipeline from resource server selection to framework integration:
 
 ::::{grid} 1 1 1 1
 :gutter: 3
+
+:::{grid-item-card} {octicon}`checklist;1.5em;sd-mr-1` Resource Servers
+:link: resource-servers/index
+:link-type: doc
+
+Choose a resource server that provides tools, datasets, and verification for your training task.
++++
+{bdg-secondary}`server-selection` {bdg-secondary}`tasks` {bdg-secondary}`domains`
+:::
 
 :::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Rollout Collection
 :link: rollout-collection/index
@@ -24,9 +33,9 @@ Generate training rollouts at scale with optimized sampling strategies and paral
 :link: verification/index
 :link-type: doc
 
-Design reward signals and verification strategies that drive effective training.
+Validate that verification works correctly and customize reward signals for your training needs.
 +++
-{bdg-secondary}`rewards` {bdg-secondary}`scoring` {bdg-secondary}`reward-shaping`
+{bdg-secondary}`validation` {bdg-secondary}`rewards` {bdg-secondary}`custom-patterns`
 :::
 
 :::{grid-item-card} {octicon}`filter;1.5em;sd-mr-1` Data Quality
@@ -145,12 +154,12 @@ responses_create_params:
 
 ## Next Steps
 
-We recommend starting with **Rollout Collection** to understand data generation optimization, then moving to **Data Quality** to ensure your datasets are production-ready.
+We recommend starting with **Resource Servers** to choose the right task domain and verification, then moving to **Rollout Collection** to generate training data at scale.
 
-:::{button-ref} rollout-collection/index
+:::{button-ref} resource-servers/index
 :color: primary
 :outline:
 :ref-type: doc
 
-Start with Rollout Collection →
+Choose a Resource Server →
 :::

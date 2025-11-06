@@ -25,11 +25,9 @@ Select from 13 built-in resource servers covering MCQA, math, code generation, o
 
 Each resource server is a complete package:
 
-**Tools**: Functions agents can call (weather API, search, code execution, etc.)
-
-**Datasets**: Example tasks in JSONL format (training, validation, examples)
-
-**Verification**: Scoring logic that evaluates agent performance and returns reward signals
+- **Tools**: Functions agents can call (weather API, search, code execution, etc.)
+- **Datasets**: Example tasks in JSONL format (training, validation, examples)
+- **Verification**: Scoring logic that evaluates agent performance and returns reward signals
 
 **When you pick a resource server**, you're choosing all three components together.
 
@@ -107,7 +105,8 @@ Choose based on what your agent needs to do:
 
 Choose based on what type of training you're doing:
 
-### SFT (Supervised Fine-Tuning)
+:::{dropdown} SFT (Supervised Fine-Tuning)
+:open:
 
 **What you need**: Binary or high-threshold rewards to filter for correct examples only
 
@@ -127,10 +126,9 @@ ng_collect_rollouts +resource_server=mcqa ...
 # Filter for correct examples only
 # (See prepare-for-training.md for code)
 ```
+:::
 
----
-
-### DPO (Direct Preference Optimization)
+:::{dropdown} DPO (Direct Preference Optimization)
 
 **What you need**: Continuous rewards with clear quality separation between responses
 
@@ -149,10 +147,9 @@ ng_collect_rollouts +resource_server=library_judge_math ...
 # Create pairs with quality gap >= 0.2
 # (See prepare-for-training.md for code)
 ```
+:::
 
----
-
-### PPO/RL
+:::{dropdown} PPO/RL
 
 **What you need**: Rich continuous signal with varied distribution
 
@@ -172,12 +169,14 @@ ng_collect_rollouts +resource_server=library_judge_math ...
 # Validate distribution is varied
 # (See validate-verification.md for checks)
 ```
-
+:::
 ---
 
 ## Understanding Reward Types
 
-### Binary (0.0 or 1.0)
+::::{tab-set}
+
+:::{tab-item} Binary (0.0 or 1.0)
 
 **Characteristics**:
 - Only two values: correct (1.0) or incorrect (0.0)
@@ -198,9 +197,9 @@ Rewards: [1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0]
 Mean: 0.57 (57% correct)
 ```
 
----
+:::
 
-### Continuous (0.0–1.0 range)
+:::{tab-item} Continuous (0.0–1.0 range)
 
 **Characteristics**:
 - Scores across full range (partial credit)
@@ -223,9 +222,9 @@ Mean: 0.61
 Std Dev: 0.28 (good variance)
 ```
 
----
+:::
 
-### Multi-Metric
+:::{tab-item} Multi-Metric
 
 **Characteristics**:
 - Primary reward + additional tracking metrics
@@ -249,6 +248,10 @@ Std Dev: 0.28 (good variance)
   "set_overlap": 0.95      // Partial credit
 }
 ```
+
+:::
+
+::::
 
 ---
 
@@ -296,66 +299,6 @@ Quick comparison of most commonly used servers:
   - PPO, Analysis
   - Multi-hop QA, extraction
 ```
-
-**Speed considerations**:
-- **Very Fast** (< 10ms): Simple string matching, exact checks
-- **Fast** (10-50ms): Symbolic verification, regex extraction
-- **Medium** (50-500ms): Code execution, complex parsing
-- **Slow** (> 500ms): LLM judge calls, expensive operations
-
-For production scale (millions of rollouts), prefer fast verification when possible.
-
----
-
-## Server Details and Configuration
-
-Each resource server includes:
-
-**📁 In `resources_servers/<server_name>/`**:
-- `README.md` - Task description and usage
-- `app.py` - Verification implementation
-- `configs/*.yaml` - Configuration options
-- `data/*.jsonl` - Example datasets
-- `test_*.py` - Test suite
-
-**Common configuration options**:
-
-**mcqa**:
-- `grading_mode`: `strict_single_letter_boxed`, `lenient_boxed`, `lenient_answer_colon`
-- `template_metadata.output_regex`: Custom extraction patterns
-
-**library_judge_math**:
-- `should_use_judge`: Enable/disable LLM judge fallback
-- `judge_model_server`: Which model to use for judging
-
-**equivalence_llm_judge**:
-- `judge_system_message`: Custom judge instructions
-- `judge_prompt_template`: Custom prompt format
-- `check_twice_swap`: Bias reduction via position swapping
-
-**comp_coding**:
-- `num_processes`: Parallelism for test execution
-- `unit_test_timeout_secs`: Maximum time per test
-
-See each server's README for complete configuration details.
-
----
-
-## Server READMEs
-
-Browse individual server documentation:
-
-- [mcqa](../../../resources_servers/mcqa/README.md) - Multiple choice questions
-- [library_judge_math](../../../resources_servers/library_judge_math/README.md) - Math with symbolic + judge
-- [comp_coding](../../../resources_servers/comp_coding/README.md) - Code generation with tests
-- [equivalence_llm_judge](../../../resources_servers/equivalence_llm_judge/README.md) - Semantic QA judging
-- [python_math_exec](../../../resources_servers/python_math_exec/README.md) - Math via code execution
-- [instruction_following](../../../resources_servers/instruction_following/README.md) - Constraint checking
-- [structured_outputs](../../../resources_servers/structured_outputs/README.md) - JSON schema validation
-- [multineedle](../../../resources_servers/multineedle/README.md) - Multi-item extraction
-
-Or browse all servers: [resources_servers/](../../../resources_servers/)
-
 
 ---
 

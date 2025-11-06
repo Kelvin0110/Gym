@@ -6,7 +6,6 @@ Organize, validate, and prepare training datasets in formats compatible with RL 
 
 Your rollouts are curated—now prepare them in the correct format for your training framework.
 
-
 ## When You Need This
 
 Use this section when you need to:
