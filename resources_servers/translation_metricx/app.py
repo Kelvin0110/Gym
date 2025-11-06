@@ -46,6 +46,14 @@ class TranslationMetricxModelWorker:
         self.device_map = device_map
         self.output_dir = output_dir
 
+        v = os.environ.get("UV_PROJECT_ENVIRONMENT", None)
+        print(f"DEBUG: TranslationMetricxModelWorker._load_model: UV_PROJECT_ENVIRONMENT = {v}", flush=True)
+        v = os.environ.get("VIRTUAL_ENV", None)
+        print(f"DEBUG: TranslationMetricxModelWorker._load_model: VIRTUAL_ENV            = {v}", flush=True)
+        print(f"DEBUG: TranslationMetricxModelWorker._load_model: uv pip freeze...", flush=True)
+        os.system("uv pip freeze")
+        print(f"DEBUG: TranslationMetricxModelWorker._load_model: uv pip freeze: done", flush=True)
+
         # Load model with device placement
         model = MT5ForRegression.from_pretrained(
             self.model_name, torch_dtype="auto", device_map=self.device_map
@@ -116,6 +124,14 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
     def model_post_init(self, context: Any) -> None:
         super().model_post_init(context)
 
+        v = os.environ.get("UV_PROJECT_ENVIRONMENT", None)
+        print(f"DEBUG: TranslationMetricxResourcesServer.model_post_init: UV_PROJECT_ENVIRONMENT = {v}", flush=True)
+        v = os.environ.get("VIRTUAL_ENV", None)
+        print(f"DEBUG: TranslationMetricxResourcesServer.model_post_init: VIRTUAL_ENV            = {v}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer.model_post_init: uv pip freeze...", flush=True)
+        os.system("uv pip freeze")
+        print(f"DEBUG: TranslationMetricxResourcesServer.model_post_init: uv pip freeze: done", flush=True)
+
         # Load tokenizer (MetricX models use MT5 tokenizers, separate from the model name)
         tokenizer = transformers.AutoTokenizer.from_pretrained(self.config.tokenizer_name)
         self._tokenizer = tokenizer
@@ -124,15 +140,17 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
         os.makedirs(self.config.output_dir, exist_ok=True)
 
         model_workers = [spinup_single_ray_gpu_node_worker(TranslationMetricxModelWorker)]
+        self._model_workers = model_workers
+
         inputs_device = None
-        for model_worker in model_workers:
+        if False:
+        # for model_worker in model_workers:
             # Load model with device placement
             inputs_device = ray.get(model_worker._load_model.remote(
                 self.config.metricx_model_name,
                 self.config.device_map,
                 self.config.output_dir,
             ))
-        self._model_workers = model_workers
         self._inputs_device = inputs_device
 
     def setup_webserver(self) -> FastAPI:
@@ -168,6 +186,17 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
     ) -> tuple[float, str]:
         extracted_answer = self._extract_answer(model_response)
         ds = self._create_dataset_from_example(extracted_answer, source_text, target_text)
+        if self._inputs_device is None:
+            print("DEBUG: TranslationMetricxResourcesServer._verify_answer: initial load model...", flush=True)
+            for model_worker in self._model_workers:
+                # Load model with device placement
+                inputs_device = ray.get(model_worker._load_model.remote(
+                    self.config.metricx_model_name,
+                    self.config.device_map,
+                    self.config.output_dir,
+                ))
+            self._inputs_device = inputs_device
+            print("DEBUG: TranslationMetricxResourcesServer._verify_answer: initial load model: done", flush=True)
         predictions, _, _ = ray.get(self._model_workers[0].predict.remote(test_dataset=ds))
         score = float(predictions[0])
 
