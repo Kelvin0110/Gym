@@ -4,10 +4,6 @@
 
 Generate high-quality training data at scale with optimized rollout collection, verification, and formatting.
 
-:::{tip}
-**New to NeMo Gym training workflows?** See {doc}`../about/concepts/training-architecture` to understand how NeMo Gym's decoupled architecture enables efficient training data generation for agentic tasks.
-:::
-
 ## Training Data Pipeline
 
 Follow the training data pipeline from resource server selection to framework integration:
