@@ -45,8 +45,6 @@ response = await server_client.post("/run", task)
 result = await response.json()  # Contains trajectory + reward
 ```
 
-**Source**: `nemo_gym/rollout_collection.py:99-102`
-
 ---
 
 ## Why Decoupled Architecture
@@ -86,8 +84,6 @@ while True:
         break
 ```
 
-**Source**: `responses_api_agents/simple_agent/app.py:79-130`
-
 **Benefit**: Training frameworks don't need custom logic for multi-turn flows
 
 ---
@@ -109,8 +105,6 @@ class SimpleResponsesAPIAgent(BaseResponsesAPIAgent, SimpleServer):
         app.post("/run")(self.run)
         return app
 ```
-
-**Source**: `nemo_gym/base_responses_api_agent.py:34-45`
 
 **Benefit**: Integrate existing agent frameworks (NAT, LangChain, LangGraph) without reimplementation
 
@@ -149,8 +143,6 @@ while True:
     new_body = body.model_copy(update={"input": body.input + new_outputs})
 ```
 
-**Source**: `responses_api_agents/simple_agent/app.py:79-130`
-
 **Benefit**: Process tasks as they arrive—no waiting for all models to finish, then all environments
 
 ---
@@ -185,10 +177,6 @@ return NeMoGymResponse(
 )
 ```
 
-**Source**: 
-- `responses_api_models/azure_openai_model/app.py:68-92`
-- `responses_api_models/vllm_model/app.py:110-134`
-
 **Benefit**: Swap models via configuration—no parsing logic changes
 
 ---
@@ -221,8 +209,6 @@ class TestApp:
             server_client=MagicMock(spec=ServerClient)
         )
 ```
-
-**Source**: `resources_servers/simple_weather/tests/test_app.py:23-31`
 
 **Benefit**: Validate and iterate on environments in seconds, integrate when ready
 
@@ -259,8 +245,6 @@ async def _post_coroutine(row: dict) -> None:
 # Execute all tasks in parallel with progress tracking
 await tqdm.gather(*map(_post_coroutine, rows), desc="Collecting rollouts", miniters=tqdm_miniters)
 ```
-
-**Source**: `nemo_gym/rollout_collection.py:86-105`
 
 **Configuration**: Set `num_samples_in_parallel=10` to control concurrent rollouts
 
