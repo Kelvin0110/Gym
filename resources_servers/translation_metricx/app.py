@@ -70,6 +70,7 @@ class TranslationMetricxModelWorker:
             output_dir=output_dir,
             per_device_eval_batch_size=1,
             dataloader_pin_memory=False,
+            disable_tqdm=True,
         )
         trainer = transformers.Trainer(
             model=model,
