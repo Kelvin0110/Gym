@@ -52,6 +52,12 @@ Learn why complete interaction transcripts matter for reinforcement learning, ho
 Explore how resource servers score agent outputs with `verify()` implementations that transform correctness, quality, and efficiency checks into reward signals.
 :::
 
+:::{grid-item-card} {octicon}`zap;1.5em;sd-mr-1` Training Architecture
+:link: concepts-training-architecture
+:link-type: ref
+Understand how NeMo Gym's decoupled architecture enables efficient training data generation for multi-turn agentic tasks through HTTP-based services and async parallelism.
+:::
+
 ::::
 
 ---
@@ -72,4 +78,5 @@ Core Abstractions <core-abstractions>
 Configuration System <configuration-system>
 Rollout Collection Fundamentals <rollout-collection-fundamentals>
 Verifying Agent Results <verifying-agent-results>
+Training Architecture <training-architecture>
 ```
