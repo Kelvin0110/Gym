@@ -41,18 +41,18 @@ class TranslationMetricxModelWorker:
         self.output_dir = None
         self.model = None
 
+        v = os.environ.get("UV_PROJECT_ENVIRONMENT", None)
+        print(f"DEBUG: TranslationMetricxModelWorker: UV_PROJECT_ENVIRONMENT = {v}", flush=True)
+        v = os.environ.get("VIRTUAL_ENV", None)
+        print(f"DEBUG: TranslationMetricxModelWorker: VIRTUAL_ENV            = {v}", flush=True)
+        print(f"DEBUG: TranslationMetricxModelWorker: uv pip freeze...", flush=True)
+        os.system("uv pip freeze")
+        print(f"DEBUG: TranslationMetricxModelWorker: uv pip freeze: done", flush=True)
+
     def _load_model(self, model_name, device_map, output_dir):
         self.model_name = model_name
         self.device_map = device_map
         self.output_dir = output_dir
-
-        v = os.environ.get("UV_PROJECT_ENVIRONMENT", None)
-        print(f"DEBUG: TranslationMetricxModelWorker._load_model: UV_PROJECT_ENVIRONMENT = {v}", flush=True)
-        v = os.environ.get("VIRTUAL_ENV", None)
-        print(f"DEBUG: TranslationMetricxModelWorker._load_model: VIRTUAL_ENV            = {v}", flush=True)
-        print(f"DEBUG: TranslationMetricxModelWorker._load_model: uv pip freeze...", flush=True)
-        os.system("uv pip freeze")
-        print(f"DEBUG: TranslationMetricxModelWorker._load_model: uv pip freeze: done", flush=True)
 
         # Load model with device placement
         model = MT5ForRegression.from_pretrained(
