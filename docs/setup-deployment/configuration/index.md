@@ -4,10 +4,6 @@
 
 Manage NeMo Gym's three-tier configuration system for different environments, secrets, and multi-server deployments.
 
-```{tip}
-**New to NeMo Gym's configuration system?** Read {doc}`../../about/concepts/configuration-system` first to understand how the three-tier architecture (YAML → env.yaml → CLI) works conceptually.
-```
-
 ---
 
 ## Configuration Hierarchy
@@ -25,23 +21,24 @@ NeMo Gym loads configuration from three layers (lowest to highest priority):
 - **env.yaml**: Store API keys and environment-specific settings
 - **CLI**: Temporary overrides for testing
 
+
+:::{button-ref} debugging
+:color: primary
+:outline:
+:ref-type: doc
+
+← Review Configuration System Concepts
+:::
+
 ---
 
-## Configuration Topics
+## Topics
 
 Choose the topic that matches your current need:
 
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Configuration Debugging
-:link: debugging
-:link-type: doc
-
-Debug and validate configurations with `ng_dump_config`, troubleshoot common errors, and verify variable substitution.
-+++
-{bdg-secondary}`debugging` {bdg-secondary}`validation` {bdg-secondary}`troubleshooting`
-:::
 
 :::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Multi-Server Configuration
 :link: multi-server
@@ -61,13 +58,26 @@ Complete configuration anatomy with schemas, fields, and examples for all server
 {bdg-secondary}`reference` {bdg-secondary}`schema` {bdg-secondary}`fields`
 :::
 
+:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Configuration Debugging
+:link: debugging
+:link-type: doc
+
+Debug and validate configurations with `ng_dump_config`, troubleshoot common errors, and verify variable substitution.
++++
+{bdg-secondary}`debugging` {bdg-secondary}`validation` {bdg-secondary}`troubleshooting`
+:::
+
 ::::
 
 ---
 
 ## Quick Configuration Patterns
 
-### Pattern 1: Single Environment
+Common configuration patterns for different deployment scenarios:
+
+::::{tab-set}
+
+:::{tab-item} Single Environment
 
 **Use when**: Local development, simple deployments
 
@@ -90,9 +100,9 @@ policy_api_key: sk-your-actual-key
 ng_run "+config_paths=[config.yaml]"
 ```
 
----
+:::
 
-### Pattern 2: Multiple Environments
+:::{tab-item} Multiple Environments
 
 **Use when**: Dev, staging, production deployments
 
@@ -107,9 +117,11 @@ ng_run "+config_paths=[config.yaml]" "+dotenv_path=env.staging.yaml"
 ng_run "+config_paths=[config.yaml]" "+dotenv_path=env.prod.yaml"
 ```
 
----
+**Pattern**: Use separate `env.yaml` files for each environment
 
-### Pattern 3: Quick Testing Override
+:::
+
+:::{tab-item} Quick Testing
 
 **Use when**: Testing different models or settings without changing files
 
@@ -121,9 +133,11 @@ ng_run "+config_paths=[config.yaml]" +policy_model_name=gpt-4o-mini
 ng_run "+config_paths=[config.yaml]" +responses_create_params.temperature=0.8
 ```
 
----
+**Pattern**: Use CLI overrides for temporary testing
 
-### Pattern 4: CI/CD Deployment
+:::
+
+:::{tab-item} CI/CD Pipeline
 
 **Use when**: Automated deployments with environment variables
 
@@ -135,50 +149,11 @@ ng_run "+config_paths=[${CONFIG_PATH}]" \
     +default_host=0.0.0.0
 ```
 
----
+**Pattern**: Use environment variables in automated deployments
 
-## Quick Decision Guide
+:::
 
-Not sure where to start? Choose based on your current need:
-
-```{list-table}
-:header-rows: 1
-:widths: 40 60
-
-* - If You Need To...
-  - Go To
-* - Debug configuration before running
-  - {doc}`Configuration Debugging <debugging>`
-* - Understand config structure
-  - {doc}`Configuration Reference <reference>`
-* - Run multiple resource servers
-  - {doc}`Multi-Server Configuration <multi-server>`
-* - Set up dev/test/prod environments
-  - Use separate env files (Pattern 2 above)
-* - Validate configuration
-  - {doc}`Configuration Debugging <debugging>` → `ng_dump_config`
-* - Learn configuration concepts
-  - {doc}`../../about/concepts/configuration-system`
-```
-
----
-
-## Configuration Best Practices
-
-### ✅ Do
-
-- **Use env.yaml for secrets** - Never commit API keys to git
-- **Use YAML for structure** - Define server architecture in version control
-- **Use CLI for testing** - Temporary overrides don't persist
-- **Document your configs** - Add comments explaining why settings exist
-- **Version your configs** - Track changes in git (except env.yaml)
-
-### ❌ Don't
-
-- **Don't hardcode secrets in YAML** - Use `${variable}` references
-- **Don't commit env.yaml** - Add to `.gitignore`
-- **Don't edit configs manually in prod** - Use configuration management tools
-- **Don't mix concerns** - Keep structure (YAML) separate from secrets (env.yaml)
+::::
 
 ---
 
@@ -219,3 +194,13 @@ We recommend starting with **Configuration Debugging** to learn `ng_dump_config`
 
 Learn Configuration Debugging →
 :::
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+
+multi-server
+reference
+debugging
+
+```
