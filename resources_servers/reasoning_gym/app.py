@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
 import re
+from typing import Any, Optional
 
 import reasoning_gym
 from fastapi import FastAPI
@@ -55,7 +55,7 @@ class ReasoningGymResourcesServer(SimpleResourcesServer):
         model_answer = self._extract_answer_from_response(body.response)
 
         task_name = body.metadata.get("source_dataset")
-        
+
         if not task_name:
             raise ValueError(f"No task name found in metadata: {body.metadata}")
 
@@ -88,22 +88,22 @@ class ReasoningGymResourcesServer(SimpleResourcesServer):
                 if content_item.type != "output_text":
                     continue
                 assistant_responses.append(content_item.text)
-        
+
         full_text = "".join(assistant_responses)
-        
+
         # Try <answer> tags first (reasoning gym default)
         extracted = extract_answer(full_text, tag_name="answer")
         if extracted is not None:
             return extracted
-        
-        # Try \boxed{} if <answer> tags fail 
+
+        # Try \boxed{} if <answer> tags fail
         # this could be a slight instruction following issue, if model is prompted to use <answer> but uses boxed instead
         # found for deepseek-distill-qwen-1.5b it fails to use <answer> tags in favor of boxed, hence this fallback
         # may advise commenting this out for large models who follow instructions to use <answer> well
-        boxed_match = re.search(r'\\boxed\{([^}]+)\}', full_text)
+        boxed_match = re.search(r"\\boxed\{([^}]+)\}", full_text)
         if boxed_match:
             return boxed_match.group(1).strip()
-        
+
         # return full text if <answer> or \boxed{} fail
         return full_text.strip() if full_text.strip() else ""
 
