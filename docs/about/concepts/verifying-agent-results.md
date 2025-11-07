@@ -211,18 +211,18 @@ These examples demonstrate how verification combines multiple criteria with weig
   - Verification Criteria (with weights)
   - Design Rationale
 * - **Math Tutoring**
-  - • **Correctness** (0.5): Final answer mathematically correct? <br>
-    • **Pedagogy** (0.3): Steps clearly explained?<br>
+  - • **Correctness** (0.5): Final answer mathematically correct?
+    • **Pedagogy** (0.3): Steps clearly explained?
     • **Efficiency** (0.2): Simplest method used?
   - Correct answers matter most, but teaching quality is also important
 * - **Customer Service**
-  - • **Accuracy** (0.4): Addresses customer question? <br>
-    • **Tone** (0.3): Appropriate and professional? <br>
+  - • **Accuracy** (0.4): Addresses customer question?
+    • **Tone** (0.3): Appropriate and professional?
     • **Resolution** (0.3): Solves problem or provides next steps? 
   - Balances multiple dimensions of service quality—no single aspect dominates
 * - **Code Generation**
-  - • **Functionality** (0.6): All test cases pass? <br>
-    • **Quality** (0.3): Readable with good structure? <br>
+  - • **Functionality** (0.6): All test cases pass?
+    • **Quality** (0.3): Readable with good structure?
     • **Security** (0.1): Avoids vulnerabilities?
   - Functional correctness is primary, but code quality matters for maintainability
 ```
