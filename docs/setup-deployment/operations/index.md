@@ -4,55 +4,6 @@
 
 Monitor, test, profile, and debug NeMo Gym deployments to ensure reliable, high-performance operation.
 
----
-
-## Topics
-
-Choose the operational task that matches your current need:
-
-::::{grid} 1 1 2 2
-:gutter: 3
-
-:::{grid-item-card} {octicon}`pulse;1.5em;sd-mr-1` Monitoring
-:link: monitoring
-:link-type: doc
-
-Monitor health, logs, and resource usage across your deployment.
-+++
-{bdg-secondary}`health-checks` {bdg-secondary}`logs` {bdg-secondary}`metrics`
-:::
-
-:::{grid-item-card} {octicon}`beaker;1.5em;sd-mr-1` Testing
-:link: testing
-:link-type: doc
-
-Test servers, validate configurations, and run integration tests.
-+++
-{bdg-secondary}`unit-tests` {bdg-secondary}`integration` {bdg-secondary}`validation`
-:::
-
-:::{grid-item-card} {octicon}`meter;1.5em;sd-mr-1` Performance Profiling
-:link: profiling
-:link-type: doc
-
-Profile resource servers to identify and optimize performance bottlenecks.
-+++
-{bdg-secondary}`profiling` {bdg-secondary}`optimization` {bdg-secondary}`scale`
-:::
-
-:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Debugging
-:link: debugging
-:link-type: doc
-
-Debug configuration, connectivity, and runtime issues.
-+++
-{bdg-secondary}`troubleshooting` {bdg-secondary}`logs` {bdg-secondary}`errors`
-:::
-
-::::
-
----
-
 ## Operations Workflow
 
 Recommended operational workflow for production deployments:
@@ -108,9 +59,9 @@ ng_run "+config_paths=[config.yaml]" \
     +profiling_enabled=true \
     +profiling_results_dirpath=results/profiling/staging
 
-# Monitor health
+# Check server availability
 for port in 8000 8001 8002 8003; do
-  curl -s http://localhost:$port/health || echo "Port $port unhealthy"
+  lsof -i :$port > /dev/null && echo "✓ Port $port: server running" || echo "✗ Port $port: no server"
 done
 ```
 
@@ -128,8 +79,8 @@ done
 **Quick commands**:
 
 ```bash
-# Health monitoring script
-watch -n 10 'curl -s http://production-host:8000/health'
+# Monitor server availability (check if ports are listening)
+watch -n 10 'lsof -i :8000 > /dev/null && echo "✓ Server running" || echo "✗ Server down"'
 
 # Check logs for errors
 grep ERROR /var/log/nemo_gym/*.log
@@ -144,6 +95,53 @@ ng_collect_rollouts +agent_name=prod_agent \
     +limit=10
 ```
 
+:::
+
+::::
+
+---
+
+## Topics
+
+Choose the operational task that matches your current need:
+
+::::{grid} 1 1 2 2
+:gutter: 3
+
+:::{grid-item-card} {octicon}`pulse;1.5em;sd-mr-1` Monitoring
+:link: monitoring
+:link-type: doc
+
+Monitor health, logs, and resource usage across your deployment.
++++
+{bdg-secondary}`health-checks` {bdg-secondary}`logs` {bdg-secondary}`metrics`
+:::
+
+:::{grid-item-card} {octicon}`beaker;1.5em;sd-mr-1` Testing
+:link: testing
+:link-type: doc
+
+Test servers, validate configurations, and run integration tests.
++++
+{bdg-secondary}`unit-tests` {bdg-secondary}`integration` {bdg-secondary}`validation`
+:::
+
+:::{grid-item-card} {octicon}`meter;1.5em;sd-mr-1` Performance Profiling
+:link: profiling
+:link-type: doc
+
+Profile resource servers to identify and optimize performance bottlenecks.
++++
+{bdg-secondary}`profiling` {bdg-secondary}`optimization` {bdg-secondary}`scale`
+:::
+
+:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Debugging
+:link: debugging
+:link-type: doc
+
+Debug configuration, connectivity, and runtime issues.
++++
+{bdg-secondary}`troubleshooting` {bdg-secondary}`logs` {bdg-secondary}`errors`
 :::
 
 ::::
@@ -166,7 +164,7 @@ ng_collect_rollouts +agent_name=prod_agent \
 
 **Ongoing monitoring**:
 
-- [ ] Monitor health endpoints
+- [ ] Monitor server availability and connectivity
 - [ ] Check logs for errors
 - [ ] Track resource usage (CPU, memory, GPU)
 - [ ] Review profiling stats periodically
@@ -175,7 +173,7 @@ ng_collect_rollouts +agent_name=prod_agent \
 
 **When issues occur**:
 
-1. Check server health: `curl http://localhost:8000/health`
+1. Check server availability: `lsof -i :8000` or `nc -zv localhost 8000`
 2. Review logs: `grep ERROR ng_gym.log`
 3. Enable debug logging: `--log-level DEBUG`
 4. Validate configuration: `ng_dump_config "+config_paths=[config.yaml]"`
@@ -214,7 +212,7 @@ ng_collect_rollouts +agent_name=prod_agent \
 
 **What to monitor**:
 
-- **Health**: All server `/health` endpoints
+- **Availability**: Server ports and connectivity
 - **Logs**: Error and warning patterns
 - **Resources**: CPU, memory, GPU utilization
 - **Performance**: Request latency, throughput

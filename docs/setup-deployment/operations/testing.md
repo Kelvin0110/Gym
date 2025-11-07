@@ -185,9 +185,9 @@ ng_collect_rollouts +agent_name=test_agent \
 # Start servers
 ng_run "+config_paths=[config1.yaml,config2.yaml]"
 
-# Test health endpoints (separate terminal)
-curl http://localhost:8003/health
-curl http://localhost:8004/health
+# Check server availability (separate terminal)
+lsof -i :8003 && echo "✓ Server 1 running"
+lsof -i :8004 && echo "✓ Server 2 running"
 ```
 :::
 
@@ -265,7 +265,7 @@ pip install -e .
 **Solution**:
 1. Check server logs for startup errors
 2. Verify ports in configuration files
-3. Test health endpoints: `curl http://localhost:8000/health`
+3. Check server availability: `lsof -i :8000` or `nc -zv localhost 8000`
 :::
 
 :::{dropdown} Debug failing tests

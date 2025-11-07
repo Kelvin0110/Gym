@@ -47,7 +47,7 @@ For details on metric aggregation, refer to {ref}`concepts-rc-fundamentals`.
 
 Monitor server activity and diagnose issues through log analysis.
 
-### Enable Debug Logging
+### Logging Configuration
 
 :::::{tab-set}
 
@@ -57,15 +57,19 @@ ng_run "+config_paths=[config.yaml]"
 ```
 ::::
 
-::::{tab-item} Debug Logging
-```bash
-ng_run "+config_paths=[config.yaml]" --log-level DEBUG
-```
-::::
-
 ::::{tab-item} Save to File
 ```bash
 ng_run "+config_paths=[config.yaml]" > logs/ng_gym.log 2>&1
+```
+::::
+
+::::{tab-item} Filter 200 OK Messages
+```bash
+# Hide successful health check requests (default behavior)
+ng_run "+config_paths=[config.yaml]"
+
+# Show all requests including 200 OK (verbose)
+ng_run "+config_paths=[config.yaml]" +uvicorn_logging_show_200_ok=true
 ```
 ::::
 
@@ -198,6 +202,10 @@ nvidia-smi -i 0
 
 Verify servers are running by testing their API endpoints.
 
+:::{note}
+NeMo Gym servers do not have dedicated health check endpoints. The examples below test functional endpoints to verify server availability. For simple port checking, use `nc -zv localhost <port>` or `lsof -i :<port>`.
+:::
+
 ### Check Individual Servers
 
 NeMo Gym servers expose these endpoints:
@@ -241,49 +249,51 @@ curl -X POST http://localhost:8002/v1/chat/completions \
 
 ### Multi-Server Availability Script
 
-Check all configured servers:
+Check all configured servers with simple port checks:
 
 ```bash
 #!/bin/bash
 # check_servers.sh
 
 # Resource server
-curl -sf http://localhost:8003/seed_session -X POST \
-  -H "Content-Type: application/json" -d '{}' > /dev/null \
+nc -zv localhost 8003 2>&1 | grep -q succeeded \
   && echo "✓ Resource server (8003): running" \
   || echo "✗ Resource server (8003): not responding"
 
 # Agent server  
-curl -sf http://localhost:8001/v1/responses -X POST \
-  -H "Content-Type: application/json" -d '{}' > /dev/null \
+nc -zv localhost 8001 2>&1 | grep -q succeeded \
   && echo "✓ Agent server (8001): running" \
   || echo "✗ Agent server (8001): not responding"
 
 # Model server
-curl -sf http://localhost:8002/v1/chat/completions -X POST \
-  -H "Content-Type: application/json" -d '{}' > /dev/null \
+nc -zv localhost 8002 2>&1 | grep -q succeeded \
   && echo "✓ Model server (8002): running" \
   || echo "✗ Model server (8002): not responding"
 ```
 
 :::{tip}
-For Kubernetes deployments, use these endpoint checks in liveness and readiness probes.
+For Kubernetes deployments, use these port checks in liveness probes. For readiness probes, you can test functional endpoints but handle validation errors appropriately.
 :::
 
 ---
 
 ## External Monitoring Integration
 
-### vLLM Prometheus Metrics
+### vLLM Server Prometheus Metrics
 
-If using vLLM as a model server, vLLM exposes Prometheus-compatible metrics:
+If using vLLM as your model server, the vLLM server itself exposes Prometheus-compatible metrics:
 
 ```bash
-# Check vLLM metrics endpoint
+# Check vLLM server metrics endpoint
+# Port 8000 is vLLM's default port (not NeMo Gym's)
 curl http://localhost:8000/metrics
 ```
 
-**Available metrics**:
+:::{note}
+This `/metrics` endpoint is provided by the vLLM server itself, not by NeMo Gym. The port number will match your vLLM server configuration. Refer to vLLM documentation for the complete list of available metrics.
+:::
+
+**Available metrics from vLLM**:
 - Request throughput
 - Batch sizes
 - Queue lengths
@@ -303,6 +313,7 @@ For production deployments, integrate with your existing monitoring stack:
 **1. Expose custom metrics** from your resource server:
 
 ```python
+# Install prometheus_client separately: pip install prometheus-client
 from prometheus_client import Counter, Histogram
 
 request_count = Counter('requests_total', 'Total requests')
@@ -314,6 +325,10 @@ async def verify(self, body: BaseVerifyRequest):
         # Your verification logic
         pass
 ```
+
+:::{note}
+The `prometheus-client` library is not included with NeMo Gym. Install it separately if you want to add custom metrics.
+:::
 
 **2. Configure Prometheus** to scrape vLLM and custom metrics
 
