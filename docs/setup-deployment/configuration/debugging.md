@@ -202,7 +202,7 @@ These are the most frequent configuration errors and how to resolve them:
 **Error**:
 
 ```text
-ValueError: Server reference {'type': 'responses_api_models', 'name': 'policy_model'} not found
+AssertionError: Could not find policy_model in the list of available servers: [...]
 ```
 
 **Cause**: Referenced server doesn't exist in merged configuration.
@@ -220,7 +220,13 @@ ValueError: Server reference {'type': 'responses_api_models', 'name': 'policy_mo
 **Error**:
 
 ```text
-ValueError: openai_api_key is required but not set
+Missing mandatory value: policy_api_key
+```
+
+Or unresolved variable in config:
+
+```yaml
+openai_api_key: ${policy_api_key}  # Variable not substituted
 ```
 
 **Cause**: Variable `${policy_api_key}` not resolved from `env.yaml`.
@@ -230,7 +236,8 @@ ValueError: openai_api_key is required but not set
 1. Verify `env.yaml` exists and contains the variable
 2. Check exact spelling (case-sensitive)
 3. Test resolution: `ng_dump_config ... | grep api_key`
-4. Specify env file: `ng_dump_config "+dotenv_path=env.yaml" ...`
+4. Look for unresolved variables: `ng_dump_config ... | grep '\${'`
+5. Specify env file: `ng_dump_config "+dotenv_path=env.yaml" ...`
 
 ::::
 
