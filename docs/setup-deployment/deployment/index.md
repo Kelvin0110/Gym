@@ -1,244 +1,277 @@
+# Deployment Scenarios
+
 (setup-deployment-scenarios)=
 
-# Deployment
-
-Deploy NeMo Gym in different environments—local development, remote servers, or containerized infrastructure.
+Deploy NeMo Gym in different environments based on your use case.
 
 ---
 
-## Local Development
+## Choose Your Deployment Scenario
 
-Set up NeMo Gym for local development and testing:
+Select the deployment approach that matches your needs:
+
+::::{grid} 1 2 2 3
+:gutter: 3
+
+:::{grid-item-card} {octicon}`device-desktop` Local Development
+:link: local-development
+:link-type: doc
+
+Quick setup for local experimentation and testing.
+
+**Best for**: Initial exploration, debugging, prototyping, data collection
+:::
+
+:::{grid-item-card} {octicon}`server` vLLM Integration
+:link: vllm-integration
+:link-type: doc
+
+Connect NeMo Gym to vLLM-hosted models.
+
+**Best for**: Using models without native Responses API support
+:::
+
+:::{grid-item-card} {octicon}`workflow` Distributed Computing
+:link: distributed-computing
+:link-type: doc
+
+Scale with Ray clusters for high-throughput workloads.
+
+**Best for**: Multi-node training, large-scale rollout collection
+:::
+
+::::
+
+---
+
+## Quick Start: Common Deployment Patterns
+
+### Single-Node Development
+
+Most common starting point:
 
 ```bash
-# 1. Clone and install
-git clone <repo>
-cd Gym
+# Install and run locally
 pip install -e ".[dev]"
-
-# 2. Create env.yaml with secrets
-cat > env.yaml << EOF
-policy_api_key: sk-your-openai-key
-EOF
-
-# 3. Test with simple config
 ng_run "+config_paths=[responses_api_agents/simple_agent/config.yaml]"
 ```
 
-## Remote Servers
+:::{seealso}
+Complete setup instructions: {doc}`local-development`
+:::
 
-Deploy components on remote machines:
+### Production Deployment
 
-1. Install NeMo Gym on target machine
-2. Set up `env.yaml` with production credentials
-3. Configure network access (open required ports)
-4. Run with production config:
+For remote servers or containers, you control:
+
+- **Network configuration**: Set host/port for external access
+- **Credentials**: Use `env.yaml` for API keys and secrets
+- **Resource allocation**: Configure server resources per component
+
+::::{tab-set}
+
+:::{tab-item} Remote Server
 
 ```bash
+# Production configuration
 ng_run "+config_paths=[production_config.yaml]" \
     +default_host=0.0.0.0 \
     +head_server.port=8000
 ```
 
-## Containers
+**Key considerations**:
 
-Package NeMo Gym using Docker (example):
+- Open required ports (default: 8000-8003)
+- Manage API keys securely
+- Ensure network accessibility between components
+:::
+
+:::{tab-item} Docker Container
 
 ```dockerfile
-FROM python:3.10
+FROM python:3.10-slim
 WORKDIR /app
+
+# Install NeMo Gym
 COPY . .
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
+
+# Runtime configuration
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000-8003
+
 CMD ["ng_run", "+config_paths=[config.yaml]"]
 ```
 
+**Key considerations**:
+
+- Map configuration files as volumes
+- Expose port range for all servers
+- Handle secrets via environment variables or mounted files
+:::
+
+::::
+
 ---
 
-## Using vLLM with Non-Responses Models
+## Component Architecture
 
-Most models lack native Responses API support. NeMo Gym provides a middleware layer (`vllm_model`) that maps Responses API to Chat Completions.
+Understanding what gets deployed:
 
-### Why Use VLLMModel?
+```{list-table}
+:header-rows: 1
+:widths: 20 25 35 20
 
-As of November 2025, few models support OpenAI Responses API natively (GPT-4o and similar). NeMo Gym is first-party Responses API, making it difficult to use with standard models. The `vllm_model` middleware solves this by translating between formats.
-
-### Quick Start with vLLM
-
-**Step 1: Start vLLM server**
-
-```bash
-# Create environment
-uv venv --python 3.12 --seed 
-source .venv/bin/activate
-uv pip install hf_transfer datasets vllm --torch-backend=auto
-
-# Download model (example: Qwen3-30B-A3B)
-HF_HOME=.cache/ \
-HF_HUB_ENABLE_HF_TRANSFER=1 \
-    hf download Qwen/Qwen3-30B-A3B
-
-# Start vLLM server with tool support
-HF_HOME=.cache/ \
-HOME=. \
-vllm serve \
-    Qwen/Qwen3-30B-A3B \
-    --dtype auto \
-    --tensor-parallel-size 4 \
-    --gpu-memory-utilization 0.9 \
-    --enable-auto-tool-choice --tool-call-parser hermes \
-    --host 0.0.0.0 \
-    --port 10240
+* - Component
+  - Purpose
+  - Network Role
+  - Default Port
+* - Head Server
+  - Configuration distribution
+  - Internal coordinator
+  - 8000
+* - Responses API Agent
+  - Orchestrates interactions
+  - External API endpoint
+  - 8001
+* - Policy Model
+  - Generates responses
+  - Internal service
+  - 8002
+* - Resources Server
+  - Domain verification
+  - Internal service
+  - 8003
 ```
 
-**Step 2: Use vllm_model configuration**
-
-```bash
-# Replace openai_model with vllm_model
-config_paths="resources_servers/multineedle/configs/multineedle.yaml,\
-responses_api_models/vllm_model/configs/vllm_model.yaml"
-ng_run "+config_paths=[$config_paths]"
-```
-
-That's it! NeMo Gym now works with your vLLM-hosted model.
-
-### VLLMModel Configuration
-
-The `vllm_model` middleware:
-- Converts Responses API calls to Chat Completions
-- Uses vLLM-specific endpoints like `/tokenize` for accurate token tracking
-- Handles tool calls and reasoning traces
-- Maintains token-level accuracy for RL training
-
-**Important configuration notes**:
-
-```{important}
-**Do NOT use** vLLM's `--reasoning-parser` flag. The Gym middleware handles reasoning parsing internally to maintain Responses API compatibility.
-```
-
-**Tool call parsers**:
-- Qwen models: `--tool-call-parser hermes`
-- Other models: Check vLLM documentation for appropriate parser
-
-**Model examples**:
-- ✅ Qwen/Qwen3-30B-A3B (NeMo RL compatible)
-- ✅ Any vLLM-supported model with tool capabilities
-- ✅ Models without native Responses API support
-
-### Custom vLLM Configuration
-
-Edit `responses_api_models/vllm_model/configs/vllm_model.yaml` or override via CLI:
-
-```bash
-ng_run "+config_paths=[$config_paths]" \
-    +policy_model.vllm_model.base_url=http://your-vllm-server:10240 \
-    +policy_model.vllm_model.model_name=your-model-name
-```
-
-:::{seealso}
-See {doc}`../../models/index` for tested model configurations and performance characteristics.
+:::{tip}
+All components run as **separate processes** that communicate over HTTP. You can run them on the same machine or distribute them across several servers.
 :::
 
 ---
 
-## Distributed Computing with Ray
+## Network Configuration
 
-NeMo Gym automatically initializes Ray for distributed CPU-intensive tasks like verification and data processing.
-
-### Automatic Ray Setup
-
-Ray initializes automatically when you run NeMo Gym:
-
-```bash
-ng_run "+config_paths=[$config_paths]"
-```
-
-**What happens**:
-1. Main process starts a Ray cluster
-2. Ray address stored in global configuration
-3. Child server processes connect to the same cluster
-4. All processes share the same Ray runtime
-
-**Console output**:
-
-```
-Starting Ray cluster...
-Started Ray cluster at ray://127.0.0.1:6379
-```
-
-### Using a Custom Ray Cluster
-
-Connect to an existing Ray cluster for multi-node distributed computing:
+### Default Behavior
 
 ```yaml
-# config.yaml or env.yaml
-ray_head_node_address: "ray://your-cluster-address:10001"
+# Defaults in config
+default_host: "127.0.0.1"  # Localhost only
+default_port: 8000         # Starting port, auto-increments
 ```
 
-Then run normally:
+Each server gets the next available port: 8000, 8001, 8002, 8003, and so on.
+
+### External Access
+
+Override for production:
 
 ```bash
+ng_run "+config_paths=[config.yaml]" \
+    +default_host=0.0.0.0 \
+    +head_server.port=8000
+```
+
+Or in config:
+
+```yaml
+# production_config.yaml
+default_host: 0.0.0.0
+head_server:
+  port: 8000
+```
+
+:::{warning}
+Binding to `0.0.0.0` exposes servers to network. Ensure:
+
+- Configure firewall rules
+- Secure API keys properly
+- Use TLS/SSL for production traffic
+:::
+
+---
+
+## Credentials and Secrets
+
+### Development: `env.yaml`
+
+```yaml
+# env.yaml (automatically gitignored)
+policy_api_key: sk-your-openai-key
+policy_base_url: https://api.openai.com/v1
+judge_api_key: sk-your-judge-key
+```
+
+### Production Options
+
+::::{tab-set}
+
+:::{tab-item} Environment Variables
+
+```bash
+export POLICY_API_KEY=sk-prod-key
 ng_run "+config_paths=[config.yaml]"
 ```
 
-**When to use custom clusters**:
-- Multi-node training with NeMo-RL
-- Large-scale distributed rollout collection
-- High-throughput verification across compute cluster
-- Training frameworks manage Ray cluster for you
+:::
 
-Training frameworks like [NeMo-RL](https://github.com/NVIDIA-NeMo/RL) configure the Ray cluster automatically for distributed training.
+:::{tab-item} Mounted Configuration
 
-### Parallelizing Tasks in Resource Servers
+```bash
+# Docker with mounted secrets
+docker run -v /secure/env.yaml:/app/env.yaml nemo-gym
+```
 
-Use Ray to parallelize CPU-intensive operations in your resource server:
+:::
+
+:::{tab-item} Secret Management
 
 ```python
-import ray
-from nemo_gym.base_resources_server import SimpleResourcesServer
+# Integration with secret managers
+import boto3
 
-class MyResourcesServer(SimpleResourcesServer):
-    async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
-        # Process many items in parallel
-        results = await self._parallel_verify(body.items)
-        return BaseVerifyResponse(reward=compute_reward(results))
-    
-    async def _parallel_verify(self, items: list) -> list:
-        # Submit all tasks to Ray cluster
-        futures = [verify_item.remote(item) for item in items]
-        # Get results in parallel
-        results = ray.get(futures)
-        return results
-
-# CPU-intensive function runs on Ray worker
-@ray.remote(scheduling_strategy="SPREAD")
-def verify_item(item):
-    # Expensive computation here
-    result = expensive_verification(item)
-    return result
+secrets = boto3.client('secretsmanager')
+api_key = secrets.get_secret_value(SecretId='nemo-gym-api-key')
 ```
 
-**Best practices**:
-- Use `scheduling_strategy="SPREAD"` to distribute across nodes
-- Keep Ray tasks stateless (no shared mutable state)
-- Batch small tasks to reduce overhead
-- Use Ray for CPU-bound work, async for I/O-bound work
+:::
 
-**Real-world example**: The `library_judge_math` server uses Ray to verify 1000+ math problems in parallel during rollout collection.
+::::
 
-### Ray Configuration Options
+---
 
-Advanced Ray configuration:
+## Next Steps
 
-```yaml
-# config.yaml
-ray_head_node_address: "ray://cluster:10001"  # Custom cluster
-# Ray will use default configuration if not specified
+<div class="sd-d-flex-row sd-align-minor-center">
+
+```{button-ref} local-development
+:color: primary
+:outline:
+:expand:
+
+Get Started Locally
 ```
 
-**Environment variables**:
-- `RAY_ADDRESS`: Alternative way to set cluster address
-- Ray respects standard Ray environment variables
+```{button-ref} vllm-integration
+:color: primary
+:outline:
+:expand:
+
+Connect to vLLM
+```
+
+```{button-ref} distributed-computing
+:color: primary
+:outline:
+:expand:
+
+Scale with Ray
+```
+
+</div>
 
 :::{seealso}
-For advanced Ray usage, refer to [Ray documentation](https://docs.ray.io/en/latest/ray-core/api/doc/ray.remote.html) for decorators, actors, and distributed patterns.
+**Configuration Reference**: {doc}`../configuration/index`  
+**Troubleshooting**: {doc}`../configuration/debugging`  
+**Multi-Server Setup**: {doc}`../configuration/multi-server`
 :::
