@@ -5,7 +5,9 @@ from typing import Any, Dict, List
 from datasets import load_dataset
 from tqdm import tqdm
 
+
 SYSTEM_PROMPT = """You are a helpful AI assistant with access to various functions. When you need to use a function to answer a user's request, call the appropriate function with the correct arguments. You can call multiple functions if needed to fully address the user's query."""
+
 
 def convert_parameter_type(param_type: str) -> str:
     type_mapping = {
@@ -95,6 +97,7 @@ def convert_tool_to_openai_format(tool: Dict[str, Any]) -> Dict[str, Any]:
 
     return openai_tool
 
+
 def parse_expected_answers(answers_str: str) -> List[Dict[str, Any]]:
     try:
         answers = json.loads(answers_str)
@@ -105,6 +108,7 @@ def parse_expected_answers(answers_str: str) -> List[Dict[str, Any]]:
         print(f"Error parsing answers: {answers_str}")
         print(f"Error: {e}")
         return []
+
 
 def parse_tools(tools_str: str) -> List[Dict[str, Any]]:
     try:
@@ -124,10 +128,7 @@ def parse_tools(tools_str: str) -> List[Dict[str, Any]]:
         return []
 
 
-def generate_dataset(
-    output_dir: str = "resources_servers/xlam_fc/data",
-    valid_size: int = 1000
-):
+def generate_dataset(output_dir: str = "resources_servers/xlam_fc/data", valid_size: int = 1000):
     print("Loading dataset from HuggingFace...")
     dataset = load_dataset("Salesforce/xlam-function-calling-60k", split="train")
     print(f"Loaded {len(dataset)} examples")
@@ -152,7 +153,7 @@ def generate_dataset(
     print("\nProcessing validation set...")
     valid_processed, valid_skipped = process_and_write_split(valid_dataset, valid_path)
 
-    print(f"\nDataset generation complete!")
+    print("\nDataset generation complete!")
     print(f"Train - Processed: {train_processed}, Skipped: {train_skipped}")
     print(f"Valid - Processed: {valid_processed}, Skipped: {valid_skipped}")
     print(f"Output directory: {output_dir}")
@@ -190,10 +191,8 @@ def process_and_write_split(dataset, output_path: Path) -> tuple[int, int]:
 
     return processed_count, skipped_count
 
-def generate_example_file(
-    output_dir: str = "resources_servers/xlam_fc/data",
-    num_examples: int = 5
-):
+
+def generate_example_file(output_dir: str = "resources_servers/xlam_fc/data", num_examples: int = 5):
     dataset = load_dataset("Salesforce/xlam-function-calling-60k", split="train")
 
     output_path = Path(output_dir)
@@ -236,8 +235,10 @@ def generate_example_file(
 
     print(f"Generated {processed_count} examples in {example_path}")
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] == "--example":
         generate_example_file()
     else:

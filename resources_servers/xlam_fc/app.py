@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 from pydantic import Field
 
 from nemo_gym.base_resources_server import (
@@ -23,11 +24,14 @@ from nemo_gym.base_resources_server import (
     SimpleResourcesServer,
 )
 
+
 class XlamFcResourcesServerConfig(BaseResourcesServerConfig):
     pass
 
+
 class XlamFcVerifyRequest(BaseVerifyRequest):
     expected_answers: List[Dict[str, Any]] = Field(default_factory=list)
+
 
 class XlamFcVerifyResponse(BaseVerifyResponse):
     num_expected: int = 0
