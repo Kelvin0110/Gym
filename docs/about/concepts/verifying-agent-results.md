@@ -181,18 +181,18 @@ Effective verification functions share three critical properties:
   - Implementation Guidelines
   - Why It Matters
 * - **Reliable**
-  - • Same response → same score every time <br>
-    • Avoid randomness in verification logic <br>
+  - • Same response → same score every time
+    • Avoid randomness in verification logic
     • Minimize external dependencies 
   - Inconsistent scoring creates noisy training signals that slow learning
 * - **Meaningful**
-  - • Score reflects true task performance <br>
-    • Avoid proxy metrics that can be gamed <br>
+  - • Score reflects true task performance
+    • Avoid proxy metrics that can be gamed
     • Align with real-world success criteria
   - Agents optimize for the verification function, not your unstated intentions
 * - **Scalable**
-  - • Fast enough for thousands of evaluations <br>
-    • Runs once per training example <br>
+  - • Fast enough for thousands of evaluations
+    • Runs once per training example
     • Prefer local computation over API calls
   - Verification becomes a bottleneck if it cannot scale with training demands
 ```

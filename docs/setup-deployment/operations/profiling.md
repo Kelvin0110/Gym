@@ -202,8 +202,7 @@ def verify(self, question, answer):
 
 :::::
 
-<details>
-<summary>Advanced: Ray parallelization for CPU-intensive tasks</summary>
+::::{dropdown} Advanced: Ray parallelization for CPU-intensive tasks
 
 For computationally heavy verification logic:
 
@@ -222,85 +221,6 @@ def verify(self, question, answer):
 
 :::{seealso}
 For Ray setup, refer to {doc}`../deployment/distributed-computing`
-:::
-
-</details>
-
----
-
-## Best Practices
-
-:::::{grid} 1 1 2 2
-:gutter: 2
-
-::::{grid-item-card} When to Profile
-:class-header: sd-bg-light
-
-**Profile when**:
-- Adding new verification logic
-- Experiencing performance issues
-- Before production deployment
-- Validating optimizations
-
-**Avoid profiling**:
-- In production (adds ~1-2% overhead)
-- With unrealistic workload sizes
-- Without representative data
-
-::::
-
-::::{grid-item-card} Workload Selection
-:class-header: sd-bg-light
-
-Choose `limit` based on goals:
-
-- **100-500**: Quick iteration feedback
-- **1000-2000**: Realistic profiling
-- **5000+**: Production-scale validation
-
-Ensure data represents real-world diversity
-
-::::
-
-::::{grid-item-card} Red Flags
-:class-header: sd-bg-light sd-text-danger
-
-- Single function with `ttot` > 50% total runtime
-- `tavg` increases with dataset size
-- Synchronous calls in hot paths
-
-::::
-
-::::{grid-item-card} Optimization Wins
-:class-header: sd-bg-light sd-text-success
-
-- Even time distribution across functions
-- Low `tavg` for frequently called functions
-- Bottlenecks in external services (optimize API usage)
-
-::::
-
-:::::
-
----
-
-## Next Steps
-
-::::{grid} 1 1 2 2
-:gutter: 2
-
-:::{grid-item-card} {octicon}`beaker;1.5em;sd-mr-1` Run Tests
-:link: testing
-:link-type: doc
-
-Validate optimizations with comprehensive tests
-:::
-
-:::{grid-item-card} {octicon}`pulse;1.5em;sd-mr-1` Monitor Production
-:link: monitoring
-:link-type: doc
-
-Set up ongoing performance monitoring
 :::
 
 ::::

@@ -345,26 +345,3 @@ alerts:
 ```
 
 ::::
-
----
-
-## Next Steps
-
-::::{grid} 1 1 2 2
-:gutter: 2
-
-:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Debug Issues
-:link: debugging
-:link-type: doc
-
-Troubleshoot configuration and connectivity problems
-:::
-
-:::{grid-item-card} {octicon}`meter;1.5em;sd-mr-1` Profile Performance
-:link: profiling
-:link-type: doc
-
-Identify and optimize performance bottlenecks
-:::
-
-::::

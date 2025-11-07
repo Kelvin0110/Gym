@@ -179,26 +179,26 @@ Here's how rollout collection fits into the bigger picture:
   - Details
 * - **1. Prepare Input**
   - Create or download task dataset
-  - • JSONL format (one task per line) <br>
+  - • JSONL format (one task per line)
     • Each task includes `responses_create_params.input`
 * - **2. Configure System**
   - Start servers and set parameters
-  - • Launch agent server (connects to model and resource) <br>
+  - • Launch agent server (connects to model and resource)
     • Specify agent, input path, output path
 * - **3. Generate Rollouts**
   - Run collection command
-  - • Execute `ng_collect_rollouts` with config <br>
-    • Parallel processing with progress tracking <br>
+  - • Execute `ng_collect_rollouts` with config
+    • Parallel processing with progress tracking
     • Each task → interaction → verification → save
 * - **4. Analyze Results**
   - Review and evaluate rollouts
-  - • View interactively with `ng_viewer` <br>
-    • Compute metrics (success rate, avg reward) <br>
+  - • View interactively with `ng_viewer`
+    • Compute metrics (success rate, avg reward)
     • Prepare data for RL training
 * - **5. Iterate**
   - Improve and repeat
-  - • Use rollouts for training <br>
-    • Evaluate on new tasks <br>
+  - • Use rollouts for training
+    • Evaluate on new tasks
     • Debug failures and refine
 ```
 

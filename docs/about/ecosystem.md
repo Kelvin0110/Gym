@@ -73,8 +73,8 @@ The right choice depends on whether you are training models with RL (use NeMo Gy
 ### Feature Comparison
 
 ```{list-table}
-::header-rows: 1
-::widths: 28 28 28 16
+:header-rows: 1
+:widths: 28 28 28 16
 
 * - Aspect
   - NeMo Gym
@@ -135,15 +135,15 @@ The right choice depends on whether you are training models with RL (use NeMo Gy
 * - Scenario
   - When to Use
 * - **Use NeMo Gym**
-  - • You want to train a model with your preferred RL framework <br>
-    • You need scalable rollout collection with verification for reward signals <br>
+  - • You want to train a model with your preferred RL framework
+    • You need scalable rollout collection with verification for reward signals
     • You prefer minimal agent orchestration tailored for RL research and training
 * - **Use NeMo Agent Toolkit**
-  - • You are building agent workflows with observability, profiling, and evaluation <br>
-    • You need inference-first instrumentation and cost visibility <br>
+  - • You are building agent workflows with observability, profiling, and evaluation
+    • You need inference-first instrumentation and cost visibility
     • You want to work within an open and interoperable agent framework
 * - **Use Both (NAT + Gym)**
-  - • You want to train models using data from agent workflows <br>
+  - • You want to train models using data from agent workflows
     • Your agent framework (NAT or another) collects trajectories and scores them, then Gym consumes that data for RL with frameworks such as VeRL or NeMo RL
 ```
 
