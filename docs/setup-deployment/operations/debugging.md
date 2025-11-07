@@ -236,15 +236,17 @@ netstat -tulpn | grep 8000
 
 :::{tab-item} Change Port
 ```bash
-# Use different default port
-ng_run "+config_paths=[config.yaml]" +default_port=9000
-
-# Or configure specific server ports
+# Configure specific server ports
+# (Ports are auto-assigned by default if not specified)
 ng_run "+config_paths=[config.yaml]" \
     +head_server.port=8000 \
     +policy_model.port=8001 \
     +resource_server.port=8002
 ```
+
+:::{note}
+NeMo Gym automatically assigns ports if not specified. There is no global `default_port` parameter.
+:::
 :::
 
 :::{tab-item} Kill Conflicting Process
@@ -313,7 +315,7 @@ grep -i error /tmp/ray/session_latest/logs/*.log
   - Run `ray start --head`
 * - Wrong Ray address
   - Connection timeout
-  - Verify `ray_address` in config or set `RAY_ADDRESS` env var
+  - Verify `ray_head_node_address` in config
 * - Worker out of memory
   - Check Ray dashboard
   - Reduce batch size or increase worker memory
