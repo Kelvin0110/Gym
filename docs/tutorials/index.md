@@ -33,7 +33,7 @@ Transform rollouts into training data for supervised fine-tuning (SFT) and direc
 
 ---
 
-<!-- ## Resource Servers
+## Resource Servers
 
 Build custom environments, tools, and verification systems.
 
@@ -41,13 +41,14 @@ Build custom environments, tools, and verification systems.
 :gutter: 1 1 1 2
 
 :::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Building Custom Resource Servers
-:class-card: sd-border-0 sd-bg-light
-*Coming soon* - Learn to create your own tools and verification systems, integrate with MCP and Docker, and perform dynamic prompting.
+:link: custom-resource-server
+:link-type: doc
+Learn to create your own tools and verification systems for domain-specific tasks. Build custom APIs, verification logic, and dataset workflows.
 +++
-{bdg-warning}`coming-soon` {bdg-secondary}`custom-environments`
+{bdg-secondary}`custom-environments` {bdg-secondary}`tools` {bdg-secondary}`verification`
 :::
 
-:::: -->
+::::
 
 ---
 

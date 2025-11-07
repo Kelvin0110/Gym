@@ -1,320 +1,314 @@
 (setup-deployment-local)=
 
-# Local Development Setup
+# Local Development
 
-Set up NeMo Gym for local experimentation and testing.
+Configure your development environment for iterating on agents, resource servers, and models.
 
----
-
-## Prerequisites
-
-```{list-table}
-:header-rows: 1
-:widths: 20 50 30
-
-* - Requirement
-  - Description
-  - Verification
-* - Python 3.10+
-  - Required for NeMo Gym
-  - `python --version`
-* - pip or uv
-  - Package manager
-  - `pip --version`
-* - Git
-  - For cloning repository
-  - `git --version`
-* - OpenAI API Key
-  - For policy model (or use vLLM)
-  - Account at platform.openai.com
-```
-
----
-
-## Quick Start
-
-### Step 1: Install NeMo Gym
-
-```bash
-# Clone repository
-git clone https://github.com/NVIDIA/NeMo-Gym.git
-cd Gym
-
-# Install with development dependencies
-pip install -e ".[dev]"
-```
-
-:::{tip}
-Use `pip install -e ".[dev]"` for editable install with dev tools (pytest, pre-commit, etc.)
-:::
-
-### Step 2: Configure Credentials
-
-Create `env.yaml` with your API credentials:
-
-```yaml
-# env.yaml (automatically gitignored)
-policy_api_key: sk-your-openai-api-key
-policy_base_url: https://api.openai.com/v1
-policy_model_name: gpt-4o-2024-08-06
-```
-
-:::{important}
-The `env.yaml` file contains secrets and is automatically ignored by git. Never commit credentials.
-:::
-
-### Step 3: Run Test Configuration
-
-```bash
-# Use the simple agent example
-ng_run "+config_paths=[responses_api_agents/simple_agent/config.yaml]"
-```
-
-**Expected output**:
-
-```console
-Starting Ray cluster...
-Started Ray cluster at ray://127.0.0.1:6379
-Starting Head Server on http://127.0.0.1:8000
-Starting Simple Agent on http://127.0.0.1:8001
-Starting Policy Model on http://127.0.0.1:8002
-Starting Simple Resources Server on http://127.0.0.1:8003
-
-All servers started successfully.
-```
-
----
-
-## Verify Installation
-
-### Check Running Servers
-
-```bash
-# List running processes
-ps aux | grep ng_run
-
-# Test API endpoint
-curl http://localhost:8001/health
-```
-
-Expected response:
-
-```json
-{"status": "healthy", "version": "0.1.0"}
-```
-
-### Run Example Task
-
-```bash
-# Execute simple task
-curl -X POST http://localhost:8001/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "What is 2+2?",
-    "max_turns": 1
-  }'
-```
-
----
-
-## Common Issues
-
-::::{dropdown} **Port Already in Use**
-
-```console
-ERROR: Port 8000 already in use
-```
-
-**Solution**: Stop existing processes or use different ports:
-
-```bash
-# Find and kill process
-lsof -ti:8000 | xargs kill -9
-
-# Or use custom ports
-ng_run "+config_paths=[config.yaml]" +head_server.port=9000
-```
-::::
-
-::::{dropdown} **Missing API Key**
-
-```console
-ERROR: policy_api_key not found in configuration
-```
-
-**Solution**: Ensure `env.yaml` exists with valid credentials:
-
-```bash
-# Check if env.yaml exists
-ls -la env.yaml
-
-# Validate format
-cat env.yaml
-```
-::::
-
-::::{dropdown} **Import Errors**
-
-```console
-ModuleNotFoundError: No module named 'nemo_gym'
-```
-
-**Solution**: Reinstall in editable mode:
-
-```bash
-pip install -e ".[dev]"
-```
-::::
-
----
-
-## Development Workflow
-
-### Project Structure
-
-```
-Gym/
-├── nemo_gym/              # Core library
-├── resources_servers/     # Task implementations
-├── responses_api_agents/  # Agent implementations
-├── responses_api_models/  # Model adapters
-├── env.yaml               # Your credentials (gitignored)
-└── outputs/               # Training data outputs
-```
-
-### Typical Development Cycle
-
-1. **Modify Code**: Edit files in `nemo_gym/`, `resources_servers/`, etc.
-2. **Run Tests**: `pytest tests/`
-3. **Test Locally**: `ng_run "+config_paths=[your_config.yaml]"`
-4. **Collect Data**: Check `outputs/` for training data
-5. **Iterate**: Refine and repeat
-
-### Creating Custom Resource Server
-
-```bash
-# Initialize new resource server
-ng_init +entrypoint=resources_servers/my_task
-
-# This creates:
-# resources_servers/my_task/
-# ├── app.py                      # Server implementation
-# ├── configs/my_task.yaml        # Configuration
-# └── data/                       # Datasets
-#     ├── train.jsonl
-#     ├── validation.jsonl
-#     └── example.jsonl
-```
-
-:::{seealso}
-Complete guide: {doc}`../../tutorials/custom-resource-server`
+:::{note}
+**Already completed the {doc}`../../get-started/index`?** This guide builds on that foundation with development workflows, IDE configuration, and advanced testing patterns.
 :::
 
 ---
 
-## Configuration Options
+## Development Environment Setup
 
-### Minimal Configuration
+::::{tab-set}
 
-```yaml
-# Bare minimum for local testing
-simple_agent:
-  responses_api_agents:
-    simple_agent:
-      entrypoint: app.py
-      model_server:
-        type: responses_api_models
-        name: policy_model
-      resources_server:
-        type: resources_servers
-        name: my_resources_server
-```
-
-### Common Overrides
-
-```bash
-# Change ports
-ng_run "+config_paths=[config.yaml]" +head_server.port=9000
-
-# Use different model
-ng_run "+config_paths=[config.yaml]" +policy_model_name=gpt-4o-mini
-
-# Debug logging
-ng_run "+config_paths=[config.yaml]" +log_level=DEBUG
-```
-
-:::{seealso}
-Full configuration reference: {doc}`../configuration/reference`
-:::
-
----
-
-## IDE Setup
-
-### VS Code
-
-Recommended `.vscode/settings.json`:
+:::{tab-item} VS Code
+**Recommended `.vscode/settings.json`**:
 
 ```json
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["tests"],
-  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true
 }
 ```
 
-### PyCharm
+**Workspace extensions**:
+- Python (Microsoft)
+- Pylance
+- YAML (Red Hat)
+:::
 
+:::{tab-item} PyCharm
+**Configure interpreter**:
 1. **File → Settings → Project → Python Interpreter**
-2. Select local virtualenv or create new
-3. Mark `nemo_gym` as sources root
-4. Configure pytest as test runner
+2. Select local virtualenv at `.venv/`
+3. Mark `nemo_gym/` as sources root (right-click → Mark Directory As → Sources Root)
+
+**Enable pytest**:
+1. **File → Settings → Tools → Python Integrated Tools**
+2. Set test runner to `pytest`
+3. Configure test working directory to project root
+:::
+
+:::{tab-item} Neovim/Vim
+**Install LSP support**:
+
+```lua
+-- Using nvim-lspconfig with pyright
+require('lspconfig').pyright.setup{
+  settings = {
+    python = {
+      pythonPath = ".venv/bin/python",
+      analysis = {
+        typeCheckingMode = "basic"
+      }
+    }
+  }
+}
+```
+
+**Test runner**: Use `vim-test` or `neotest-python` with pytest
+:::
+
+::::
+
+---
+
+## Development Workflows
+
+### Iterative Testing Cycle
+
+```{list-table}
+:header-rows: 1
+:widths: 10 40 30 20
+
+* - Step
+  - Action
+  - Command
+  - Expected Duration
+* - 1
+  - Modify code in `nemo_gym/`, `resources_servers/`, etc.
+  - (edit files)
+  - —
+* - 2
+  - Run unit tests for changed modules
+  - `pytest tests/unit_tests/test_<module>.py`
+  - < 30s
+* - 3
+  - Test locally with servers running
+  - `ng_run "+config_paths=[config.yaml]"`
+  - 5-10s startup
+* - 4
+  - Collect rollout data for validation
+  - Check `outputs/<date>/`
+  - —
+* - 5
+  - Run full test suite before committing
+  - `pytest tests/`
+  - 2-5 min
+```
+
+### Testing Individual Servers
+
+::::{tab-set}
+
+:::{tab-item} Resource Server
+**Test a single resource server**:
+
+```bash
+# Test specific resource server
+ng_test +entrypoint=resources_servers/simple_weather
+```
+
+Validates:
+
+- ✅ Server starts without errors
+- ✅ Endpoints respond correctly
+- ✅ Verification logic produces expected results
+:::
+
+:::{tab-item} Agent
+**Test agent workflows**:
+
+```bash
+# Test agent with minimal config
+ng_run "+config_paths=[responses_api_agents/simple_agent/config.yaml]"
+
+# Then in another terminal:
+python responses_api_agents/simple_agent/client.py
+```
+
+Check for:
+
+- ✅ Tool calls executed correctly
+- ✅ Model responses formatted properly
+- ✅ Rollout data saved to `outputs/`
+:::
+
+:::{tab-item} Model Server
+**Test model integration**:
+
+```bash
+# Standalone model server test
+ng_run "+config_paths=[responses_api_models/openai_model/configs/openai_model.yaml]"
+
+# Verify with direct API call
+curl -X POST http://localhost:<port>/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "test"}]}'
+```
+
+Validates:
+
+- ✅ Authentication working
+- ✅ Model accessible
+- ✅ Response format correct
+:::
+
+::::
+
+---
+
+## Configuration Management
+
+**Focus:** Quick overrides for iterative development. For complete configuration reference and production patterns, see {doc}`../configuration/index`.
+
+### Environment-Specific Configs
+
+```{list-table}
+:header-rows: 1
+:widths: 30 40 30
+
+* - File
+  - Purpose
+  - Priority
+* - `env.yaml`
+  - Secrets and credentials (gitignored)
+  - **High** (overrides everything)
+* - `config.yaml`
+  - Project-specific settings
+  - Medium
+* - CLI arguments
+  - Runtime overrides
+  - **Highest** (overrides all files)
+```
+
+**Example workflow**:
+
+```bash
+# Base configuration
+cat > my_experiment.yaml << EOF
+simple_agent:
+  responses_api_agents:
+    simple_agent:
+      entrypoint: app.py
+      max_turns: 10
+      temperature: 0.7
+EOF
+
+# Override at runtime
+ng_run "+config_paths=[my_experiment.yaml]" \
+  +simple_agent.responses_api_agents.simple_agent.temperature=0.9 \
+  +simple_agent.responses_api_agents.simple_agent.max_turns=5
+```
+
+:::{seealso}
+{doc}`../configuration/reference` for complete configuration schema and hierarchy rules.
+:::
+
+### Common Development Overrides
+
+::::{dropdown} Change Server Ports
+
+```bash
+# Avoid conflicts with other services
+ng_run "+config_paths=[config.yaml]" \
+  +head_server.port=9000
+```
+
+**When needed**: Port conflicts, running simultaneous instances.
+::::
+
+::::{dropdown} Enable Debug Logging
+
+```bash
+# Detailed logs for troubleshooting
+ng_run "+config_paths=[config.yaml]" \
+  +log_level=DEBUG
+```
+
+**Output includes**: Request/response bodies, tool call details, verification steps.
+::::
+
+::::{dropdown} Use Different Models
+
+```bash
+# Quick model comparison
+ng_run "+config_paths=[config.yaml]" \
+  +policy_model_name=gpt-4o-mini  # Cheaper for iteration
+
+ng_run "+config_paths=[config.yaml]" \
+  +policy_model_name=gpt-4o  # Higher quality
+```
+
+**Tip**: Set defaults in `env.yaml`, override temporarily via CLI.
+::::
+
+::::{dropdown} Limit Data Collection
+
+```bash
+# Faster testing with fewer samples
+ng_run "+config_paths=[config.yaml]" \
+  +simple_agent.responses_api_agents.simple_agent.datasets.0.num_repeats=2
+```
+
+**Development mode**: Use `num_repeats=1` for speed. Production: 5-10+ for coverage.
+::::
 
 ---
 
 ## Next Steps
 
-::::{grid} 1 1 3 3
-:gutter: 2
-
-:::{grid-item}
-```{button-ref} ../configuration/index
-:color: primary
-:outline:
-:expand:
-
-Configure Your Setup
-```
-:::
-
-:::{grid-item}
-```{button-ref} vllm-integration
-:color: primary
-:outline:
-:expand:
-
-Use Local Models with vLLM
-```
-:::
-
-:::{grid-item}
-```{button-ref} ../../tutorials/index
-:color: primary
-:outline:
-:expand:
-
-Follow Tutorials
-```
-:::
-
-::::
+### Build Custom Resource Servers
 
 :::{seealso}
-- **Debugging**: {doc}`../configuration/debugging`
-- **Multi-Server Setup**: {doc}`../configuration/multi-server`
-- **Examples**: Browse `resources_servers/` directory for working examples
+**Need domain-specific tools or verification?** See {doc}`../../tutorials/custom-resource-server` for a complete tutorial on building custom resource servers from scratch, including:
+- Tool implementation patterns (APIs, databases, code execution)
+- Verification strategies (binary, continuous, multi-metric)
+- Dataset preparation and testing
+- Deployment and troubleshooting
+:::
+
+---
+
+## Debugging and Troubleshooting
+
+### Inspecting Collected Data
+
+```bash
+# View collected training data
+ng_viewer +jsonl_fpath=outputs/2025-11-07/train.jsonl
+```
+
+**Opens interactive viewer** showing:
+
+- Agent messages and tool calls
+- Verification results and scores
+- Aggregated metrics
+
+### Configuration and Common Issues
+
+:::{seealso}
+**Troubleshooting configuration issues?** See {doc}`../configuration/debugging` for detailed debugging workflows including:
+- Port conflicts and resolution
+- Module import errors
+- Configuration not loading
+- API rate limits and quota errors
+- Variable resolution and server references
+- Pre-deployment validation checklists
+:::
+
+:::{seealso}
+**Production monitoring and testing?** See {doc}`../operations/index` for operational concerns including:
+- Health checks and monitoring
+- Resource server validation with `ng_test`
+- Performance profiling for production scale
+- Integration and functional testing
 :::
 
