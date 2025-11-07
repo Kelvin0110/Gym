@@ -55,27 +55,27 @@ Understanding what gets deployed:
 * - Component
   - Purpose
   - Network Role
-  - Default Port
+  - Port Assignment
 * - Head Server
   - Configuration distribution
   - Internal coordinator
-  - 8000
+  - 11000 (fixed)
 * - Responses API Agent
   - Orchestrates interactions
   - External API endpoint
-  - 8001
+  - Auto-assigned
 * - Policy Model
   - Generates responses
   - Internal service
-  - 8002
+  - Auto-assigned
 * - Resources Server
   - Domain verification
   - Internal service
-  - 8003
+  - Auto-assigned
 ```
 
 :::{tip}
-All components run as **separate processes** that communicate over HTTP. You can run them on the same machine or distribute them across several servers.
+All components run as **separate processes** that communicate over HTTP. You can run them on the same machine or distribute them across several servers. The head server always uses port 11000, while other servers get dynamically assigned ports from the operating system.
 :::
 
 ---
@@ -91,10 +91,9 @@ All components run as **separate processes** that communicate over HTTP. You can
 ```yaml
 # Default configuration
 default_host: "127.0.0.1"  # Localhost only
-default_port: 8000         # Starting port, auto-increments
 ```
 
-Each server gets the next available port: 8000, 8001, 8002, 8003, and so on.
+The head server uses port **11000**. Other servers get automatically assigned available ports from the operating system (e.g., 62920, 52341). Port numbers vary between runs.
 
 **Use when**:
 
@@ -113,7 +112,7 @@ Via CLI:
 ```bash
 ng_run "+config_paths=[config.yaml]" \
     +default_host=0.0.0.0 \
-    +head_server.port=8000
+    +head_server.port=11000
 ```
 
 Via configuration file:
@@ -122,7 +121,7 @@ Via configuration file:
 # production_config.yaml
 default_host: 0.0.0.0
 head_server:
-  port: 8000
+  port: 11000
 ```
 
 ```{warning}
