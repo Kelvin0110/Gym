@@ -4,6 +4,15 @@
 
 Manage NeMo Gym's three-tier configuration system for different environments, secrets, and multi-server deployments.
 
+:::{button-ref} concepts-configuration-system
+:color: primary
+:outline:
+:ref-type: ref
+
+← Review Configuration System Concepts
+:::
+
+
 ## Quick Configuration Patterns
 
 Common configuration patterns for different deployment scenarios:
@@ -88,14 +97,6 @@ ng_run "+config_paths=[${CONFIG_PATH}]" \
 
 ::::
 
-:::{button-ref} debugging
-:color: primary
-:outline:
-:ref-type: doc
-
-← Review Configuration System Concepts
-:::
-
 ---
 
 ## Topics
@@ -134,7 +135,6 @@ Debug and validate configurations with `ng_dump_config`, troubleshoot common err
 :::
 
 ::::
-
 
 ```{toctree}
 :hidden:

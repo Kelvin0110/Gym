@@ -242,33 +242,3 @@ ray_head_node_address: "ray://cluster:10001"  # Custom cluster
 :::{seealso}
 For advanced Ray usage, refer to [Ray documentation](https://docs.ray.io/en/latest/ray-core/api/doc/ray.remote.html) for decorators, actors, and distributed patterns.
 :::
-
----
-
-## Scaling
-
-For high-throughput production workloads:
-
-### Horizontal Scaling
-
-- Run multiple resource server instances
-- Use load balancers for distribution
-- Scale horizontally by adding more servers
-- Monitor resource usage and adjust accordingly
-
-### Ray-Based Scaling
-
-- Connect to multi-node Ray cluster for distributed processing
-- Parallelize verification across compute nodes
-- Scale CPU-intensive tasks automatically
-
-### High-Throughput Scenarios
-
-For extreme concurrency (16k+ concurrent requests):
-- Use Ray for parallel processing
-- Profile servers to identify bottlenecks (see {doc}`../operations/index`)
-- Optimize verify() methods for efficiency
-- Consider multiple vLLM worker instances
-
-
-

@@ -113,7 +113,7 @@ This modular architecture provides four key benefits:
 * - **Reusable Components**
   - The same model can work with different tools. The same tools can work with different models. Mix and match without rewriting code.
 * - **Test in Isolation**
-  - Debug your math verifier without touching the model. Test your agent logic without deploying infrastructure. Each piece works independently.
+  - Debug your math resource server's verification logic without touching the model. Test your agent logic without deploying infrastructure. Each piece works independently.
 * - **Deploy Flexibly**
   - Run everything locally on your laptop, or distribute across multiple servers. Each component is an independent HTTP service.
 * - **Swap via Configuration**

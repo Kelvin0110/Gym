@@ -19,13 +19,13 @@ Five core design principles distinguish NeMo Gym from other agent frameworks.
 * - **Training-Focused**
   - Optimized for generating large-scale training data, not inference deployment. High throughput over low latency.
 * - **Framework Integration**
-  - First-class support for popular RL frameworks. Bridges the gap between environments and training infrastructure.
-* - **Production-Ready Environments**
-  - Curated resource servers with verified accuracy. Not just toys—used for training NVIDIA Nemotron models.
+  - First-class support for popular RL frameworks. Bridges the gap between resource servers (RL environments) and training infrastructure.
+* - **Production-Ready Resource Servers**
+  - Curated training environments with verified accuracy. Not just toys—used for training NVIDIA Nemotron models.
 * - **Configuration-First**
-  - Swap environments, models, and settings via YAML. Minimal code changes for different training scenarios.
+  - Swap resource servers, models, and settings via YAML. Minimal code changes for different training scenarios.
 * - **Extensible Foundation**
-  - Clear abstractions and base classes make custom environments straightforward. Add new tools without understanding entire system.
+  - Clear abstractions and base classes make custom resource servers straightforward. Add new tools without understanding entire system.
 ```
 
 ---
@@ -91,7 +91,7 @@ NeMo Gym includes 12 production-ready resource servers across eight domains:
 * **Google Search**: Web search tool integration with result verification
 * **Workbench**: Business productivity tools (CRM, email, calendar, analytics)
 * **Stateful Counter**: Stateful multi-turn interaction examples
-* **Simple Weather**: Tutorial environment for getting started
+* **Simple Weather**: Tutorial resource server for getting started
 
 ### Knowledge & Reasoning
 
@@ -128,7 +128,7 @@ Connect to OpenAI, Azure OpenAI, or self-hosted models through standardized Resp
 * - **vLLM Local Serving**
   - Run open-source models locally using vLLM. Automatic conversion between OpenAI Responses API format and vLLM's chat completions interface.
 * - **OpenAI-Compatible Format**
-  - Standardized on OpenAI's Responses API schema enables easy swapping between model providers without changing environment code.
+  - Standardized on OpenAI's Responses API schema enables easy swapping between model providers without changing resource server code.
 * - **Token-Level Data**
   - Capture prompt token IDs, generation token IDs, and logprobs for RL training. Essential for policy gradient algorithms and reward modeling.
 ```
@@ -203,7 +203,7 @@ NeMo Gym passes trajectory data to popular RL training frameworks for backpropag
 * - **NeMo-RL Integration**
   - Designed as part of the NeMo Framework ecosystem. Passes data directly to NeMo-RL for training orchestration and model updates.
 * - **OpenRLHF Compatible**
-  - Trajectory format works with OpenRLHF framework. Use same environments across different RL training implementations.
+  - Trajectory format works with OpenRLHF framework. Use same resource servers (training environments) across different RL training implementations.
 * - **Framework-Agnostic Data**
   - Core rollout format is JSON-based and framework-independent. NeMo Gym handles collection and verification; RL frameworks handle training.
 ```
@@ -212,7 +212,7 @@ NeMo Gym passes trajectory data to popular RL training frameworks for backpropag
 
 ## Extensibility & Customization
 
-Build custom environments with base classes, templates, and plugin architecture for maximum flexibility.
+Build custom resource servers with base classes, templates, and plugin architecture for maximum flexibility.
 
 ```{list-table}
 :header-rows: 0
@@ -234,13 +234,13 @@ Build custom environments with base classes, templates, and plugin architecture 
 
 ## Additional Capabilities
 
-Supporting features for stateful environments, metrics computation, error handling, and performance profiling.
+Supporting features for stateful resource servers, metrics computation, error handling, and performance profiling.
 
 ```{list-table}
 :header-rows: 0
 :widths: 30 70
 
-* - **Stateful Environments**
+* - **Stateful Resource Servers**
   - Support for multi-turn conversations with session management. Maintain state across agent interactions for complex workflows.
 * - **Metrics Computation**
   - Automatic calculation of accuracy, reward distributions, success rates, and domain-specific metrics during rollout collection.

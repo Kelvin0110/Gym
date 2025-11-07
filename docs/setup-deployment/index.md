@@ -2,35 +2,15 @@
 
 # Setup & Deployment
 
-Configure and deploy NeMo Gym for your project. These guides assume you've completed the getting-started tutorials and are ready to set up development, testing, or production environments.
+Configure and deploy NeMo Gym for your project. 
 
----
+:::{button-ref} /get-started/index
+:color: secondary
+:outline:
+:ref-type: doc
 
-## Quick Navigation
-
-Choose based on what you need to do right now:
-
-```{list-table}
-:header-rows: 1
-:widths: 40 60
-
-* - I Need To...
-  - Go Here
-* - Set up dev/test/prod environments
-  - {doc}`Configuration / Environments <configuration/environments>`
-* - Manage API keys and secrets
-  - {doc}`Configuration / Secrets <configuration/secrets>`
-* - Configure multiple servers
-  - {doc}`Configuration / Multi-Server <configuration/multi-server>`
-* - Deploy on remote machines
-  - {doc}`Deployment / Remote Servers <deployment/remote-servers>`
-* - Run in Docker containers
-  - {doc}`Deployment / Containers <deployment/containers>`
-* - Test my setup
-  - {doc}`Operations / Testing <operations/testing>`
-* - Debug configuration issues
-  - {doc}`Configuration / Troubleshooting <configuration/troubleshooting>`
-```
+← New? Try Get Started
+:::
 
 ---
 
@@ -38,43 +18,16 @@ Choose based on what you need to do right now:
 
 Master NeMo Gym's three-tier configuration system to handle different environments, secrets, and deployment scenarios.
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 1 1
 :gutter: 3
 
-:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Environments
-:link: configuration/environments
+:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Configuration Management
+:link: configuration/index
 :link-type: doc
 
-Manage separate configurations for development, testing, and production environments.
+Manage NeMo Gym's three-tier configuration system, handle environments, secrets, and multi-server setups.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`dev-test-prod`
-:::
-
-:::{grid-item-card} {octicon}`shield-lock;1.5em;sd-mr-1` Secrets Management
-:link: configuration/secrets
-:link-type: doc
-
-Securely handle API keys, credentials, and sensitive configuration values.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`security`
-:::
-
-:::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Multi-Server Setup
-:link: configuration/multi-server
-:link-type: doc
-
-Configure multiple models, resource servers, and agents in one deployment.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`architecture`
-:::
-
-:::{grid-item-card} {octicon}`tools;1.5em;sd-mr-1` Troubleshooting
-:link: configuration/troubleshooting
-:link-type: doc
-
-Debug common configuration issues and validate your setup.
-+++
-{bdg-secondary}`reference` {bdg-secondary}`debugging`
+{bdg-secondary}`how-to` {bdg-secondary}`configuration`
 :::
 
 ::::
@@ -89,43 +42,16 @@ Debug common configuration issues and validate your setup.
 
 Deploy NeMo Gym in different environments—local development, remote servers, or containerized infrastructure.
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 1 1
 :gutter: 3
 
-:::{grid-item-card} {octicon}`device-desktop;1.5em;sd-mr-1` Local Development
-:link: deployment/local
+:::{grid-item-card} {octicon}`cloud;1.5em;sd-mr-1` Deployment
+:link: deployment/index
 :link-type: doc
 
-Set up NeMo Gym for local development and testing on your laptop.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`getting-started`
-:::
-
-:::{grid-item-card} {octicon}`cloud;1.5em;sd-mr-1` Remote Servers
-:link: deployment/remote-servers
-:link-type: doc
-
-Deploy NeMo Gym components on remote machines or cloud infrastructure.
+Deploy NeMo Gym locally, on remote servers, in containers, and scale for production.
 +++
 {bdg-secondary}`how-to` {bdg-secondary}`deployment`
-:::
-
-:::{grid-item-card} {octicon}`container;1.5em;sd-mr-1` Containers
-:link: deployment/containers
-:link-type: doc
-
-Package and deploy NeMo Gym using Docker and container orchestration.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`docker`
-:::
-
-:::{grid-item-card} {octicon}`zap;1.5em;sd-mr-1` Scaling
-:link: deployment/scaling
-:link-type: doc
-
-Scale NeMo Gym components for high-throughput production workloads.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`performance`
 :::
 
 ::::
@@ -136,34 +62,16 @@ Scale NeMo Gym components for high-throughput production workloads.
 
 Monitor, test, and debug your NeMo Gym deployment to ensure reliable operation.
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 1 1
 :gutter: 3
 
-:::{grid-item-card} {octicon}`pulse;1.5em;sd-mr-1` Monitoring
-:link: operations/monitoring
+:::{grid-item-card} {octicon}`pulse;1.5em;sd-mr-1` Operations
+:link: operations/index
 :link-type: doc
 
-Set up health checks and monitoring for your NeMo Gym deployment.
+Monitor, test, and debug your NeMo Gym deployment for reliable operation.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`ops`
-:::
-
-:::{grid-item-card} {octicon}`beaker;1.5em;sd-mr-1` Testing
-:link: operations/testing
-:link-type: doc
-
-Test your NeMo Gym setup to validate configuration and functionality.
-+++
-{bdg-secondary}`how-to` {bdg-secondary}`validation`
-:::
-
-:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` Debugging
-:link: operations/debugging
-:link-type: doc
-
-Diagnose and fix common issues with NeMo Gym deployments.
-+++
-{bdg-secondary}`reference` {bdg-secondary}`troubleshooting`
+{bdg-secondary}`how-to` {bdg-secondary}`operations`
 :::
 
 ::::
@@ -191,7 +99,7 @@ EOF
 ng_run "+config_paths=[responses_api_agents/simple_agent/config.yaml]"
 ```
 
-**Next**: {doc}`configuration/environments` for multiple environment setup
+**Next**: See {doc}`configuration/index` for more configuration patterns
 
 ---
 
@@ -210,25 +118,5 @@ ng_run "+config_paths=[production_config.yaml]" \
     +head_server.port=8000
 ```
 
-**Next**: {doc}`deployment/remote-servers` for distributed deployment
-
----
-
-## Related Documentation
-
-- {doc}`../get-started/index` - First-time setup and tutorials
-- {doc}`../about/concepts/configuration-system` - Configuration system concepts
-- {doc}`../about/architecture` - System architecture overview
-- {doc}`../how-to-faq` - Additional how-to guides
-
----
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-
-configuration/index
-deployment/index
-operations/index
-```
+**Next**: See {doc}`deployment/index` for deployment options
 

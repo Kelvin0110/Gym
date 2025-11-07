@@ -1,125 +1,61 @@
-(config-multi-server)=
-
 # Multi-Server Configuration
 
-Run multiple resource servers (training environments) simultaneously for diverse training scenarios.
+(config-multi-server)=
+
+Run multi-server deployments to train agents across diverse task domains.
 
 ---
 
-## Overview
+## Quick Start
 
-NeMo Gym supports running multiple resource servers in a single deployment. This enables:
-- Training agents across multiple task domains
-- Testing agent capabilities with diverse environments
-- Production deployments with comprehensive toolsets
-
-**How it works**:
-- Each YAML config defines uniquely named servers
-- Configs are merged together (later configs override earlier ones)
-- Each server maintains isolated configuration scope
-- Servers can reference each other by name
-
----
-
-## Running Multiple Resource Servers
-
-Combine multiple resource servers by listing all configuration files:
+Combine resource servers by listing all configuration files:
 
 ```bash
-# Single resource server (math only)
-config_paths="responses_api_models/openai_model/configs/openai_model.yaml,\
-resources_servers/library_judge_math/configs/bytedtsinghua_dapo17k.yaml"
-ng_run "+config_paths=[$config_paths]"
-
-# Multiple resource servers (math + search)
+# Multi-server deployment (math + search)
 config_paths="responses_api_models/openai_model/configs/openai_model.yaml,\
 resources_servers/library_judge_math/configs/bytedtsinghua_dapo17k.yaml,\
 resources_servers/google_search/configs/google_search.yaml"
+
 ng_run "+config_paths=[$config_paths]"
 ```
 
-**What happens**:
-1. NeMo Gym loads each YAML file in order
-2. Configs are merged (later files can override earlier ones)
-3. All servers start simultaneously
-4. Agents can access any resource server by name
+**Result**: All servers start simultaneously, and agents can access any server by name.
 
 ---
 
-## Multi-Server Use Cases
+## How Configuration Merging Works
 
-### Training with Multiple Environments
+When you provide multi-file configurations:
 
-Train an agent across diverse task types:
+1. **Sequential loading** - NeMo Gym loads each file in order
+2. **Key-level merging** - Later files override earlier ones for conflicting top-level keys
+3. **Isolated scopes** - Each server (top-level key) maintains its own configuration
+4. **Cross-references** - Servers reference each other using `type` and `name` fields
 
-```bash
-# Agent that handles coding, math, and search
-config_paths="responses_api_models/openai_model/configs/openai_model.yaml,\
-resources_servers/comp_coding/configs/comp_coding.yaml,\
-resources_servers/library_judge_math/configs/bytedtsinghua_dapo17k.yaml,\
-resources_servers/google_search/configs/google_search.yaml"
-ng_run "+config_paths=[$config_paths]"
+```{tip}
+Later configuration files override earlier ones. Put environment-specific overrides at the end of your config list.
 ```
-
-**Training benefits**:
-- Single model learns multiple capabilities
-- Better generalization across task types
-- Efficient multi-task training
-
----
-
-### Testing Agent Capabilities
-
-Evaluate agent performance across different domains:
-
-```bash
-# Collect rollouts across multiple servers
-ng_collect_rollouts +agent_name=multi_task_agent \
-    +input_jsonl_fpath=data/multi_task_test.jsonl \
-    +output_jsonl_fpath=results/multi_task_rollouts.jsonl
-```
-
-**Testing benefits**:
-- Comprehensive capability assessment
-- Identify strengths and weaknesses per domain
-- Compare performance across task types
-
----
-
-### Production Deployment
-
-Deploy comprehensive agent with diverse capabilities:
-
-```bash
-# Production config with multiple resource servers
-config_paths="$MODEL_CONFIG,$MATH_CONFIG,$SEARCH_CONFIG,$WEATHER_CONFIG,$CODING_CONFIG"
-ng_run "+config_paths=[$config_paths]" \
-    +default_host=0.0.0.0 \
-    +head_server.port=8000
-```
-
-**Production benefits**:
-- Single deployment handles multiple use cases
-- Consistent infrastructure across domains
-- Easier maintenance and monitoring
 
 ---
 
 ## Configuration Patterns
 
-### Pattern 1: Shared Model, Multiple Resources
+Choose the pattern that matches your use case.
 
-One model server shared across multiple resource servers:
+::::{tab-set}
+
+:::{tab-item} Shared Model
+
+One model serves several resource servers (cost-effective for evaluation).
 
 ```yaml
-# In model_config.yaml
+# model_config.yaml
 policy_model:
   responses_api_models:
     openai_model:
-      entrypoint: app.py
       model_name: gpt-4o-2024-11-20
 
-# In math_config.yaml
+# math_config.yaml
 math_agent:
   responses_api_agents:
     simple_agent:
@@ -127,7 +63,7 @@ math_agent:
         type: responses_api_models
         name: policy_model  # References shared model
 
-# In search_config.yaml
+# search_config.yaml
 search_agent:
   responses_api_agents:
     simple_agent:
@@ -136,13 +72,17 @@ search_agent:
         name: policy_model  # Same shared model
 ```
 
-**Use when**: Cost-effective deployment, consistent model across tasks
+**Use when**:
 
----
+- Cost-effective evaluation
+- Consistent model across tasks
+- Testing generalist capabilities
 
-### Pattern 2: Specialized Models per Domain
+:::
 
-Different models optimized for different resource servers:
+:::{tab-item} Specialized Models
+
+Different models optimized for specific domains.
 
 ```yaml
 # Math-optimized model
@@ -157,28 +97,31 @@ coding_model:
     vllm_model:
       model_name: codellama-34b
 
+# Agents reference domain-specific models
 math_agent:
   responses_api_agents:
     simple_agent:
       model_server:
-        type: responses_api_models
         name: math_model
 
 coding_agent:
   responses_api_agents:
     simple_agent:
       model_server:
-        type: responses_api_models
         name: coding_model
 ```
 
-**Use when**: Domain-specific model optimization, testing model performance
+**Use when**:
 
----
+- Domain-specific optimization
+- A/B testing models
+- Different model sizes per domain
 
-### Pattern 3: Policy and Judge Models
+:::
 
-Separate models for generation and evaluation:
+:::{tab-item} Policy + Judge
+
+Separate models for generation and evaluation (RL training pattern).
 
 ```yaml
 # Generation model
@@ -193,6 +136,7 @@ judge_model:
     openai_model:
       model_name: gpt-4o-2024-11-20
 
+# Resource server uses judge
 math_resources_server:
   resources_servers:
     library_judge_math:
@@ -200,99 +144,102 @@ math_resources_server:
         type: responses_api_models
         name: judge_model
 
+# Agent uses policy
 math_agent:
   responses_api_agents:
     simple_agent:
       model_server:
-        type: responses_api_models
         name: policy_model
       resources_server:
         type: resources_servers
         name: math_resources_server
 ```
 
-**Use when**: Training with verification, separate policy and critic models
+**Use when**:
+
+- RL training with verification
+- Separate policy and critic models
+- Cost optimization (cheap policy, expensive judge)
 
 See {doc}`../../tutorials/separate-policy-and-judge-models` for complete guide.
 
+:::
+
+::::
+
 ---
 
-## Data Preparation with Multiple Servers
+## Common Use Cases
 
-The same multi-server pattern applies to data preparation:
+### Multi-Task Training
+
+Train a single agent across diverse capabilities:
 
 ```bash
-# Prepare data across multiple resource servers
 config_paths="responses_api_models/openai_model/configs/openai_model.yaml,\
+resources_servers/comp_coding/configs/comp_coding.yaml,\
 resources_servers/library_judge_math/configs/bytedtsinghua_dapo17k.yaml,\
 resources_servers/google_search/configs/google_search.yaml"
 
-ng_prepare_data "+config_paths=[$config_paths]" \
-    +output_dirpath=data/multi_task \
-    +mode=train_preparation
+ng_run "+config_paths=[$config_paths]"
 ```
 
-**Result**: Combined training dataset with samples from all resource servers.
+**Benefits**: Single model learns diverse capabilities, better generalization, efficient multi-task training.
 
 ---
 
-## Training Framework Integration
+### Cross-Domain Evaluation
 
-Use the same config for rollout collection and training framework:
+Assess agent performance across different task types:
 
 ```bash
-# 1. Collect rollouts with multiple servers
-config_paths="..."
-ng_collect_rollouts "+config_paths=[$config_paths]" \
-    +output_jsonl_fpath=data/training_rollouts.jsonl
+# Same config for data prep and rollout collection
+ng_collect_rollouts +agent_name=multi_task_agent \
+    +input_jsonl_fpath=data/multi_task_test.jsonl \
+    +output_jsonl_fpath=results/multi_task_rollouts.jsonl
+```
 
-# 2. Use in NeMo-RL
-nemo_rl_train \
-    --gym_config_paths "$config_paths" \
-    --rollout_data data/training_rollouts.jsonl
+**Benefits**: Comprehensive capability assessment, identify domain-specific strengths/weaknesses.
+
+---
+
+### Environment-Based Configuration
+
+Use different server combinations per environment:
+
+```bash
+# Development: Minimal servers
+export DEV_CONFIG="model.yaml,math.yaml"
+ng_run "+config_paths=[$DEV_CONFIG]"
+
+# Production: Full suite
+export PROD_CONFIG="model.yaml,math.yaml,search.yaml,coding.yaml,weather.yaml"
+ng_run "+config_paths=[$PROD_CONFIG]" +default_host=0.0.0.0
 ```
 
 ```{seealso}
-The same multi-server pattern works seamlessly with training frameworks. See {doc}`../../training/handoff-to-training` for framework-specific integration.
+See {doc}`../../training/handoff-to-training` for using multi-server configs with training frameworks.
 ```
 
 ---
 
-## Managing Multiple Configurations
+## Configuration Organization
 
-### Environment-Based Selection
+For complex deployments, organize configuration files by environment:
 
-```bash
-# Development: Limited servers for fast iteration
-config_paths="model.yaml,math.yaml"
-ng_run "+config_paths=[$config_paths]"
-
-# Staging: Add more servers
-config_paths="model.yaml,math.yaml,search.yaml,coding.yaml"
-ng_run "+config_paths=[$config_paths]"
-
-# Production: Full suite
-config_paths="$PROD_CONFIGS"  # Set via environment variable
-ng_run "+config_paths=[$config_paths]" +default_host=0.0.0.0
-```
-
----
-
-### Config File Organization
-
-```
+```text
 configs/
 ├── base/
 │   ├── models/
-│   │   ├── policy_model.yaml
-│   │   └── judge_model.yaml
-│   └── resources/
+│   │   ├── policy.yaml
+│   │   └── judge.yaml
+│   └── servers/
 │       ├── math.yaml
 │       ├── search.yaml
 │       └── coding.yaml
-├── dev.yaml        # Minimal servers for dev
-├── staging.yaml    # More servers for testing
-└── prod.yaml       # All servers for production
+├── dev.yaml        # Minimal for fast iteration
+├── staging.yaml    # Expanded for testing
+└── prod.yaml       # Complete deployment
 ```
 
 **Usage**:
@@ -305,110 +252,112 @@ ng_run "+config_paths=[configs/dev.yaml]"
 ng_run "+config_paths=[configs/prod.yaml]" +default_host=0.0.0.0
 ```
 
----
-
-## Debugging Multi-Server Configurations
-
-### Verify All Servers Load
-
-```bash
-ng_dump_config "+config_paths=[$config_paths]" | grep "entrypoint:"
-# Should show one entry per server
-```
-
-### Check for Name Conflicts
-
-```bash
-ng_dump_config "+config_paths=[$config_paths]" > /tmp/config.yaml
-# Search for duplicate top-level keys (server names)
-grep "^[a-z_]*:" /tmp/config.yaml | sort | uniq -d
-```
-
-### Validate Server References
-
-```bash
-ng_dump_config "+config_paths=[$config_paths]" | grep -A 2 "server:"
-# Verify all referenced servers exist
+```{tip}
+Each YAML can reference other files using the `config_paths` key. NeMo Gym recursively loads all referenced configuration files.
 ```
 
 ---
 
-## Performance Considerations
+## Validation and Debugging
 
-**Resource usage**: Each server runs as a separate process
-- Monitor total memory usage with multiple servers
-- Scale horizontally if needed (run servers on different machines)
+### Verify Merged Configuration
 
-**Port allocation**: Each server needs a unique port
-- Use `ng_dump_config` to verify no port conflicts
-- Let NeMo Gym auto-assign ports (omit `port:` key)
-
-**Startup time**: More servers = longer startup
-- Start servers in order of dependency
-- Use health checks to verify all servers are ready
-
----
-
-## Common Patterns
-
-### Minimal (Single Server)
+View the final merged configuration:
 
 ```bash
-config_paths="model.yaml,resources/math.yaml"
+ng_dump_config "+config_paths=[$config_paths]"
 ```
 
-**Use for**: Development, focused testing, single-task training
+This shows the complete configuration after merging all files, with all references resolved.
 
 ---
 
-### Standard (3-5 Servers)
+### Common Issues
+
+::::{dropdown} **Issue: Server name conflicts**
+
+**Symptom**: Later configuration file overwrites earlier server unintentionally.
+
+**Solution**: Each server needs a unique top-level key name:
+
+```yaml
+# ❌ Bad: Both files define "agent"
+# math.yaml
+agent:
+  responses_api_agents:
+    simple_agent: ...
+
+# search.yaml  
+agent:  # Overwrites math agent!
+  responses_api_agents:
+    simple_agent: ...
+
+# ✅ Good: Unique names
+# math.yaml
+math_agent:
+  responses_api_agents:
+    simple_agent: ...
+
+# search.yaml
+search_agent:
+  responses_api_agents:
+    simple_agent: ...
+```
+
+::::
+
+::::{dropdown} **Issue: Server reference not found**
+
+**Symptom**: Error saying a referenced server doesn't exist.
+
+**Solution**: Verify the referenced server exists in one of your configuration files:
 
 ```bash
-config_paths="model.yaml,resources/math.yaml,resources/search.yaml,resources/coding.yaml"
+# Check all server names in merged configuration
+ng_dump_config "+config_paths=[$config_paths]" | grep "^[a-z_]*:" | head -20
 ```
 
-**Use for**: Multi-task training, comprehensive evaluation
+Ensure your server references match these names:
 
----
+```yaml
+math_agent:
+  responses_api_agents:
+    simple_agent:
+      model_server:
+        type: responses_api_models
+        name: policy_model  # Must match a top-level key
+```
 
-### Comprehensive (10+ Servers)
+::::
+
+::::{dropdown} **Issue: Configuration not loading in expected order**
+
+**Symptom**: Wrong values after merge.
+
+**Solution**: Remember that later files override earlier ones. Put base configuration first, overrides last:
 
 ```bash
-config_paths="models/*.yaml,resources/*.yaml"
+# ✅ Correct order: base → specific
+config_paths="base_model.yaml,dev_overrides.yaml"
+
+# ❌ Wrong order: specific → base (base overwrites dev settings)
+config_paths="dev_overrides.yaml,base_model.yaml"
 ```
 
-**Use for**: Production, benchmark evaluation, model comparison
+::::
 
 ---
 
-## Best Practices
+## Next Steps
 
-**Configuration management**:
-- Keep server configs in separate files for modularity
-- Use base configs for common settings
-- Override in environment-specific configs
+```{list-table}
+:header-rows: 0
+:widths: 30 70
 
-**Naming conventions**:
-- Descriptive server names (e.g., `math_resources_server`, not `server1`)
-- Consistent suffixes (`_model`, `_resources_server`, `_agent`)
-- Avoid conflicts with reserved keys
-
-**Testing**:
-- Test with minimal config first (1-2 servers)
-- Gradually add servers to identify issues
-- Use `ng_dump_config` to validate before running
-
-**Deployment**:
-- Use environment variables for config paths in production
-- Separate sensitive values into `env.yaml`
-- Version control all config files (except `env.yaml`)
-
----
-
-## Related
-
-- {doc}`index` - Configuration overview
-- {doc}`reference` - Complete configuration reference
-- {doc}`debugging` - Debug configuration issues
-- {doc}`../../training/resource-servers/index` - Available resource servers
-
+* - {doc}`debugging`
+  - Debug multi-server deployments with logging and profiling
+* - {doc}`../../tutorials/separate-policy-and-judge-models`
+  - Complete example of policy/judge pattern
+* - {doc}`../../training/handoff-to-training`
+  - Use multi-server rollouts in training frameworks
+```

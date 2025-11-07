@@ -15,7 +15,7 @@ Rollout Batch
   A collection of multiple rollouts generated together, typically for the same task. Used for efficient parallel processing.
 
 Task
-  An input prompt paired with environment setup (tools + verification). What you want agents to learn to do.
+  An input prompt paired with resource server configuration (tools + verification). What you want agents to learn to do.
 
 Task Instance
   A single rollout attempt for a specific task. Multiple instances per task capture different approaches.
@@ -48,7 +48,10 @@ Orchestration
   Coordination logic that manages when to call models, which tools to use, and how to sequence multi-step operations.
 
 Verifier
-  Component that scores agent outputs, producing reward signals. May also refer colloquially to "training environment with verifiable rewards."
+Verification Logic
+  The `verify()` method within a resource server that scores agent outputs and produces reward signals (typically 0.0-1.0). In reinforcement learning terminology, this is the **reward function**.
+  
+  **Important**: Avoid using "verifier" to refer to the entire resource server—use "resource server" or "training environment" instead.
 
 Service Discovery
   Mechanism by which distributed NeMo Gym components find and communicate with each other across machines.
@@ -58,13 +61,39 @@ Reward Signal
   Numerical score (typically 0.0–1.0) indicating how well an agent performed on a task.
 
 Resource Server
-  Service that provides tools (functions agents can call) and verification logic (scoring agent performance).
+Training Environment
+  HTTP service that provides tools (functions agents can call) and verification logic (scoring agent performance). In reinforcement learning terminology, resource servers implement **training environments** with defined action spaces (tools) and reward functions (the `verify()` endpoint). Examples: `library_judge_math`, `comp_coding`, `google_search`.
 
 Responses API Model
   Model implementation that follows OpenAI's Responses API format for handling agent interactions.
 
 Responses API Agent
   Agent implementation that orchestrates between models and resource servers using the Responses API format.
+```
+
+---
+
+## RL Terminology Mapping
+
+For practitioners familiar with reinforcement learning literature, this section maps standard RL concepts to NeMo Gym terminology:
+
+```{glossary}
+Environment (RL Context)
+  In NeMo Gym, **resource servers** serve as training environments. Each resource server implements:
+  - **Action Space**: The tools/functions agents can call
+  - **Reward Function**: The `verify()` endpoint that scores performance  
+  - **Task Distribution**: Datasets of problems to solve
+  
+  **Note**: Use "resource server" or "training environment" when referring to these components. Avoid standalone "environment" as it can be confused with deployment environments (dev/staging/prod).
+
+Action Space (RL)
+  In NeMo Gym, the **tools** provided by a resource server define the action space—the set of functions an agent can call during execution.
+
+Reward Function (RL)
+  In NeMo Gym, the **`verify()` method** in each resource server implements the reward function, returning a numerical score (typically 0.0-1.0) based on agent performance.
+
+Episode (RL)
+  In NeMo Gym terminology, called a **rollout** or **trajectory**—a complete sequence of agent interactions from initial prompt to final verification.
 ```
 
 ---
@@ -85,7 +114,7 @@ Reinforcement Learning
   Training approach where agents learn through trial-and-error interaction with environments using reward signals.
 
 Online Training
-  Agent learns while interacting with environment in real-time (RL).
+  Agent learns while interacting with resource server (training environment) in real-time (RL).
 
 Offline Training
   Agent learns from pre-collected rollout data (SFT/DPO).

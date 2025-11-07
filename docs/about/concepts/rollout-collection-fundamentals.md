@@ -38,7 +38,7 @@ A rollout is a complete record of a single agent interaction, from start to fini
 - Calling `calculate(47 * 23)`  
 - Receiving `1081`
 - Responding "The answer is 1,081"
-- The math verifier scoring it as correct (reward: 1.0)
+- The math resource server's verification logic scoring it as correct (reward: 1.0)
 
 ---
 

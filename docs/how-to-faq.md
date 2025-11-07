@@ -7,11 +7,15 @@ This document is a smattering of How-To's and FAQs that have not made their way 
 - [How To: Prepare and validate data for PR submission or RL training](#how-to-prepare-and-validate-data-for-pr-submission-or-rl-training)
 - [How To: ng\_dump\_config - Dump a YAML config as exactly as NeMo Gym sees it](#how-to-ng_dump_config---dump-a-yaml-config-as-exactly-as-nemo-gym-sees-it)
 - [How To: Use NeMo Gym with a non-Responses compatible API endpoint like vLLM](#how-to-use-nemo-gym-with-a-non-responses-compatible-api-endpoint-like-vllm)
-- [How To: Multi-verifier usage](#how-to-multi-verifier-usage)
+- [How To: Multi-Resource-Server Usage](#how-to-multi-resource-server-usage)
 - [How To: Profile your resources server](#how-to-profile-your-resources-server)
 - [How To: Use a custom client to call Gym Responses API model endpoints during training](#how-to-use-a-custom-client-to-call-gym-responses-api-model-endpoints-during-training)
 - [How To: Detailed anatony of a Gym config](#how-to-detailed-anatony-of-a-gym-config)
 - [How To: Use Ray for parallelizing CPU-intensive tasks](#how-to-use-ray-for-parallelizing-cpu-intensive-tasks)
+  - [Ray Setup in NeMo Gym](#ray-setup-in-nemo-gym)
+    - [Automatic Initialization](#automatic-initialization)
+    - [Ray Configuration](#ray-configuration)
+  - [Using Ray for CPU-Intensive Tasks](#using-ray-for-cpu-intensive-tasks)
 - [FAQ: OpenAI Responses vs Chat Completions API](#faq-openai-responses-vs-chat-completions-api)
 - [FAQ: DCO and commit signing VSCode and Git setup](#faq-dco-and-commit-signing-vscode-and-git-setup)
 - [FAQ: SFT and RL](#faq-sft-and-rl)
@@ -35,7 +39,7 @@ Tests are strongly encouraged and you must have at least one test for every serv
 Reading time: 5 mins
 Date: Tue Aug 05, 2025
 
-Resource servers are used to abstract out any business logic of tool implementations and verifiers. Each resource server must implement a `verify` function.
+Resource servers are used to abstract out any business logic of tool implementations and verification logic. Each resource server must implement a `verify()` method that scores agent performance.
 
 Resource servers live in the `resources_servers` folder. Initialize a resource server now. For this example, we will be writing a dummy test weather server.
 ```bash
@@ -364,10 +368,10 @@ vllm serve \
 ```
 
 
-# How To: Multi-verifier usage
-Gym is explicitly designed to support multi-verifier training.
+# How To: Multi-Resource-Server Usage
+Gym is explicitly designed to support using multiple resource servers (training environments) together.
 
-Let's say you want to use both math and search verifiers. Normally how you spin up the servers individually is:
+Let's say you want to use both the math and search resource servers. Normally how you spin up the servers individually is:
 For math:
 ```bash
 config_paths="responses_api_models/openai_model/configs/openai_model.yaml,\
@@ -393,7 +397,7 @@ The same process goes for data preparation and downstream training framework Gym
 
 
 # How To: Profile your resources server
-For large scale verifier training, it's critical that your resources server is as efficient as possible. It may be slammed with 16k concurrent requests or more. Gym provides easy tools to profile and understand the efficiency of your servers.
+For large scale training, it's critical that your resources server is as efficient as possible. It may be slammed with 16k concurrent requests or more. Gym provides easy tools to profile and understand the efficiency of your servers.
 
 In one terminal, start your agent, model, and resources servers, with profiling enabled.
 - `profiling_enabled` (bool): whether profiling is enabled or not. By default this is disabled since it incurs some slight overhead we don't want at runtime.
@@ -572,7 +576,7 @@ def process_data_parallel(data_list):
 
 
 # FAQ: OpenAI Responses vs Chat Completions API
-Agents and verifiers work with responses in a standardized format based on the OpenAI Responses API schema. The verifier receives an object where the `output` field conforms to the Response object output [documented here](https://platform.openai.com/docs/api-reference/responses/object#responses/object-output).
+Agents and resource servers work with responses in a standardized format based on the OpenAI Responses API schema. The resource server's `verify()` method receives an object where the `output` field conforms to the Response object output [documented here](https://platform.openai.com/docs/api-reference/responses/object#responses/object-output).
 
 The `output` list may contain multiple item types, such as:
 - `ResponseOutputMessage` - The main user-facing message content returned by the model.
@@ -633,7 +637,7 @@ Response(
 )
 ```
 
-Reasoning traces (`Reasoning` items) are parsed before the verifier processes the output. The parsing is **model-specific**, and the verifier does not need to worry about the extracting or interpreting reasoning traces. The verifier receives these items already separated and clearly typed.
+Reasoning traces (`Reasoning` items) are parsed before the `verify()` method processes the output. The parsing is **model-specific**, and the verification logic does not need to worry about extracting or interpreting reasoning traces. The `verify()` method receives these items already separated and clearly typed.
 
 
 # FAQ: DCO and commit signing VSCode and Git setup

@@ -37,8 +37,8 @@ NeMo Gym solves these problems through three core design principles:
   - How It Helps
 * - **Unified Interfaces**
   - Standard abstractions for models (LLM inference), resources (tools + verification), and agents (orchestration) enable mix-and-match composition. Connect any model to any environment using consistent APIs based on OpenAI's Responses format.
-* - **Curated Environments**
-  - A growing collection of resource servers across domains (mathematics, coding, knowledge, instruction-following, agent workflows) provides both the tools agents can use and the verification logic to score their performance. Each environment includes training datasets, validation sets, and examples.
+* - **Curated Training Environments**
+  - A growing collection of resource servers across domains (mathematics, coding, knowledge, instruction-following, agent workflows) provides both the tools agents can use and the verification logic to score their performance. Each resource server includes training datasets, validation sets, and examples. In RL terminology, these are complete training environments with action spaces (tools) and reward functions (verification).
 * - **High-Throughput Architecture**
   - Async orchestration with configurable parallelism supports generating thousands of rollouts concurrently. The system handles complex coordination (model inference, tool calls, verification) while maximizing throughput for training workloads.
 ```
@@ -51,11 +51,15 @@ NeMo Gym organizes around three core abstractions that work together:
 
 * **Models**: LLM inference endpoints that generate text and make tool-calling decisions. Models are stateless and handle single-turn generation. Configure using OpenAI-compatible APIs or local vLLM servers.
 
-* **Resources**: Servers that provide both tools (functions agents can call) and verifiers (logic to evaluate agent performance and assign reward signals). Examples include mathematical reasoning environments, code execution sandboxes, web search tools, and custom verification logic.
+* **Resources**: Servers that provide both tools (functions agents can call) and verification logic (methods that evaluate agent performance and assign reward signals). Examples include mathematical reasoning resource servers, code execution sandboxes, web search tools, and custom verification logic. In RL terminology, resource servers implement training environments.
 
 * **Agents**: Orchestration layers that connect models to resources, handle multi-turn conversations, route tool calls, and format responses consistently. Agents coordinate the interaction loop and can be extended with custom logic.
 
 These components communicate via HTTP APIs and can run as separate services, enabling flexible deployment and scaling.
+
+:::{note}
+**For RL Practitioners**: In reinforcement learning terminology, NeMo Gym's "resource servers" are equivalent to "training environments." Each resource server defines an action space (available tools) and reward function (the `verify()` endpoint).
+:::
 
 :::{seealso}
 For detailed explanations of these abstractions, see {doc}`Concepts <concepts/index>`.
@@ -74,9 +78,9 @@ NeMo Gym serves three primary user journeys. Choose the one that best describes 
 
 **Stack**: NeMo Gym + RL Frameworks (VeRL, NeMo-RL, OpenRLHF, etc.)
 
-You want to train a model to improve tool calling, reasoning, or task performance using reinforcement learning. NeMo Gym provides the infrastructure to generate training rollouts at scale from curated environments or your own custom verification logic, outputting data in formats compatible with your chosen RL framework.
+You want to train a model to improve tool calling, reasoning, or task performance using reinforcement learning. NeMo Gym provides the infrastructure to generate training rollouts at scale from curated resource servers or your own custom verification logic, outputting data in formats compatible with your chosen RL framework.
 
-**Key benefits**: Direct access to curated RL environments, high-throughput rollout collection, framework-agnostic output
+**Key benefits**: Direct access to curated resource servers (RL training environments), high-throughput rollout collection, framework-agnostic output
 :::
 
 :::{tab-item} NeMo Agent Toolkit Users
@@ -117,10 +121,10 @@ NeMo Gym enables several key use cases:
   - Generate training data at scale for reinforcement learning algorithms. Collect rollouts with reward signals, export in RL-framework-compatible formats, and feed directly into training loops.
 * - **Benchmark Evaluation**
   - Systematically evaluate agent performance across tasks. Use curated datasets and verification logic to measure accuracy, reasoning quality, tool-use effectiveness, and instruction-following capabilities.
-* - **Custom Environments**
-  - Build your own resource servers with domain-specific tools and verification logic. NeMo Gym's base classes and templates make it straightforward to add new environments that integrate seamlessly with the rest of the system.
+* - **Custom Resource Servers**
+  - Build your own resource servers with domain-specific tools and verification logic. NeMo Gym's base classes and templates make it straightforward to add new resource servers that integrate seamlessly with the rest of the system.
 * - **Multi-Framework Experiments**
-  - Compare different RL algorithms and training frameworks using the same environment and data. NeMo Gym collects trajectories and passes data to your choice of RL framework (VeRL, NeMo-RL, OpenRLHF) without rewriting environment code.
+  - Compare different RL algorithms and training frameworks using the same resource server and data. NeMo Gym collects trajectories and passes data to your choice of RL framework (VeRL, NeMo-RL, OpenRLHF) without rewriting resource server code.
 ```
 
 ---
@@ -150,7 +154,7 @@ Explore the internal design, component boundaries, and data flow patterns that m
 :link: features
 :link-type: doc
 
-Discover available resource servers, supported environments, and capabilities across domains like mathematics, coding, and instruction-following.
+Discover available resource servers and capabilities across domains like mathematics, coding, and instruction-following.
 :::
 
 :::{grid-item-card} {octicon}`globe;1.5em;sd-mr-1` Ecosystem
