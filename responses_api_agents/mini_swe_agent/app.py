@@ -103,6 +103,7 @@ class MiniSWEAgent(SimpleResponsesAPIAgent):
 
     async def run(self, body: MiniSWEAgentRunRequest) -> MiniSWEAgentVerifyResponse:
         async with self.sem:
+            print(f"Spinning up container instance #{self.config.concurrency - self.sem._value}")
             model_server_name = self.config.model_server.name
             global_config_dict = ServerClient.load_from_global_config().global_config_dict
 
