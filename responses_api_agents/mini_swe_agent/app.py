@@ -188,8 +188,9 @@ class MiniSWEAgent(SimpleResponsesAPIAgent):
                 step_limit=step_limit,
                 collapse_limit=collapse_limit,
             )
-            future = runner_ray_remote.remote(run_swegym, params)
-            result = await asyncio.to_thread(ray.get, future)
+            ref = runner_ray_remote.remote(run_swegym, params)
+            fut: asyncio.Future = asyncio.wrap_future(ref.future())
+            result = await fut
             result = result[instance_id]
             messages = result["messages"]
             responses = result["responses"]
