@@ -80,8 +80,8 @@ class MiniSWEAgentVerifyResponse(BaseVerifyResponse):
         "py_executable": sys.executable,
     },
 )
-def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
-    return runner(**params)
+async def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
+    return await runner(**params)
 
 
 class MiniSWEAgent(SimpleResponsesAPIAgent):
