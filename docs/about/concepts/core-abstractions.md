@@ -16,7 +16,10 @@ This separation makes your system modular, testable, and easy to customize.
 
 ## The Three Abstractions
 
-### Agents — The Coordinators
+::::{tab-set}
+
+:::{tab-item} Agents
+**The Coordinators**
 
 **What it does**: Connects models to resources, manages the tool-calling loop, and handles multi-turn conversations.
 
@@ -33,8 +36,10 @@ This separation makes your system modular, testable, and easy to customize.
 3. Calls the weather resource server
 4. Sends the weather data back to the model
 5. Returns the model's friendly response to the user
+:::
 
-### Models — The Brain
+:::{tab-item} Models
+**The Brain**
 
 **What it does**: Generates text based on prompts, without maintaining conversation history or deciding which tools to use.
 
@@ -46,8 +51,10 @@ This separation makes your system modular, testable, and easy to customize.
 - Local models via vLLM (Llama, Mistral, etc.)
 
 Models don't orchestrate conversations or call tools directly—they just respond to what they're given. That's the Agent's job.
+:::
 
-### Resources — The Tools and Scorekeepers
+:::{tab-item} Resources
+**The Tools and Scorekeepers**
 
 **What it does**: Provides two key capabilities:
 1. **Tools** that agents can call (search the web, execute code, query databases)
@@ -70,6 +77,9 @@ Models don't orchestrate conversations or call tools directly—they just respon
 ```
 
 Each resource server knows how to score agent performance in its domain, generating the reward signals needed for reinforcement learning. NeMo Gym includes several production-ready resource servers for you to get started with.
+:::
+
+::::
 
 ---
 
@@ -119,79 +129,3 @@ This modular architecture provides four key benefits:
 * - **Swap via Configuration**
   - Want to try a different model? Change one line in your YAML config. Need a different set of tools? Update the resource server reference. No code changes required.
 ```
-
----
-
-## Technical Details
-
-:::{dropdown} Implementation Architecture
-Each abstraction is implemented as a FastAPI HTTP server:
-
-| Abstraction | Base Class | Key Endpoints |
-|-------------|-----------|---------------|
-| **Agents** | `BaseResponsesAPIAgent` | `POST /v1/responses`, `POST /run` |
-| **Models** | `BaseResponsesAPIModel` | `POST /v1/responses`, `POST /v1/chat/completions` |
-| **Resources** | `BaseResourcesServer` | `POST /verify`, `POST /seed_session` |
-
-All components communicate via HTTP, enabling deployment flexibility.
-:::
-
-:::{dropdown} Model Integration Details
-**Available Model Implementations**:
-
-- **openai_model**: Direct OpenAI API integration
-- **azure_openai_model**: Azure OpenAI endpoints
-- **vllm_model**: Local model serving with vLLM
-
-**Configuration Example**:
-
-```yaml
-policy_model:
-  responses_api_models:
-    openai_model:
-      entrypoint: app.py
-      api_key: ${oc.env:OPENAI_API_KEY}
-      model_name: gpt-4o-2024-08-06
-```
-
-**API Format**: Standardized on OpenAI's Responses API for tool-calling support and broad compatibility.
-:::
-
-:::{dropdown} Resource Server Details
-**Core Responsibilities**:
-
-1. **Provide Tools**: Define functions in OpenAI format that agents can call
-2. **Execute Logic**: Implement the actual tool behavior (search, calculate, etc.)
-3. **Score Performance**: Return reward signals (0.0-1.0) for RL training
-
-**Reward Signal**:
-The `verify()` endpoint returns a `BaseVerifyResponse` with a `reward` field—the critical output for reinforcement learning training pipelines.
-
-**Stateful Sessions**:
-Resources can maintain state across turns using the `seed_session()` endpoint for complex multi-turn workflows.
-:::
-
-:::{dropdown} Agent Coordination Details
-**Agent Configuration**:
-
-```yaml
-simple_agent_weather:
-  responses_api_agents:
-    simple_agent:
-      entrypoint: app.py
-      max_steps: 10
-      resources_server:
-        name: simple_weather
-      model_server:
-        name: policy_model
-```
-
-**Key Parameters**:
-- `max_steps`: Prevent infinite tool-calling loops
-- `resources_server`: Which resource server to connect to
-- `model_server`: Which model to use for generation
-
-**Tool-Calling Loop**:
-The agent manages the iterative process of: model generates tool call → agent executes → model receives results → repeat until done.
-:::
-
