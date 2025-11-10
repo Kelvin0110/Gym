@@ -164,7 +164,7 @@ ng_collect_rollouts \
 
 ## Next Steps
 
-Start with **{doc}`parameters`** to understand the fundamentals, then choose the strategy guide that matches your training objective.
+Start with **{ref}`training-rollout-sampling-parameters`** to understand the fundamentals, then choose the strategy guide that matches your training objective.
 
 :::{button-ref} parameters
 :color: primary

@@ -346,7 +346,7 @@ These Ray-specific problems typically arise during distributed deployment setup.
 ```
 
 :::{seealso}
-For distributed deployment patterns, refer to {doc}`../deployment/distributed-computing`.
+For distributed deployment patterns, refer to {ref}`setup-deployment-ray`.
 :::
 
 ---
@@ -490,7 +490,7 @@ curl http://localhost:<PORT>/stats
 ```
 
 **Solutions**:
-- Optimize verification logic (see {doc}`profiling`)
+- Optimize verification logic (see {ref}`setup-operations-profiling`)
 - Increase timeout in configuration
 - Use async calls for external APIs
 - Check resource usage: `htop` or `top`

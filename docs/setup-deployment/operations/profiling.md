@@ -243,7 +243,7 @@ def verify(self, question, answer):
 ```
 
 :::{seealso}
-For Ray setup, refer to {doc}`../deployment/distributed-computing`
+For Ray setup, refer to {ref}`setup-deployment-ray`
 :::
 
 ::::

@@ -16,7 +16,7 @@ Use this section when you need to:
 * **Understand format specifications** - Learn rollout JSON schema and requirements
 
 :::{seealso}
-For passing datasets to your training framework, see {doc}`../handoff-to-training` after preparing your datasets.
+For passing datasets to your training framework, see {ref}`training-integration` after preparing your datasets.
 :::
 
 
@@ -75,7 +75,7 @@ For passing datasets to your training framework, see {doc}`../handoff-to-trainin
   - Diverse quality range
 ```
 
-See {doc}`prepare-for-training` for conversion examples.
+See {ref}`training-datasets-prepare-for-training` for conversion examples.
 
 
 ## Dataset Pipeline
@@ -92,8 +92,8 @@ Curated Rollouts (JSONL)
 Training-Ready Data      → pass to training framework
 ```
 
-**Previous**: {doc}`../data-quality/index` for curation  
-**Next**: {doc}`../handoff-to-training` for passing to training frameworks
+**Previous**: {ref}`training-data-quality` for curation  
+**Next**: {ref}`training-integration` for passing to training frameworks
 
 
 ## Common Dataset Operations
@@ -128,7 +128,7 @@ rl_data = [{
 } for rollout in rollouts]
 ```
 
-See {doc}`prepare-for-training` for complete implementations.
+See {ref}`training-datasets-prepare-for-training` for complete implementations.
 
 
 ## Validation Workflow
@@ -172,9 +172,9 @@ training_data/
 
 ### Data Pipeline
 
-* {doc}`../data-quality/index` - Filter and curate before formatting
-* {doc}`../rollout-collection/index` - Generate raw rollouts
-* {doc}`../handoff-to-training` - Pass data to training frameworks
+* {ref}`training-data-quality` - Filter and curate before formatting
+* {ref}`training-rollout-collection` - Generate raw rollouts
+* {ref}`training-integration` - Pass data to training frameworks
 
 
 ## Next Steps

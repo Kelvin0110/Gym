@@ -15,9 +15,9 @@ Convert `rollouts.jsonl` with reward scores into the specific format required by
 * - Prerequisite
   - Description
 * - **Collected rollouts**
-  - You have `rollouts.jsonl` with reward scores from {doc}`../rollout-collection/index`
+  - You have `rollouts.jsonl` with reward scores from {ref}`training-rollout-collection`
 * - **Understand reward signals**
-  - Familiar with how your resource server scores responses (see {doc}`../resource-servers/index`)
+  - Familiar with how your resource server scores responses (see {ref}`training-resource-servers`)
 * - **Know your training algorithm**
   - SFT, DPO, or PPO—each needs different data preparation
 * - **Understand reward patterns**
@@ -26,8 +26,8 @@ Convert `rollouts.jsonl` with reward scores into the specific format required by
 
 **Related concepts**:
 - {doc}`index` - Overview of dataset formats and pipeline
-- {doc}`../data-quality/index` - For filtering and curation before preparation
-- {doc}`../verification/multi-objective-scoring` - For handling multi-metric rollouts
+- {ref}`training-data-quality` - For filtering and curation before preparation
+- {ref}`training-verification-multi-objective` - For handling multi-metric rollouts
 
 ---
 
@@ -197,7 +197,7 @@ for i in range(len(bins)-1):
 - Std dev < 0.1: Rewards not discriminative enough
 - Single peak at 0.5: Verification may be noisy
 
-**Tip**: If rewards are too binary (only 0.0 and 1.0), consider switching to a continuous reward server like `equivalence_llm_judge` for richer signal. See {doc}`../resource-servers/index` for options.
+**Tip**: If rewards are too binary (only 0.0 and 1.0), consider switching to a continuous reward server like `equivalence_llm_judge` for richer signal. See {ref}`training-resource-servers` for options.
 
 ---
 
@@ -265,7 +265,7 @@ low_quality = [r for r in rollouts
 pairs = create_pairs(high_quality, low_quality, min_gap=0.3)
 ```
 
-See {doc}`../verification/multi-objective-scoring` for detailed multi-metric strategies.
+See {ref}`training-verification-multi-objective` for detailed multi-metric strategies.
 
 ---
 
@@ -333,7 +333,7 @@ After preparing your data, integrate with your training framework:
 :gutter: 3
 
 :::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` NeMo RL Integration
-:link: ../integration/nemo-rl
+:link: ../integration/nemo-rl/index
 :link-type: doc
 
 Complete guide with transformation scripts for GRPO, SFT, and DPO

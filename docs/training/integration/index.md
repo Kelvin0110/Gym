@@ -10,7 +10,7 @@ Detailed integration guides for using NeMo Gym rollouts with popular RL training
 :gutter: 3
 
 :::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` NeMo RL (Complete Guide)
-:link: nemo-rl
+:link: nemo-rl/index
 :link-type: doc
 
 NVIDIA's post-training framework with GRPO, SFT, and DPO support. Includes complete data transformation scripts and configuration examples.
@@ -36,8 +36,6 @@ Additional integration guides for:
 - OpenRLHF  
 - TRL (HuggingFace)
 - Custom frameworks
-
-See {doc}`../handoff-to-training` for framework overview and basic examples.
 
 ---
 
@@ -131,7 +129,7 @@ training:
 framework_train --config config.yaml
 ```
 
-See {doc}`nemo-rl/index` for a complete end-to-end example.
+See {ref}`training-integration-nemo-rl` for a complete end-to-end example.
 
 ---
 
@@ -213,7 +211,7 @@ if "reward" in data[0]:
 
 ### NeMo RL
 - **Repository**: [github.com/NVIDIA-NeMo/RL](https://github.com/NVIDIA-NeMo/RL)
-- **Integration**: {doc}`nemo-rl/index` (complete guide)
+- **Integration**: {ref}`training-integration-nemo-rl` (complete guide)
 - **Best for**: Multi-node training, Megatron models, NVIDIA GPUs
 
 ### VeRL
@@ -238,7 +236,7 @@ if "reward" in data[0]:
 
 Want to add an integration guide for another framework?
 
-1. Follow the structure in {doc}`nemo-rl/index`:
+1. Follow the structure in {ref}`training-integration-nemo-rl`:
    - Overview and prerequisites
    - Data transformation with scripts
    - Configuration examples
@@ -262,9 +260,9 @@ See [CONTRIBUTING.md](https://github.com/NVIDIA-NeMo/Gym/blob/main/CONTRIBUTING.
 
 ## Related Topics
 
-- {doc}`../datasets/prepare-for-training` - Data preparation by algorithm
-- {doc}`../rollout-collection/index` - Generate training data
-- {doc}`../data-quality/index` - Filter and curate rollouts
+- {ref}`training-datasets-prepare-for-training` - Data preparation by algorithm
+- {ref}`training-rollout-collection` - Generate training data
+- {ref}`training-data-quality` - Filter and curate rollouts
 
 ```{toctree}
 :hidden:

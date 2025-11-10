@@ -25,27 +25,27 @@ Choose parameters based on your training goal:
   - Low
   - 0.9-0.95
   - 1
-  - {doc}`sft`
+  - {ref}`training-rollout-sampling-sft`
 * - **Preference pairs** (DPO)
   - Higher
   - 0.9
   - 3-4
-  - {doc}`dpo`
+  - {ref}`training-rollout-sampling-dpo`
 * - **Balanced exploration** (RL)
   - Moderate
   - 0.9-0.95
   - 1
-  - {doc}`rl`
+  - {ref}`training-rollout-sampling-rl`
 * - **Reproducible eval**
   - Very low
   - 0.95
   - 1
-  - {doc}`evaluation`
+  - **Evaluation**
 * - **Behavioral research**
   - High
   - 0.9
   - 5+
-  - {doc}`research`
+  - **Research**
 ```
 
 ---
@@ -609,26 +609,26 @@ Now that you understand the parameters, choose your strategy:
 
 :::{tab-item} Training
 
-- **{doc}`sft`** - Supervised fine-tuning strategy
-- **{doc}`dpo`** - Direct preference optimization strategy
-- **{doc}`rl`** - Reinforcement learning strategy
+- **{ref}`training-rollout-sampling-sft`** - Supervised fine-tuning strategy
+- **{ref}`training-rollout-sampling-dpo`** - Direct preference optimization strategy
+- **{ref}`training-rollout-sampling-rl`** - Reinforcement learning strategy
 
 :::
 
 :::{tab-item} Evaluation
 
-- **{doc}`evaluation`** - Benchmarking strategy
+- ****Evaluation**** - Benchmarking strategy
 
 :::
 
 :::{tab-item} Exploration
 
-- **{doc}`research`** - Behavioral analysis strategy
+- ****Research**** - Behavioral analysis strategy
 
 :::
 
 ::::
 
 :::{seealso}
-**Deep dive**: {doc}`validation` for metrics and validation techniques
+**Deep dive**: **Validation** for metrics and validation techniques
 :::

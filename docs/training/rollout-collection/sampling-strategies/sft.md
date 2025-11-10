@@ -32,7 +32,7 @@ Ensure you have these prerequisites before generating SFT data:
 * - Requirement
   - Details
 * - **Get Started completed**
-  - Complete {doc}`../../../get-started/collecting-rollouts` first
+  - Complete {ref}`gs-collecting-rollouts` first
 * - **Servers running**
   - Agent and model servers collecting rollouts successfully
 * - **Training objective**
@@ -67,7 +67,7 @@ ng_collect_rollouts \
     +num_samples_in_parallel=<parallelism>
 ```
 
-**Configuration**: For SFT, use low temperature for consistency, single samples per task, and high parallelism for throughput. Refer to {doc}`parameters` for parameter explanations.
+**Configuration**: For SFT, use low temperature for consistency, single samples per task, and high parallelism for throughput. Refer to {ref}`training-rollout-sampling-parameters` for parameter explanations.
 
 ### Expected Output
 
@@ -167,7 +167,7 @@ ng_collect_rollouts ... +num_samples_in_parallel=30
 ng_collect_rollouts ... +responses_create_params.max_output_tokens=512
 ```
 
-See {doc}`../optimize-for-training/index` for comprehensive optimization.
+See {ref}`training-rollout-optimize` for comprehensive optimization.
 
 :::
 

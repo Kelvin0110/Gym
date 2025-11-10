@@ -19,7 +19,7 @@ Find the optimal `num_samples_in_parallel` value that maximizes throughput for y
 :::
 
 :::{seealso}
-Not sure if parallelism is your bottleneck? Start with {doc}`identify-bottleneck` to diagnose what's limiting throughput.
+Not sure if parallelism is your bottleneck? Start with {ref}`training-rollout-optimize-bottleneck` to diagnose what's limiting throughput.
 :::
 
 ---
@@ -122,6 +122,6 @@ Always set this parameter for production workloads.
 
 After finding optimal parallelism:
 
-**Production patterns** → {doc}`production-scale` for monitoring and scale strategies  
-**Sampling strategies** → {doc}`../sampling-strategies/index` for temperature and diversity tuning
+**Production patterns** → {ref}`training-rollout-optimize-production` for monitoring and scale strategies  
+**Sampling strategies** → {ref}`training-rollout-sampling` for temperature and diversity tuning
 

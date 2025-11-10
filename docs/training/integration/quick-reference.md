@@ -1,6 +1,6 @@
 # NeMo RL Integration Quick Reference
 
-Fast reference for integrating NeMo Gym with NeMo RL. See {doc}`nemo-rl/index` for complete guide.
+Fast reference for integrating NeMo Gym with NeMo RL. See {ref}`training-integration-nemo-rl` for complete guide.
 
 ---
 
@@ -269,7 +269,7 @@ if "reward" in data[0]:
 
 ## Transformation Scripts Location
 
-Find all scripts in the {doc}`nemo-rl` guide:
+Find all scripts in the {ref}`training-integration-nemo-rl` guide:
 - **transform_gym_to_grpo.py** - Lines 100-200
 - **transform_gym_to_sft.py** - Lines 400-600
 - **transform_gym_to_dpo.py** - Lines 800-1000
@@ -312,7 +312,7 @@ Copy from documentation and save as `.py` files.
 4. **Test on 1 GPU** to verify data loading
 5. **Scale up** to target hardware
 
-**Need help?** See {doc}`nemo-rl` for:
+**Need help?** See {ref}`training-integration-nemo-rl` for:
 - Complete transformation scripts
 - Detailed troubleshooting
 - Configuration explanations

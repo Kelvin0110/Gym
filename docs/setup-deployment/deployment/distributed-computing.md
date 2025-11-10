@@ -529,7 +529,7 @@ NeMo-RL:
 4. **Manages** cluster lifecycle (start/stop)
 
 :::{seealso}
-Complete training guide: {doc}`../../training/index`
+Complete training guide: {ref}`training-overview`
 :::
 
 ---

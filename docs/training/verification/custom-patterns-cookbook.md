@@ -21,7 +21,7 @@ Copy-paste verification patterns for building custom resource servers. Each patt
 
 :::
 
-**Prerequisites**: Basic understanding from {doc}`../../get-started/verifying-agent-results`.
+**Prerequisites**: Basic understanding from {ref}`gs-verifying-agent-results`.
 
 :::{tip}
 **Using existing servers?** You don't need this guide—just pick a server from {doc}`index`.
@@ -695,11 +695,11 @@ When building custom verification:
 
 1. Create resource server: `ng_init_resources_server +entrypoint=resources_servers/your_server/`
 2. Implement `verify()` using pattern above
-3. Test with {doc}`../../get-started/verifying-agent-results`
-4. Collect rollouts with {doc}`../rollout-collection/index`
-5. Prepare data with {doc}`../datasets/prepare-for-training`
+3. Test with {ref}`gs-verifying-agent-results`
+4. Collect rollouts with {ref}`training-rollout-collection`
+5. Prepare data with {ref}`training-datasets-prepare-for-training`
 
-**For multi-objective details**: See {doc}`multi-objective-scoring`
+**For multi-objective details**: See {ref}`training-verification-multi-objective`
 
 **For full examples**: Browse `resources_servers/` directory in repo
 

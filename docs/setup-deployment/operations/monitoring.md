@@ -116,7 +116,7 @@ tail -f ng_gym.log | grep ERROR
   - Check `env.yaml`
 * - `Timeout after 30s`
   - Request too slow
-  - Check {doc}`profiling`
+  - Check {ref}`setup-operations-profiling`
 ```
 
 ::::
@@ -135,7 +135,7 @@ cat logs/*.log | grep ERROR | sort
 :::::
 
 :::{seealso}
-For troubleshooting configuration issues, refer to {doc}`debugging`.
+For troubleshooting configuration issues, refer to {ref}`setup-operations-debugging`.
 :::
 
 ---

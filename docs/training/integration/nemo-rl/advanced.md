@@ -146,8 +146,8 @@ Maximize NeMo RL training speed:
 Use this checklist when integrating NeMo Gym data with NeMo RL:
 
 **Data Preparation**
-- [ ] Collected rollouts with verification ({doc}`../rollout-collection/index`)
-- [ ] Validated reward distribution ({doc}`../data-quality/index`)
+- [ ] Collected rollouts with verification ({ref}`training-rollout-collection`)
+- [ ] Validated reward distribution ({ref}`training-data-quality`)
 - [ ] Transformed data to NeMo RL format (GRPO/SFT/DPO)
 - [ ] Created train/validation splits
 - [ ] Verified transformed data structure
@@ -197,16 +197,15 @@ Use this checklist when integrating NeMo Gym data with NeMo RL:
 - [DPO Guide](https://github.com/NVIDIA-NeMo/RL/blob/main/docs/guides/dpo.md)
 
 **NeMo Gym Documentation**:
-- {doc}`../rollout-collection/optimize-for-training/index` - Optimize data collection
-- {doc}`../verification/custom-patterns-cookbook` - Advanced verification patterns
-- {doc}`../data-quality/index` - Filter and curate data
+- {ref}`training-rollout-optimize` - Optimize data collection
+- {ref}`training-verification-custom-patterns` - Advanced verification patterns
+- {ref}`training-data-quality` - Filter and curate data
 
 ---
 
 ## Related Topics
 
-- {doc}`../handoff-to-training` - Overview of training framework handoff
-- {doc}`../datasets/prepare-for-training` - Algorithm-specific data preparation
-- {doc}`../rollout-collection/sampling-strategies/index` - Collection strategies by algorithm
-- {doc}`../verification/index` - Verification and reward design
+- {ref}`training-datasets-prepare-for-training` - Algorithm-specific data preparation
+- {ref}`training-rollout-sampling` - Collection strategies by algorithm
+- {ref}`training-verification` - Verification and reward design
 

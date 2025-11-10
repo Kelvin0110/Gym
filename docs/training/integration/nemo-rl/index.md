@@ -227,19 +227,19 @@ For production deployments and advanced use cases:
   - {doc}`grpo`
 * - High-quality rollouts (reward ≥ 0.9)
   - SFT
-  - {doc}`sft`
+  - {ref}`training-rollout-sampling-sft`
 * - Mixed quality rollouts (varied rewards)
   - DPO
-  - {doc}`dpo`
+  - {ref}`training-rollout-sampling-dpo`
 * - Multiple rollouts per prompt
   - DPO (create pairs)
-  - {doc}`dpo`
+  - {ref}`training-rollout-sampling-dpo`
 * - Need to maximize task success rate
   - GRPO
   - {doc}`grpo`
 * - Want to teach quality distinctions
   - DPO
-  - {doc}`dpo`
+  - {ref}`training-rollout-sampling-dpo`
 ```
 
 ---

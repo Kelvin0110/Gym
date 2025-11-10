@@ -169,6 +169,6 @@ If your RL framework or training objectives require custom filtering or balancin
 
 **Validate format** → {doc}`../datasets/validate-format` before training
 
-**Integrate with RL framework** → {doc}`../integration/index` for framework-specific guides
+**Integrate with RL framework** → {ref}`training-integration` for framework-specific guides
 
 **Monitor during collection** → {doc}`../rollout-collection/optimize-for-training/production-scale` for real-time tracking

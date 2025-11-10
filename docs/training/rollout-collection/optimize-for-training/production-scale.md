@@ -331,8 +331,8 @@ if issues:
 
 ### Continue Optimizing
 
-**Tune sampling** → {doc}`../sampling-strategies/index` for temperature and diversity  
-**Reference patterns** → {doc}`../collection-patterns/index` for copy-paste commands
+**Tune sampling** → {ref}`training-rollout-sampling` for temperature and diversity  
+**Reference patterns** → {ref}`training-rollout-patterns` for copy-paste commands
 
 ### Move to Quality Phase
 

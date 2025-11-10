@@ -324,5 +324,5 @@ Start Collecting Rollouts →
 Validate Verification →
 :::
 
-**For custom domains**: See {doc}`../verification/custom-patterns-cookbook` to build custom verification.
+**For custom domains**: See {ref}`training-verification-custom-patterns` to build custom verification.
 

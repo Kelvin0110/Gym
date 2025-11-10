@@ -76,18 +76,18 @@ If throughput **barely changed** → model server or verification is limiting fa
 * - Observation
   - Next Step
 * - **Throughput increased significantly** (2x+)
-  - {doc}`tune-parallelism` - Find your optimal parallelism value
+  - {ref}`training-rollout-optimize-parallelism` - Find your optimal parallelism value
 * - **Throughput barely changed** (<20% improvement)
   - Check model server docs or simplify verification logic
 * - **Errors or OOM crashes**
-  - {doc}`tune-parallelism` - Reduce parallelism to stable level
+  - {ref}`training-rollout-optimize-parallelism` - Reduce parallelism to stable level
 ```
 
 ---
 
 ## Next Step
 
-Most users should proceed to {doc}`tune-parallelism` to find optimal concurrency settings.
+Most users should proceed to {ref}`training-rollout-optimize-parallelism` to find optimal concurrency settings.
 
 :::{button-ref} tune-parallelism
 :color: primary

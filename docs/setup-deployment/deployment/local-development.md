@@ -5,7 +5,7 @@
 Configure your development environment for iterating on agents, resource servers, and models.
 
 :::{note}
-**Already completed the {doc}`../../get-started/index`?** This guide builds on that foundation with development workflows, IDE configuration, and advanced testing patterns.
+**Already completed the {ref}`gs-index`?** This guide builds on that foundation with development workflows, IDE configuration, and advanced testing patterns.
 :::
 
 ---
@@ -167,7 +167,7 @@ Validates:
 
 ## Configuration Management
 
-**Focus:** Quick overrides for iterative development. For complete configuration reference and production patterns, see {doc}`../configuration/index`.
+**Focus:** Quick overrides for iterative development. For complete configuration reference and production patterns, see {ref}`setup-config`.
 
 ### Environment-Specific Configs
 
@@ -209,7 +209,7 @@ ng_run "+config_paths=[my_experiment.yaml]" \
 ```
 
 :::{seealso}
-{doc}`../configuration/reference` for complete configuration schema and hierarchy rules.
+{ref}`config-reference` for complete configuration schema and hierarchy rules.
 :::
 
 ### Common Development Overrides
@@ -256,13 +256,6 @@ ng_run "+config_paths=[config.yaml]" \
 
 ### Build Custom Resource Servers
 
-:::{seealso}
-**Need domain-specific tools or verification?** See {doc}`../../tutorials/custom-resource-server` for a complete tutorial on building custom resource servers from scratch, including:
-- Tool implementation patterns (APIs, databases, code execution)
-- Verification strategies (binary, continuous, multi-metric)
-- Dataset preparation and testing
-- Deployment and troubleshooting
-:::
 
 ---
 
@@ -288,7 +281,7 @@ The `ng_viewer` command uses `+jsonl_fpath` as its parameter. This differs from 
 ### Configuration and Common Issues
 
 :::{seealso}
-**Troubleshooting configuration issues?** See {doc}`../configuration/debugging` for detailed debugging workflows including:
+**Troubleshooting configuration issues?** See {ref}`config-debugging` for detailed debugging workflows including:
 - Port conflicts and resolution
 - Module import errors
 - Configuration not loading
@@ -298,7 +291,7 @@ The `ng_viewer` command uses `+jsonl_fpath` as its parameter. This differs from 
 :::
 
 :::{seealso}
-**Production monitoring and testing?** See {doc}`../operations/index` for operational concerns including:
+**Production monitoring and testing?** See {ref}`setup-operations` for operational concerns including:
 - Health checks and monitoring
 - Resource server validation with `ng_test`
 - Performance profiling for production scale

@@ -7,7 +7,7 @@ Validate that your resource server's verification logic produces useful reward s
 :::{seealso}
 **Already chose a resource server?** You're in the right place—this section helps you validate it works and customize if needed.
 
-**Haven't chosen yet?** Start with {doc}`../resource-servers/index` to select a resource server first.
+**Haven't chosen yet?** Start with {ref}`training-resource-servers` to select a resource server first.
 :::
 
 ---
@@ -124,7 +124,7 @@ Custom Patterns Cookbook →
 5. Multi-Objective (multiple metrics)
 6. Hybrid (fallback strategies)
 
-**Advanced**: {doc}`multi-objective-scoring` for combining multiple reward signals
+**Advanced**: {ref}`training-verification-multi-objective` for combining multiple reward signals
 
 ---
 

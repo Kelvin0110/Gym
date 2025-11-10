@@ -19,7 +19,7 @@ Advanced guide for combining multiple reward signals in custom resource servers.
 
 :::
 
-**Prerequisites**: Basic verification from {doc}`../../get-started/verifying-agent-results` and {doc}`custom-patterns-cookbook`.
+**Prerequisites**: Basic verification from {ref}`gs-verifying-agent-results` and {ref}`training-verification-custom-patterns`.
 
 :::{tip}
 **Using existing servers?** Most built-in servers (mcqa, comp_coding) use single objectives. Only multineedle and library_judge_math use multi-objective patterns—you likely don't need this guide.
@@ -54,7 +54,7 @@ async def verify(self, body: YourVerifyRequest) -> YourVerifyResponse:
     )
 ```
 
-After collection, all numeric fields are averaged across rollouts. See {doc}`../datasets/prepare-for-training` for using these metrics.
+After collection, all numeric fields are averaged across rollouts. See {ref}`training-datasets-prepare-for-training` for using these metrics.
 
 ---
 
@@ -236,7 +236,7 @@ else:
 
 ## Common Patterns
 
-See {doc}`custom-patterns-cookbook` Pattern 5 for complete multi-objective implementation.
+See {ref}`training-verification-custom-patterns` Pattern 5 for complete multi-objective implementation.
 
 ### Quick Examples
 
@@ -431,9 +431,9 @@ reward = 0.5 * accuracy + 0.5 * response_length  # Wrong!
 
 ## Related Topics
 
-* {doc}`custom-patterns-cookbook` - Complete multi-objective implementation (Pattern 5)
-* {doc}`../datasets/prepare-for-training` - Using multi-metric rollouts for training
-* {doc}`../data-quality/index` - Validate multi-objective reward distributions
+* {ref}`training-verification-custom-patterns` - Complete multi-objective implementation (Pattern 5)
+* {ref}`training-datasets-prepare-for-training` - Using multi-metric rollouts for training
+* {ref}`training-data-quality` - Validate multi-objective reward distributions
 * {doc}`../rollout-collection/optimize-for-training/production-scale` - Monitor metrics during collection
 
 ---

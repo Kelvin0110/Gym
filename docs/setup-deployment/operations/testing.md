@@ -163,7 +163,7 @@ ng_dump_config "+config_paths=[config.yaml]" | grep -v '\${'
 ```
 
 :::{seealso}
-For configuration troubleshooting, refer to {doc}`debugging`.
+For configuration troubleshooting, refer to {ref}`setup-operations-debugging`.
 :::
 
 ---

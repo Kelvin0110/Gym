@@ -5,7 +5,7 @@
 Maximize rollout generation throughput when building large-scale training datasets.
 
 :::{seealso}
-New to rollout collection? Complete {doc}`../../../get-started/collecting-rollouts` first to get servers running.
+New to rollout collection? Complete {ref}`gs-collecting-rollouts` first to get servers running.
 :::
 
 ---
@@ -59,26 +59,26 @@ Use this table to quickly navigate to the optimization guide that matches your s
 * - Goal
   - Guide
 * - **Diagnose slow collection**
-  - {doc}`identify-bottleneck` → Run throughput tests
+  - {ref}`training-rollout-optimize-bottleneck` → Run throughput tests
 * - **Configure concurrency**
-  - {doc}`tune-parallelism` → Find optimal value
+  - {ref}`training-rollout-optimize-parallelism` → Find optimal value
 * - **Optimize verification**
-  - {doc}`production-scale` → Caching and fast mode
+  - {ref}`training-rollout-optimize-production` → Caching and fast mode
 * - **Resume interrupted runs**
-  - {doc}`production-scale` → Append mode behavior
+  - {ref}`training-rollout-optimize-production` → Append mode behavior
 * - **Track throughput**
-  - {doc}`production-scale` → Samples/sec and tokens/sec
+  - {ref}`training-rollout-optimize-production` → Samples/sec and tokens/sec
 * - **Quick quality checks**
-  - {doc}`production-scale` → Smoke tests for broken verification
+  - {ref}`training-rollout-optimize-production` → Smoke tests for broken verification
 ```
 
 ---
 
 ## Next Steps
 
-Start with **{doc}`identify-bottleneck`** to diagnose what's limiting your throughput, then proceed to **{doc}`tune-parallelism`** for systematic optimization.
+Start with **{ref}`training-rollout-optimize-bottleneck`** to diagnose what's limiting your throughput, then proceed to **{ref}`training-rollout-optimize-parallelism`** for systematic optimization.
 
-After maximizing throughput, tune data characteristics with **{doc}`../sampling-strategies/index`** (temperature, diversity, num_repeats).
+After maximizing throughput, tune data characteristics with **{ref}`training-rollout-sampling`** (temperature, diversity, num_repeats).
 
 :::{button-ref} identify-bottleneck
 :color: primary

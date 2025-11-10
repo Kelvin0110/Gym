@@ -1,6 +1,6 @@
-# Configuration Debugging
-
 (config-debugging)=
+
+# Configuration Debugging
 
 Validate configuration and diagnose issues before running servers.
 
@@ -165,7 +165,7 @@ diff /tmp/base.yaml /tmp/dev.yaml
 ```
 
 ```{seealso}
-See {doc}`multi-server` for multi-file configuration patterns.
+See {ref}`config-multi-server` for multi-file configuration patterns.
 ```
 
 ---

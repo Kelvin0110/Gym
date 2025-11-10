@@ -32,7 +32,7 @@ Ensure you have these prerequisites before generating DPO data:
 * - Requirement
   - Details
 * - **Get Started completed**
-  - Complete {doc}`../../../get-started/collecting-rollouts` first
+  - Complete {ref}`gs-collecting-rollouts` first
 * - **Servers running**
   - Agent and model servers with verification that returns reward/score
 * - **Training objective**
@@ -68,7 +68,7 @@ ng_collect_rollouts \
     +num_samples_in_parallel=<parallelism>
 ```
 
-**Configuration**: For DPO, use higher temperature for diversity, multiple repeats (3-4) to generate comparisons, and moderate parallelism. Refer to {doc}`parameters` for parameter explanations.
+**Configuration**: For DPO, use higher temperature for diversity, multiple repeats (3-4) to generate comparisons, and moderate parallelism. Refer to {ref}`training-rollout-sampling-parameters` for parameter explanations.
 
 ### Expected Output
 

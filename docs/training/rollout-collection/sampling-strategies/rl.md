@@ -32,7 +32,7 @@ Ensure you have these prerequisites before generating RL data:
 * - Requirement
   - Details
 * - **Get Started completed**
-  - Complete {doc}`../../../get-started/collecting-rollouts` first
+  - Complete {ref}`gs-collecting-rollouts` first
 * - **Servers running**
   - Agent and model servers with reward-based verification
 * - **Training objective**
@@ -66,7 +66,7 @@ ng_collect_rollouts \
     +num_samples_in_parallel=<parallelism>
 ```
 
-**Configuration**: For RL, use moderate temperature to balance exploration and exploitation, single samples per iteration, and moderate-high parallelism for fast cycles. Refer to {doc}`parameters` for parameter explanations.
+**Configuration**: For RL, use moderate temperature to balance exploration and exploitation, single samples per iteration, and moderate-high parallelism for fast cycles. Refer to {ref}`training-rollout-sampling-parameters` for parameter explanations.
 
 ### Expected Output
 

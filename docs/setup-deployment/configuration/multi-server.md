@@ -1,6 +1,6 @@
-# Multi-Server Configuration
-
 (config-multi-server)=
+
+# Multi-Server Configuration
 
 Run multi-server deployments to train agents across diverse task domains.
 
@@ -218,7 +218,7 @@ ng_run "+config_paths=[$PROD_CONFIG]" +default_host=0.0.0.0
 ```
 
 ```{seealso}
-See {doc}`../../training/handoff-to-training` for using multi-server configs with training frameworks.
+See {ref}`training-integration` for using multi-server configs with training frameworks.
 ```
 
 ---
