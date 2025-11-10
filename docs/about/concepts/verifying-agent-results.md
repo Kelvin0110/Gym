@@ -37,6 +37,8 @@ Without verification, agents can execute tools perfectly but have no signal abou
 
 ## Why Verification Matters
 
+Verification measures the quality of outcomes, not just successful tool execution.
+
 ### Tool Execution Is Not Performance
 
 An agent can successfully call tools without producing good results:
@@ -44,8 +46,6 @@ An agent can successfully call tools without producing good results:
 - Weather agent calls `get_weather("San Francisco")` _✓ Tool executed_
 - But gives generic advice ignoring temperature data _✗ Poor performance_
 - Or recommends winter clothing for 75°F weather _✗ Incorrect application_
-
-**Verification measures the quality of outcomes, not just successful tool execution.**
 
 ### Training Signal for Reinforcement Learning
 
@@ -80,6 +80,36 @@ Different tasks require different notions of "good performance":
 ```
 
 Each resource server encapsulates domain expertise about what constitutes success.
+
+---
+
+## Real-World Verification Examples
+
+These examples demonstrate how verification combines multiple criteria with weighted priorities:
+
+```{list-table}
+:header-rows: 1
+:widths: 25 50 25
+
+* - Agent Type
+  - Verification Criteria (with weights)
+  - Design Rationale
+* - **Math Tutoring**
+  - • **Correctness** (0.5): Final answer mathematically correct? <br>
+    • **Pedagogy** (0.3): Steps clearly explained?<br>
+    • **Efficiency** (0.2): Simplest method used?
+  - Correct answers matter most, but teaching quality is also important
+* - **Customer Service**
+  - • **Accuracy** (0.4): Addresses customer question? <br>
+    • **Tone** (0.3): Appropriate and professional? <br>
+    • **Resolution** (0.3): Solves problem or provides next steps? 
+  - Balances multiple dimensions of service quality—no single aspect dominates
+* - **Code Generation**
+  - • **Functionality** (0.6): All test cases pass? <br>
+    • **Quality** (0.3): Readable with good structure? <br>
+    • **Security** (0.1): Avoids vulnerabilities?
+  - Functional correctness is primary, but code quality matters for maintainability
+```
 
 ---
 
@@ -199,36 +229,6 @@ Effective verification functions share three critical properties:
 
 ---
 
-## Real-World Verification Examples
-
-These examples demonstrate how verification combines multiple criteria with weighted priorities:
-
-```{list-table}
-:header-rows: 1
-:widths: 25 50 25
-
-* - Agent Type
-  - Verification Criteria (with weights)
-  - Design Rationale
-* - **Math Tutoring**
-  - • **Correctness** (0.5): Final answer mathematically correct? <br>
-    • **Pedagogy** (0.3): Steps clearly explained?<br>
-    • **Efficiency** (0.2): Simplest method used?
-  - Correct answers matter most, but teaching quality is also important
-* - **Customer Service**
-  - • **Accuracy** (0.4): Addresses customer question? <br>
-    • **Tone** (0.3): Appropriate and professional? <br>
-    • **Resolution** (0.3): Solves problem or provides next steps? 
-  - Balances multiple dimensions of service quality—no single aspect dominates
-* - **Code Generation**
-  - • **Functionality** (0.6): All test cases pass? <br>
-    • **Quality** (0.3): Readable with good structure? <br>
-    • **Security** (0.1): Avoids vulnerabilities?
-  - Functional correctness is primary, but code quality matters for maintainability
-```
-
----
-
 ## Design Considerations
 
 When designing verification logic for your resource server, these patterns address common design decisions:
@@ -266,114 +266,3 @@ When designing verification logic for your resource server, these patterns addre
 :::
 
 ::::
-
----
-
-## Technical Details
-
-:::{dropdown} Verification API Structure
-**Core Types**:
-
-All resource servers expose a `POST /verify` endpoint that accepts a `BaseVerifyRequest` and returns a `BaseVerifyResponse`.
-
-**BaseVerifyRequest**:
-```python
-class BaseVerifyRequest(BaseModel):
-    responses_create_params: NeMoGymResponseCreateParamsNonStreaming
-    response: NeMoGymResponse
-```
-
-Contains the original task (`responses_create_params`) and the agent's complete response trajectory (`response`).
-
-**BaseVerifyResponse**:
-```python
-class BaseVerifyResponse(BaseVerifyRequest):
-    reward: float
-```
-
-Returns the input request plus a `reward` field—the numerical score used for RL training.
-
-**Key Design Choice**: Response includes full request for traceability. Each rollout contains complete context for later analysis or re-verification.
-:::
-
-:::{dropdown} Implementation Patterns by Domain
-**Multiple-Choice Questions (MCQA)**:
-- Extract agent's answer letter from response text
-- Use regex patterns or boxed answer detection
-- Compare to expected answer
-- Binary reward: 1.0 if match, 0.0 otherwise
-
-**Code Execution**:
-- Extract code from agent response
-- Execute in sandboxed environment
-- Run test cases against implementation
-- Reward based on pass rate (0.0–1.0)
-
-**Instruction Following**:
-- Enumerate all specified constraints
-- Check each constraint independently
-- All-or-nothing reward: 1.0 if all pass, 0.0 if any fail
-
-**LLM-as-Judge**:
-- Format prompt comparing expected vs generated answers
-- Call judge model for equivalence determination
-- Optional swap check to reduce bias
-- Parse structured output for reward signal
-
-**Mathematical Equivalence**:
-- Use symbolic math library for equivalence checking
-- Fallback to LLM judge for complex expressions
-- Combine programmatic and judgement signals
-- Prioritize symbolic verification when possible
-:::
-
-:::{dropdown} Example Resource Servers
-**Available Implementations**:
-
-| Resource Server | Verification Approach | Reward Range |
-|----------------|----------------------|--------------|
-| **mcqa** | Extract answer, compare to expected | Binary: 0.0 or 1.0 |
-| **comp_coding** | Execute code, run test cases | 0.0–1.0 based on pass rate |
-| **instruction_following** | Check each constraint | Binary: all pass or fail |
-| **library_judge_math** | Math equivalence + LLM judge | 0.0–1.0 with hybrid scoring |
-| **equivalence_llm_judge** | LLM-based answer comparison | Binary with optional swap |
-| **python_math_exec** | Execute Python, check final value | 0.0–1.0 based on correctness |
-| **multineedle** | Extract values, check accuracy and overlap | 0.0–1.0 with accuracy metric |
-
-**Exploring Verification Logic**:
-
-Each resource server in `resources_servers/` includes an `app.py` with its `verify()` implementation. Studying these provides patterns you can adapt for custom verification logic.
-:::
-
-:::{dropdown} Verification in the Collection Pipeline
-**When Verification Runs**:
-
-During rollout collection, verification happens after agent execution completes:
-
-1. Collection orchestrator sends task to agent
-2. Agent executes (may involve multiple tool calls)
-3. Agent returns final response
-4. Orchestrator calls resource server's `/verify` endpoint
-5. Verification score added to rollout
-6. Rollout with reward saved to output JSONL
-
-**Scalability Considerations**:
-
-- Verification runs synchronously per rollout
-- Async orchestration enables parallel verification across multiple rollouts
-- Fast verification (< 100ms) is ideal for high-throughput collection
-- Expensive verification (LLM judge calls) may bottleneck collection
-
-**Output Format**:
-
-Each rollout includes the verification reward:
-```json
-{
-  "responses_create_params": { "input": [...], "tools": [...] },
-  "output": [...],
-  "reward": 0.85
-}
-```
-
-This format is directly consumable by RL training frameworks.
-:::
