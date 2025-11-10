@@ -127,20 +127,3 @@ Each model type has specific configuration options and usage patterns—refer to
 ← Review Configuration Concepts
 :::
 
----
-
-## Next Steps
-
-Select the model serving method that fits your needs and follow the configuration guide:
-
-:::{button-ref} vllm/index
-:color: primary
-:outline:
-:ref-type: doc
-
-Start with vLLM for Self-Hosted Models →
-:::
-
-:::{tip}
-**Not sure which to choose?** Start with OpenAI for quick experimentation, then move to vLLM or NVIDIA NIM for production workloads.
-:::
