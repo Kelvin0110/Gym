@@ -267,41 +267,9 @@ For production deployments and advanced use cases:
    - Collect more data if needed
 ```
 
----
-
-## Next Steps
-
-Start with the training algorithm that matches your data:
-
-:::{button-ref} grpo
-:color: primary
-:outline:
-:ref-type: doc
-
-GRPO Training →
-:::
-
-:::{button-ref} sft
-:color: secondary
-:outline:
-:ref-type: doc
-
-SFT Training →
-:::
-
-:::{button-ref} dpo
-:color: secondary
-:outline:
-:ref-type: doc
-
-DPO Training →
-:::
-
-
 ```{toctree}
 :hidden:
 :maxdepth: 1
 
 advanced
 ```
-
