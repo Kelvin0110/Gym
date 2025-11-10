@@ -6,61 +6,14 @@ Detailed integration guides for using NeMo Gym rollouts with popular RL training
 
 ## Available Integration Guides
 
-::::{grid} 1 1 2 2
-:gutter: 3
-
-:::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` NeMo RL (Complete Guide)
+:::{card} {octicon}`rocket;1.5em;sd-mr-1` **NeMo RL Integration**
 :link: nemo-rl/index
 :link-type: doc
 
-NVIDIA's post-training framework with GRPO, SFT, and DPO support. Includes complete data transformation scripts and configuration examples.
+NVIDIA's post-training framework with GRPO, SFT, and DPO support. Includes complete data transformation scripts, configuration examples, and quick reference cheat sheet.
 +++
 {bdg-primary}`Official` {bdg-secondary}`GRPO` {bdg-secondary}`SFT` {bdg-secondary}`DPO`
 :::
-
-:::{grid-item-card} {octicon}`zap;1.5em;sd-mr-1` Quick Reference
-:link: quick-reference
-:link-type: doc
-
-Fast lookup for transformations, configs, and commands. Perfect cheat sheet for repeat integrations.
-+++
-{bdg-info}`Cheat Sheet`
-:::
-
-::::
-
-## Coming Soon
-
-Additional integration guides for:
-- VeRL
-- OpenRLHF  
-- TRL (HuggingFace)
-- Custom frameworks
-
----
-
-## Integration Quick Reference
-
-```{list-table}
-:header-rows: 1
-:widths: 30 30 40
-
-* - Framework
-  - Algorithms
-  - Status
-* - **NeMo RL**
-  - GRPO, SFT, DPO, RM
-  - {doc}`Full Guide Available <nemo-rl/index>`
-* - **VeRL**
-  - PPO, GRPO
-  - Overview only
-* - **OpenRLHF**
-  - PPO, DPO
-  - Overview only
-* - **TRL**
-  - DPO, PPO
-  - Overview only
-```
 
 ---
 
@@ -232,32 +185,6 @@ if "reward" in data[0]:
 
 ---
 
-## Contributing Integration Guides
-
-Want to add an integration guide for another framework?
-
-1. Follow the structure in {ref}`training-integration-nemo-rl`:
-   - Overview and prerequisites
-   - Data transformation with scripts
-   - Configuration examples
-   - Training launch commands
-   - Troubleshooting section
-
-2. Include:
-   - Complete transformation scripts (not pseudocode)
-   - Real configuration files
-   - Common error patterns and solutions
-   - Performance optimization tips
-
-3. Submit a pull request with:
-   - New guide in `docs/training/integration/`
-   - Update to this index page
-   - Example rollouts → transformed data
-
-See [CONTRIBUTING.md](https://github.com/NVIDIA-NeMo/Gym/blob/main/CONTRIBUTING.md) for guidelines.
-
----
-
 ## Related Topics
 
 - {ref}`training-datasets-prepare-for-training` - Data preparation by algorithm
@@ -269,5 +196,4 @@ See [CONTRIBUTING.md](https://github.com/NVIDIA-NeMo/Gym/blob/main/CONTRIBUTING.
 :maxdepth: 2
 
 nemo-rl/index
-quick-reference
 ```

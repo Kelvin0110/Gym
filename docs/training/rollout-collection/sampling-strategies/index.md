@@ -49,36 +49,36 @@ Different training algorithms need different data characteristics—learn how to
 :link: parameters
 :link-type: doc
 
-**Explanation** of temperature, top_p, and num_repeats—what they control and how they affect rollout characteristics.
+Learn how temperature, top_p, and num_repeats control rollout characteristics and affect data quality.
 +++
-{bdg-secondary}`explanation` {bdg-secondary}`fundamentals`
+{bdg-secondary}`fundamentals` {bdg-secondary}`parameters`
 :::
 
 :::{grid-item-card} {octicon}`checklist;1.5em;sd-mr-1` SFT Sampling Strategy
 :link: sft
 :link-type: doc
 
-**How-to guide** for supervised fine-tuning: consistent, high-quality demonstrations at scale.
+Generate consistent, high-quality demonstrations at scale for supervised fine-tuning.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`sft` {bdg-secondary}`consistency`
+{bdg-secondary}`sft` {bdg-secondary}`consistency` {bdg-secondary}`quality`
 :::
 
 :::{grid-item-card} {octicon}`git-compare;1.5em;sd-mr-1` DPO Sampling Strategy
 :link: dpo
 :link-type: doc
 
-**How-to guide** for Direct Preference Optimization: generating diverse preference pairs with quality differences.
+Generate diverse preference pairs with quality differences for Direct Preference Optimization.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`dpo` {bdg-secondary}`diversity`
+{bdg-secondary}`dpo` {bdg-secondary}`diversity` {bdg-secondary}`pairs`
 :::
 
 :::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` RL Sampling Strategy
 :link: rl
 :link-type: doc
 
-**How-to guide** for reinforcement learning: balancing exploration and exploitation with iterative collection.
+Balance exploration and exploitation with iterative collection for reinforcement learning.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`rl` {bdg-secondary}`exploration`
+{bdg-secondary}`rl` {bdg-secondary}`exploration` {bdg-secondary}`iterative`
 :::
 
 
@@ -159,20 +159,7 @@ ng_collect_rollouts \
 
 :::
 
-
 ::::
-
-## Next Steps
-
-Start with **{ref}`training-rollout-sampling-parameters`** to understand the fundamentals, then choose the strategy guide that matches your training objective.
-
-:::{button-ref} parameters
-:color: primary
-:outline:
-:ref-type: doc
-
-Start with Understanding Parameters →
-:::
 
 ```{toctree}
 :hidden:

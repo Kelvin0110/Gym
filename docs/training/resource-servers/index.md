@@ -4,21 +4,6 @@
 
 Choose which resource server to use for your training task. Resource servers provide tools, datasets, and verification for specific domains.
 
-:::{card}
-
-**What you'll find here**:
-
-Select from 13 built-in resource servers covering MCQA, math, code generation, open-ended QA, and more.
-
-^^^
-
-**Choose by**:
-- Task type (what your agent needs to do)
-- Training algorithm (SFT, DPO, PPO)
-- Reward pattern (binary, continuous, multi-metric)
-
-:::
-
 ---
 
 ## What Resource Servers Provide
@@ -299,30 +284,3 @@ Quick comparison of most commonly used servers:
   - PPO, Analysis
   - Multi-hop QA, extraction
 ```
-
----
-
-## Next Steps
-
-**After selecting a resource server**:
-
-:::{button-ref} ../rollout-collection/index
-:color: primary
-:outline:
-:ref-type: doc
-
-Start Collecting Rollouts →
-:::
-
-**After collecting samples**:
-
-:::{button-ref} ../verification/validate-verification
-:color: secondary
-:outline:
-:ref-type: doc
-
-Validate Verification →
-:::
-
-**For custom domains**: See {ref}`training-verification-custom-patterns` to build custom verification.
-

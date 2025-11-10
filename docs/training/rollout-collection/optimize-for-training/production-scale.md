@@ -341,5 +341,5 @@ After collection completes and quick checks pass:
 **Data quality analysis and filtering** → {doc}`../../data-quality/index`
 
 :::{seealso}
-**Pipeline flow**: Optimize throughput (this guide) → Collect rollouts → Quick checks (above) → Comprehensive quality analysis ({doc}`../../data-quality/index`) → Format for training ({doc}`../../datasets/index`)
+**Overall workflow**: Optimize throughput (this guide) → Collect rollouts → Quick checks (above) → Comprehensive quality analysis ({doc}`../../data-quality/index`) → Format for training ({doc}`../../datasets/index`)
 :::</seealso>

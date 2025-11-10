@@ -4,9 +4,9 @@
 
 Generate high-quality training data at scale with optimized rollout collection, verification, and formatting.
 
-## Training Data Pipeline
+## Training Data Workflow
 
-Follow the training data pipeline from resource server selection to framework integration:
+Follow the training data workflow from resource server selection to framework integration:
 
 ::::{grid} 1 1 1 1
 :gutter: 3
@@ -33,7 +33,7 @@ Generate training rollouts at scale with optimized sampling strategies and paral
 :link: verification/index
 :link-type: doc
 
-Validate that verification works correctly and customize reward signals for your training needs.
+Test verification behavior and customize reward signals for your training needs.
 +++
 {bdg-secondary}`validation` {bdg-secondary}`rewards` {bdg-secondary}`custom-patterns`
 :::
@@ -67,33 +67,7 @@ Pass your rollouts to RL training frameworks. NeMo-RL integration with GRPO, SFT
 
 ::::
 
-## Quick Decision Guide
-
-Not sure where to start? Choose based on your current need:
-
-```{list-table}
-:header-rows: 1
-:widths: 40 60
-
-* - If You Need To...
-  - Start Here
-* - Choose a resource server
-  - {doc}`Resource Servers <resource-servers/index>` (by task type, training algorithm)
-* - Generate training data faster
-  - {doc}`Rollout Collection / Optimize for Training <rollout-collection/optimize-for-training/index>`
-* - Validate verification works
-  - {doc}`Verification / Validate <verification/validate-verification>` (check reward signals)
-* - Improve training data quality
-  - {doc}`Data Quality <data-quality/index>`
-* - Prepare data for SFT or DPO
-  - {doc}`Datasets / Prepare for Training <datasets/prepare-for-training>`
-* - Pass data to your training framework
-  - {doc}`Training Integration <integration/index>` (NeMo-RL, VeRL, OpenRLHF, TRL)
-* - Build custom verification
-  - {doc}`Verification / Custom Patterns <verification/custom-patterns-cookbook>` (advanced)
-```
-
-## Training Workflow Patterns
+## Workflow Patterns
 
 Common end-to-end workflows combining data generation, quality filtering, and framework integration for different training objectives.
 
@@ -152,14 +126,3 @@ responses_create_params:
 
 ::::
 
-## Next Steps
-
-We recommend starting with **Resource Servers** to choose the right task domain and verification, then moving to **Rollout Collection** to generate training data at scale.
-
-:::{button-ref} resource-servers/index
-:color: primary
-:outline:
-:ref-type: doc
-
-Choose a Resource Server →
-:::

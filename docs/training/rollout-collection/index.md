@@ -19,27 +19,27 @@ Explore the three core aspects of training data collection: performance optimiza
 :link: optimize-for-training/index
 :link-type: doc
 
-**How-to guide** for maximizing training data generation throughput with configuration tuning and parallelization strategies.
+Maximize training data generation throughput with configuration tuning and parallelization strategies.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`performance` {bdg-secondary}`parallelism`
+{bdg-secondary}`performance` {bdg-secondary}`parallelism` {bdg-secondary}`throughput`
 :::
 
 :::{grid-item-card} {octicon}`versions;1.5em;sd-mr-1` Sampling Strategies
 :link: sampling-strategies/index
 :link-type: doc
 
-**Topic guide** for configuring temperature, diversity, and sampling parameters for SFT, DPO, RL, evaluation, and research.
+Configure temperature, diversity, and sampling parameters for SFT, DPO, RL, evaluation, and research.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`temperature` {bdg-secondary}`diversity`
+{bdg-secondary}`temperature` {bdg-secondary}`diversity` {bdg-secondary}`sampling`
 :::
 
 :::{grid-item-card} {octicon}`checklist;1.5em;sd-mr-1` Collection Patterns
 :link: collection-patterns/index
 :link-type: doc
 
-**Reference** of common collection patterns and configurations for different training scenarios and use cases.
+Common collection patterns and configurations for different training scenarios and use cases.
 +++
-{bdg-secondary}`reference` {bdg-secondary}`patterns` {bdg-secondary}`examples`
+{bdg-secondary}`patterns` {bdg-secondary}`examples` {bdg-secondary}`commands`
 :::
 
 ::::
@@ -64,9 +64,9 @@ Choose your starting point based on your goal:
   - Tune parallelism, optimize model server, reduce verification overhead. See {doc}`optimize-for-training/index`
 ```
 
-## Collection Pipeline Overview
+## Collection Process Overview
 
-The training data collection pipeline:
+The training data collection process:
 
 ```
 Input Dataset (JSONL)
@@ -81,19 +81,6 @@ Input Dataset (JSONL)
     ↓
 Output Rollouts (JSONL)  → to Data Quality filtering
 ```
-
-## Next Steps
-
-Start with **{doc}`optimize-for-training/index`** to understand parallelization and throughput, then move to **{doc}`sampling-strategies/index`** to tune data characteristics.
-:::
-
-:::{button-ref} optimize-for-training/index
-:color: primary
-:outline:
-:ref-type: doc
-
-Start with Optimize for Training →
-:::
 
 ```{toctree}
 :hidden:

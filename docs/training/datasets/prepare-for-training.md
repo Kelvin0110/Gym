@@ -25,7 +25,7 @@ Convert `rollouts.jsonl` with reward scores into the specific format required by
 ```
 
 **Related concepts**:
-- {doc}`index` - Overview of dataset formats and pipeline
+- {doc}`index` - Overview of dataset formats and workflow
 - {ref}`training-data-quality` - For filtering and curation before preparation
 - {ref}`training-verification-multi-objective` - For handling multi-metric rollouts
 

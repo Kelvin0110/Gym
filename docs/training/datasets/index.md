@@ -29,27 +29,27 @@ For passing datasets to your training framework, see {ref}`training-integration`
 :link: prepare-for-training
 :link-type: doc
 
-**How-to guide** for converting rollouts to SFT, DPO, and RL training formats compatible with popular frameworks.
+Convert rollouts to SFT, DPO, and RL training formats compatible with popular frameworks.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`sft` {bdg-secondary}`dpo` {bdg-secondary}`rl`
+{bdg-secondary}`sft` {bdg-secondary}`dpo` {bdg-secondary}`rl`
 :::
 
 :::{grid-item-card} {octicon}`checklist;1.5em;sd-mr-1` Validate Format
 :link: validate-format
 :link-type: doc
 
-**How-to guide** for validating dataset format using `ng_prepare_data` and checking framework compatibility.
+Validate dataset format using `ng_prepare_data` and check framework compatibility.
 +++
-{bdg-secondary}`how-to` {bdg-secondary}`validation` {bdg-secondary}`ng_prepare_data`
+{bdg-secondary}`validation` {bdg-secondary}`ng_prepare_data` {bdg-secondary}`checks`
 :::
 
 :::{grid-item-card} {octicon}`file-code;1.5em;sd-mr-1` Format Specification
 :link: format-specification
 :link-type: doc
 
-**Reference** for rollout JSON schema, field definitions, and format requirements for different training types.
+Rollout JSON schema, field definitions, and format requirements for different training types.
 +++
-{bdg-secondary}`reference` {bdg-secondary}`schema` {bdg-secondary}`spec`
+{bdg-secondary}`schema` {bdg-secondary}`spec` {bdg-secondary}`json`
 :::
 
 ::::
@@ -78,7 +78,7 @@ For passing datasets to your training framework, see {ref}`training-integration`
 See {ref}`training-datasets-prepare-for-training` for conversion examples.
 
 
-## Dataset Pipeline
+## Dataset Workflow
 
 ```
 Curated Rollouts (JSONL)
@@ -170,7 +170,7 @@ training_data/
 
 ## Related Topics
 
-### Data Pipeline
+### Data Workflow
 
 * {ref}`training-data-quality` - Filter and curate before formatting
 * {ref}`training-rollout-collection` - Generate raw rollouts
