@@ -13,8 +13,8 @@
 # limitations under the License.
 import json
 import logging
+import subprocess
 import time
-import traceback
 from typing import Any, Dict, Optional
 
 from pydantic import Field
@@ -139,7 +139,26 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
             raise ImportError(
                 "NeMo-Skills is required for SWE-bench wrapper. Please install it with: uv sync --extra nemo-skills"
             )
-
+        LOG.info("in init for swe bench")
+        
+        # Install Apptainer on Ubuntu/Debian
+        LOG.info("Checking Apptainer installation...")
+        try:
+            # Check if apptainer is already installed
+            result = subprocess.run(["which", "apptainer"], capture_output=True, text=True)
+            if result.returncode == 0:
+                LOG.info("Apptainer is already installed")
+            else:
+                LOG.info("Installing Apptainer...")
+                # Download and install Apptainer
+                subprocess.run("cd /tmp && wget https://github.com/apptainer/apptainer/releases/download/v1.3.1/apptainer_1.3.1_amd64.deb", shell=True, check=True)
+                subprocess.run("apt-get update && apt-get install -y /tmp/apptainer_1.3.1_amd64.deb", shell=True, check=True)
+                LOG.info("Apptainer installation completed")
+        except subprocess.CalledProcessError as e:
+            LOG.warning(f"Apptainer installation failed (may already be installed): {e}")
+        except Exception as e:
+            LOG.warning(f"Error during Apptainer setup: {e}")
+        
         # Ensure symlink exists for /nemo_run/code
         ensure_nemo_run_symlink()
 
@@ -235,7 +254,6 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
 
         except Exception as e:
             LOG.error(f"SWE-bench evaluation failed: {str(e)}")
-            LOG.error(f"Traceback: {traceback.format_exc()}")
             # Return error response
             error_message = NeMoGymResponseOutputMessage(
                 id=f"msg-{problem_info.get('instance_id', 'unknown')}-error",
