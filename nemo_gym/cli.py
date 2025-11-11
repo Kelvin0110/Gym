@@ -36,6 +36,7 @@ from tqdm.auto import tqdm
 from nemo_gym import PARENT_DIR
 from nemo_gym.config_types import BaseNeMoGymCLIConfig
 from nemo_gym.global_config import (
+    DEV_MODE_KEY_NAME,
     HEAD_SERVER_DEPS_KEY_NAME,
     NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME,
     NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME,
@@ -161,8 +162,12 @@ class RunHelper:  # pragma: no cover
 
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
+            # Check if dev mode is enabled for hot reload
+            dev_mode = global_config_dict.get(DEV_MODE_KEY_NAME, False)
+            dev_env_var = "NEMO_GYM_DEV_MODE=1 " if dev_mode else ""
+
             command = f"""{_setup_env_command(dir_path, global_config_dict)} \\
-    && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
+    && {dev_env_var}{NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
 

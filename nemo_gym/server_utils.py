@@ -532,12 +532,19 @@ Full body: {json.dumps(exc.body, indent=4)}
                 "Adding a uvicorn logging filter so that the logs aren't spammed with 200 OK messages. This is to help errors pop up better and filter out noise."
             )
 
+        # Check if dev mode is enabled for hot reload
+        dev_mode = getenv("NEMO_GYM_DEV_MODE") == "1"
+
+        if dev_mode:
+            print("DEV MODE ENABLED - Hot reload is active, changes will trigger server restart")
+
         uvicorn.run(
             app,
             host=server.config.host,
             port=server.config.port,
             # We add a very small graceful shutdown timeout so when we shutdown we cancel all inflight requests and there are no lingering requests (requests are cancelled)
             timeout_graceful_shutdown=0.5,
+            reload=dev_mode,
         )
 
 

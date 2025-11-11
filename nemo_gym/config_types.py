@@ -34,6 +34,11 @@ from rich.text import Text
 
 
 class BaseNeMoGymCLIConfig(BaseModel):
+    dev: Optional[bool] = Field(
+        default=False,
+        description="Enable development mode with hot reload. Server will automatically restart when code changes are detected.",
+    )
+
     @model_validator(mode="before")
     @classmethod
     def pre_process(cls, data):
