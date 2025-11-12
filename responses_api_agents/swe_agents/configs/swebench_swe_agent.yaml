@@ -6,9 +6,9 @@ swe_agents:
       
       # Agent framework configuration
       agent_framework: swe_agent
-      agent_config: eval/swe-bench/swe-agent/default_one_tool
+      agent_config: configs/swe_agent_config.yaml
       agent_max_turns: 100
-      agent_tools_file: configs/swe_agent_tools_openai_format.json
+      agent_tools_file: configs/swe_agent_tools_openai_format.json  # Used for response formatting only
       agent_framework_repo: https://github.com/slikhite-1/nv-SWE-agent.git
       agent_framework_commit: HEAD
       

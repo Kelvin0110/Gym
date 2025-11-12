@@ -533,7 +533,9 @@ def build_nemo_skills_command(
 
     # Add any additional NeMo-Skills config
     for key, value in nemo_skills_config.items():
-        cmd.append(f"++{key}={value}")
+        # Skip None/null values - let NeMo-Skills use its defaults or don't pass the param
+        if value is not None:
+            cmd.append(f"++{key}={value}")
 
     return cmd
 

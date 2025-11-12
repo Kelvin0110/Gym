@@ -13,10 +13,14 @@
 # limitations under the License.
 import json
 import logging
+import os
 import subprocess
 import time
-from typing import Any, Dict, Optional
-
+import asyncio
+import ray
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional
+import sys
 from pydantic import Field
 
 from nemo_gym.base_resources_server import (
@@ -65,6 +69,25 @@ except ImportError:
 if not NEMO_SKILLS_AVAILABLE:
     LOG.warning("NeMo-Skills is not installed. Please install with: uv sync --extra nemo-skills")
 
+@ray.remote(
+    scheduling_strategy="SPREAD",
+    runtime_env={
+        "py_executable": sys.executable,
+    },
+)
+def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
+    """Execute runner function in Ray worker.
+    
+    Note: agent_config paths should either be:
+    1. Paths within the agent framework repo (e.g., "eval/swe-bench/swe-agent/default_one_tool")
+    2. Absolute paths accessible from all nodes
+    3. Files that will be mounted in the Apptainer container via /nemo_run/code
+    """
+    result = runner(**params)
+    # If the result is a coroutine (async function), run it with asyncio
+    if asyncio.iscoroutine(result):
+        result = asyncio.run(result)
+    return result
 
 class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
     """Configuration for SWE-bench wrapper agent."""
@@ -161,6 +184,41 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
         
         # Ensure symlink exists for /nemo_run/code
         ensure_nemo_run_symlink()
+        
+        # Resolve agent_config path if it's relative
+        if self.config.agent_config and not Path(self.config.agent_config).is_absolute():
+            # If it starts with eval/ or config/, it's a path within the SWE-agent repo, leave as-is
+            if not self.config.agent_config.startswith(("eval/", "config/")):
+                # It's a relative path to a local file - resolve it to absolute path
+                module_dir = Path(__file__).parent
+                resolved_path = (module_dir / self.config.agent_config).resolve()
+                if resolved_path.exists():
+                    # Copy custom config to /nemo_run/code so it's accessible in container
+                    self._copy_config_to_nemo_run(resolved_path)
+                else:
+                    LOG.error(f"Config file not found at: {resolved_path}")
+                    raise FileNotFoundError(f"Agent config not found: {resolved_path}")
+    
+    def _copy_config_to_nemo_run(self, config_path: Path):
+        """Copy custom config file to /nemo_run/code for container access."""
+        nemo_run_code = Path("/nemo_run/code")
+        if not nemo_run_code.exists():
+            LOG.warning(f"/nemo_run/code does not exist, using absolute path: {config_path}")
+            self.config.agent_config = str(config_path)
+            return
+        
+        # Copy to /nemo_run/code/swe_agent_configs/
+        config_dest_dir = nemo_run_code / "swe_agent_configs"
+        config_dest_dir.mkdir(exist_ok=True)
+        config_dest = config_dest_dir / config_path.name
+        
+        import shutil
+        shutil.copy2(config_path, config_dest)
+        LOG.info(f"Copied custom config from {config_path} to {config_dest}")
+        
+        # Update config path to the mounted location inside container
+        self.config.agent_config = f"/nemo_run/code/swe_agent_configs/{config_path.name}"
+        LOG.info(f"Updated agent_config to container path: {self.config.agent_config}")
 
     async def responses(self, body: NeMoGymResponseCreateParamsNonStreaming = Body()) -> NeMoGymResponse:
         """Run NeMo-Skills SWE-bench evaluation."""
@@ -175,19 +233,21 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
 
         # Run SWE-bench evaluation
         try:
-            result = await run_swebench_evaluation(
-                problem_info,
-                model_endpoint,
-                body,
-                self.config.agent_framework,
-                self.config.agent_config,
-                self.config.agent_tools_file,
-                self.config.agent_max_turns,
-                self.config.swebench_tests_timeout,
-                self.config.nemo_skills_config,
-                self.config.agent_framework_repo,
-                self.config.agent_framework_commit,
-            )
+            params = {
+                "problem_info": problem_info,
+                "model_endpoint": model_endpoint,
+                "body": body,
+                "agent_framework": self.config.agent_framework,
+                "agent_config": self.config.agent_config,
+                "agent_tools_file": self.config.agent_tools_file,
+                "agent_max_turns": self.config.agent_max_turns,
+                "swebench_tests_timeout": self.config.swebench_tests_timeout,
+                "nemo_skills_config": self.config.nemo_skills_config,
+                "agent_framework_repo": self.config.agent_framework_repo,
+                "agent_framework_commit": self.config.agent_framework_commit,
+            }
+            future = runner_ray_remote.remote(run_swebench_evaluation, params)
+            result = await asyncio.to_thread(ray.get, future)
 
             # Extract trajectory and convert to proper NeMoGym format
             output_items = []
