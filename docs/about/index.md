@@ -44,17 +44,7 @@ These challenges slow research iteration and make it difficult to experiment wit
 
 ## Core Components
 
-NeMo Gym organizes around three core abstractions. Here's how they work together in a complete interaction:
-
-1. **Agent** receives the user request: "What's the weather in Seattle?"
-2. **Model** analyzes and decides: "I should call the weather tool"
-3. **Agent** routes the tool call to the weather **Resource**
-4. **Resource** executes `get_weather("Seattle")` and returns the weather data
-5. **Agent** sends the tool result back to the **Model**
-6. **Model** generates the final response: "It's cold in Seattle—bring a jacket!"
-7. **Resource** verifies the quality and assigns a reward score: 1.0
-
-Now let's understand each component in detail:
+NeMo Gym organizes around three core abstractions that work together to generate and evaluate agent interactions:
 
 * **Models**: LLM inference endpoints that generate text and make tool-calling decisions. Models are stateless and handle single-turn generation. Configure using OpenAI-compatible APIs or local vLLM servers.
 
