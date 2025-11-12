@@ -79,11 +79,16 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
                         zip(range_iterator, map(json.loads, input_dataset)), range(config.num_repeats)
                     )
                 ]
-                print(f"Found {len(rows)} total rows ({config.num_repeats} repeats per original row)!")
-                print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
             else:
                 rows = [(row_idx, 0, row) for row_idx, row in zip(range_iterator, map(json.loads, input_dataset))]
-                print(f"Found {len(rows)} rows!")
+        if config.num_repeats:
+            print(f"Found {len(rows) // config.num_repeats} rows!")
+            print(
+                f"Including {config.num_repeats} repeats per original row, found {len(rows)} total repeated rows!"
+            )
+            print("(Repeating rows in an interleaved pattern from abc to aabbcc)")
+        else:
+            print(f"Found {len(rows)} rows!")
 
         semaphore = nullcontext()
         if config.num_samples_in_parallel:
@@ -168,7 +173,8 @@ class RolloutCollectionHelper(BaseModel):  # pragma: no cover
 
         avg_metrics = {k: v / len(rows) for k, v in metrics.items()}
 
-        print(json.dumps(avg_metrics, indent=4))
+        if avg_metrics:
+            print(f"Metrics (sample mean): {json.dumps(avg_metrics, indent=4)}", flush=True)
 
     async def run_examples(
         self, examples: List[Dict], head_server_config: Optional[BaseServerConfig] = None
