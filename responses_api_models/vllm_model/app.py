@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import re
 from time import time
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
@@ -133,122 +134,139 @@ class VLLMModel(SimpleResponsesAPIModel):
     async def chat_completions(
         self, request: Request, body: NeMoGymChatCompletionCreateParamsNonStreaming = Body()
     ) -> NeMoGymChatCompletion:
-        body_dict = body.model_dump(exclude_unset=True)
-        body_dict["model"] = self.config.model
+        chat_completion_dict = None
+        body_dict = None
 
-        session_id = request.session[SESSION_ID_KEY]
-        if session_id not in self._session_id_to_client:
-            # There is probably a better way to select the endpoint for this request. But this will do for now.
-            client_idx = len(self._session_id_to_client) % len(self._clients)
-            client = self._clients[client_idx]
-            self._session_id_to_client[session_id] = client
-        client = self._session_id_to_client[session_id]
+        try:
+            body_dict = body.model_dump(exclude_unset=True)
+            body_dict["model"] = self.config.model
 
-        create_params = body_dict
-        # Always disable skip_special_tokens to preserve <think> </think> tags for reasoning parsing
-        create_params |= dict(skip_special_tokens=False)
+            session_id = request.session[SESSION_ID_KEY]
+            client_id = request.headers.get("X-Client-ID", None)
+            # print(f"Session ID: {session_id}, Client ID: {client_id}", flush=True)
+            session_id = client_id if client_id else session_id
 
-        if self.config.return_token_id_information:
-            create_params |= dict(
-                logprobs=True,
-                # Typically passed via OpenAI client extra_body.
-                return_tokens_as_token_ids=True,
-                # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
-                # For prompt and generation token IDs
-                # return_token_ids=True,
-                # For prompt token IDs
-                # prompt_logprobs=0,
-            )
+            if session_id not in self._session_id_to_client:
+                # There is probably a better way to select the endpoint for this request. But this will do for now.
+                client_idx = len(self._session_id_to_client) % len(self._clients)
+                client = self._clients[client_idx]
+                self._session_id_to_client[session_id] = client
+            client = self._session_id_to_client[session_id]
 
-        if self.config.uses_reasoning_parser:
-            for message_dict in body_dict["messages"]:
-                if message_dict.get("role") != "assistant" or "content" not in message_dict:
-                    continue
+            create_params = body_dict
+            # Always disable skip_special_tokens to preserve <think> </think> tags for reasoning parsing
+            create_params |= dict(skip_special_tokens=False)
 
-                content = message_dict["content"]
-                if isinstance(content, str):
-                    reasoning_matches, remaining_content = self._converter._extract_reasoning_from_content(content)
-                    message_dict["content"] = remaining_content
-                    if reasoning_matches:
-                        message_dict["reasoning_content"] = reasoning_matches[0]
-                elif isinstance(content, list):
-                    reasoning_content = None
-                    for content_item_dict in content:
-                        reasoning_matches, remaining_content = self._converter._extract_reasoning_from_content(
-                            content_item_dict["text"]
-                        )
-                        assert reasoning_content is None or not reasoning_matches, (
-                            f"Found multiple reasoning matches in a single assistant message content item list!\nMessage: {message_dict}"
-                        )
+            if self.config.return_token_id_information:
+                create_params |= dict(
+                    logprobs=True,
+                    # Typically passed via OpenAI client extra_body.
+                    return_tokens_as_token_ids=True,
+                    # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
+                    # For prompt and generation token IDs
+                    # return_token_ids=True,
+                    # For prompt token IDs
+                    # prompt_logprobs=0,
+                )
 
-                        # Even though we set the reasoning content already here, we still loop through all the content item dicts for the assert above.
-                        content_item_dict["text"] = remaining_content
+            if self.config.uses_reasoning_parser:
+                for message_dict in body_dict["messages"]:
+                    if message_dict.get("role") != "assistant" or "content" not in message_dict:
+                        continue
+
+                    content = message_dict["content"]
+                    if isinstance(content, str):
+                        reasoning_matches, remaining_content = self._converter._extract_reasoning_from_content(content)
+                        message_dict["content"] = remaining_content
                         if reasoning_matches:
                             message_dict["reasoning_content"] = reasoning_matches[0]
-                elif not content:
-                    # No content or content None is a no-op
-                    pass
-                else:
-                    raise NotImplementedError
+                    elif isinstance(content, list):
+                        reasoning_content = None
+                        for content_item_dict in content:
+                            reasoning_matches, remaining_content = self._converter._extract_reasoning_from_content(
+                                content_item_dict["text"]
+                            )
+                            assert reasoning_content is None or not reasoning_matches, (
+                                f"Found multiple reasoning matches in a single assistant message content item list!\nMessage: {message_dict}"
+                            )
 
-        chat_completion_dict = await client.create_chat_completion(**create_params)
+                            # Even though we set the reasoning content already here, we still loop through all the content item dicts for the assert above.
+                            content_item_dict["text"] = remaining_content
+                            if reasoning_matches:
+                                message_dict["reasoning_content"] = reasoning_matches[0]
+                    elif not content:
+                        # No content or content None is a no-op
+                        pass
+                    else:
+                        raise NotImplementedError
 
-        choice_dict = chat_completion_dict["choices"][0]
-        if self.config.uses_reasoning_parser:
-            reasoning_content = choice_dict["message"].get("reasoning_content")
-            if reasoning_content:
-                choice_dict["message"].pop("reasoning_content")
+            chat_completion_dict = await client.create_chat_completion(**create_params)
 
-                # We wrap this here in think tags for Gym's sake and to return a valid OpenAI Chat Completions response.
-                choice_dict["message"]["content"] = self._converter._wrap_reasoning_in_think_tags(
-                    [reasoning_content]
-                ) + (choice_dict["message"]["content"] or "")
-        else:
-            assert not choice_dict["message"].get("reasoning_content"), (
-                "Please do not use a reasoning parser in vLLM! There is one source of truth for handling data (including reasoning), which is NeMo Gym!"
-            )
+            choice_dict = chat_completion_dict["choices"][0]
+            if self.config.uses_reasoning_parser:
+                reasoning_content = choice_dict["message"].get("reasoning_content")
+                if reasoning_content:
+                    choice_dict["message"].pop("reasoning_content")
 
-        if self.config.return_token_id_information:
-            log_probs = choice_dict["logprobs"]["content"]
-            generation_log_probs = [log_prob["logprob"] for log_prob in log_probs]
-
-            """
-            START TODO remove this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
-            """
-            # Looks like `"token_id:151667"`
-            generation_token_ids = [log_prob["token"].removeprefix("token_id:") for log_prob in log_probs]
-
-            # The tokenize endpoint doesn't accept any sampling parameters
-            # The only relevant params are model, messages, and tools.
-            tokenize_body_dict = dict()
-            for key in ("model", "messages", "tools"):
-                if key in body_dict:
-                    tokenize_body_dict[key] = body_dict[key]
-
-            # The base url has /v1 at the end but vLLM's tokenize endpoint does not have v1, hence the ..
-            # I can't believe the path is resolved correctly LOL
-            tokenize_response = await client.create_tokenize(**tokenize_body_dict)
-            """
-            END
-            """
-
-            message_dict = choice_dict["message"]
-            message_dict.update(
-                dict(
-                    # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
-                    # prompt_token_ids=chat_completion_dict["prompt_token_ids"],
-                    prompt_token_ids=tokenize_response["tokens"],
-                    # generation_token_ids=choice_dict["token_ids"],
-                    generation_token_ids=generation_token_ids,
-                    generation_log_probs=generation_log_probs,
+                    # We wrap this here in think tags for Gym's sake and to return a valid OpenAI Chat Completions response.
+                    choice_dict["message"]["content"] = self._converter._wrap_reasoning_in_think_tags(
+                        [reasoning_content]
+                    ) + (choice_dict["message"]["content"] or "")
+            else:
+                assert not choice_dict["message"].get("reasoning_content"), (
+                    "Please do not use a reasoning parser in vLLM! There is one source of truth for handling data (including reasoning), which is NeMo Gym!"
                 )
-            )
 
-            # Clean the duplicated information
-            choice_dict.pop("logprobs")
-            # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
-            # chat_completion_dict.pop("prompt_token_ids")
-            # choice_dict.pop("token_ids")
+            if self.config.return_token_id_information:
+                log_probs = choice_dict["logprobs"]["content"]
+                generation_log_probs = [log_prob["logprob"] for log_prob in log_probs]
+
+                """
+                START TODO remove this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
+                """
+                # Looks like `"token_id:151667"`
+                generation_token_ids = [log_prob["token"].removeprefix("token_id:") for log_prob in log_probs]
+
+                # The tokenize endpoint doesn't accept any sampling parameters
+                # The only relevant params are model, messages, and tools.
+                tokenize_body_dict = dict()
+                for key in ("model", "messages", "tools"):
+                    if key in body_dict:
+                        tokenize_body_dict[key] = body_dict[key]
+
+                # The base url has /v1 at the end but vLLM's tokenize endpoint does not have v1, hence the ..
+                # I can't believe the path is resolved correctly LOL
+                tokenize_response = await client.create_tokenize(**tokenize_body_dict)
+                """
+                END
+                """
+
+                message_dict = choice_dict["message"]
+                message_dict.update(
+                    dict(
+                        # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
+                        # prompt_token_ids=chat_completion_dict["prompt_token_ids"],
+                        prompt_token_ids=tokenize_response["tokens"],
+                        # generation_token_ids=choice_dict["token_ids"],
+                        generation_token_ids=generation_token_ids,
+                        generation_log_probs=generation_log_probs,
+                    )
+                )
+
+                # Clean the duplicated information
+                choice_dict.pop("logprobs")
+                # TODO add this when NeMo RL upgrades to vLLM 0.10.2 support for prompt token ids
+                # chat_completion_dict.pop("prompt_token_ids")
+                # choice_dict.pop("token_ids")
+        except Exception as e:
+            # id = uuid4().hex
+            # with open(f"ray_input_error_{id}.json", "w") as f:
+            #     json.dump(body_dict if body_dict else {}, f)
+            # with open(f"ray_error_{id}.log", "w") as f:
+            #     f.write(repr(e))
+            # with open(f"ray_output_error_{id}.json", "w") as f:
+            #     json.dump(chat_completion_dict if chat_completion_dict else {}, f)
+            raise e
 
         return NeMoGymChatCompletion.model_validate(chat_completion_dict)
 

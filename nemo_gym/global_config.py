@@ -36,12 +36,14 @@ ENTRYPOINT_KEY_NAME = "entrypoint"
 DEFAULT_HOST_KEY_NAME = "default_host"
 HEAD_SERVER_KEY_NAME = "head_server"
 HEAD_SERVER_DEPS_KEY_NAME = "head_server_deps"
+USE_ABSOLUTE_IP = "use_absolute_ip"
 NEMO_GYM_RESERVED_TOP_LEVEL_KEYS = [
     CONFIG_PATHS_KEY_NAME,
     ENTRYPOINT_KEY_NAME,
     DEFAULT_HOST_KEY_NAME,
     HEAD_SERVER_KEY_NAME,
     HEAD_SERVER_DEPS_KEY_NAME,
+    USE_ABSOLUTE_IP,
 ]
 
 POLICY_BASE_URL_KEY_NAME = "policy_base_url"
@@ -185,9 +187,16 @@ class GlobalConfigDictParser(BaseModel):
 
         server_instance_configs = self.filter_for_server_instance_configs(global_config_dict)
 
-        # Do one pass through all the configs validate and populate various configs for our servers.
-        default_host = global_config_dict.get(DEFAULT_HOST_KEY_NAME) or "127.0.0.1"
+        use_absolute_ip = global_config_dict.get(USE_ABSOLUTE_IP, False)
 
+        if use_absolute_ip:
+            import socket
+
+            default_host = socket.gethostbyname(socket.gethostname())
+        else:
+            default_host = global_config_dict.get(DEFAULT_HOST_KEY_NAME) or "127.0.0.1"
+
+        # Do one pass through all the configs to validate and populate various configs for our servers.
         self.validate_and_populate_defaults(server_instance_configs, default_host)
 
         # Populate head server defaults

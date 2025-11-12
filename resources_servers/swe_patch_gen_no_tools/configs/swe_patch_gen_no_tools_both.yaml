@@ -1,22 +1,22 @@
-mini_swe_resource_resources_server:
+swe_patch_gen_no_tools_resources_server:
   resources_servers:
-    mini_swe_resource:
+    swe_patch_gen_no_tools:
       entrypoint: app.py
       domain: coding
-mini_swe_simple_agent_train:
+swe_patch_gen_no_tools_simple_agent_train:
   responses_api_agents:
-    mini_swe_agent:
+    swe_patch_gen_no_tools_agent:
       entrypoint: app.py
       resources_server:
         type: resources_servers
-        name: mini_swe_resource_resources_server
+        name: swe_patch_gen_no_tools_resources_server
       model_server:
         type: responses_api_models
         name: policy_model
       datasets:
       - name: train
         type: train
-        jsonl_fpath: resources_servers/mini_swe_resource/data/train.jsonl
+        jsonl_fpath: resources_servers/swe_patch_gen_no_tools/data/train.jsonl
         gitlab_identifier:
           dataset_name: mini_swe_agent
           version: 0.0.1
@@ -24,30 +24,30 @@ mini_swe_simple_agent_train:
         license: MIT
       - name: example
         type: example
-        jsonl_fpath: resources_servers/mini_swe_resource/data/example.jsonl
+        jsonl_fpath: resources_servers/swe_patch_gen_no_tools/data/example.jsonl
       concurrency: 16
       env: singularity
       cache_dir_template: ???
-      run_golden: False
       step_timeout: 300
       eval_timeout: 900
       skip_if_exists: False
       step_limit: 150
       collapse_limit: 3
-mini_swe_simple_agent_val:
+      partial_reward: true
+swe_patch_gen_no_tools_simple_agent_val:
   responses_api_agents:
-    mini_swe_agent:
+    swe_patch_gen_no_tools_agent:
       entrypoint: app.py
       resources_server:
         type: resources_servers
-        name: mini_swe_resource_resources_server
+        name: swe_patch_gen_no_tools_resources_server
       model_server:
         type: responses_api_models
         name: policy_model
       datasets:
       - name: validation
         type: validation
-        jsonl_fpath: resources_servers/mini_swe_resource/data/validation.jsonl
+        jsonl_fpath: resources_servers/swe_patch_gen_no_tools/data/validation.jsonl
         gitlab_identifier:
           dataset_name: mini_swe_agent
           version: 0.0.1  
