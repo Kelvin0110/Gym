@@ -33,7 +33,7 @@ class Model:
             api_key = os.getenv("NIMS_API_KEY")
             base_url = "https://integrate.api.nvidia.com/v1"
         elif endpoint == "vllm":
-            api_key = "EMPTY"
+            api_key = "EMPTY"  # pragma: allowlist secret
             base_url = "http://localhost:8000/v1"
         if not api_key:
             raise ValueError("API_KEY is not set in the .env file.")

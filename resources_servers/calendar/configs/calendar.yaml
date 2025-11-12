@@ -21,7 +21,7 @@ calendar_simple_agent:
         gitlab_identifier:
           dataset_name: calendar
           version: 0.0.1
-          artifact_fpath: calendar_train.jsonl
+          artifact_fpath: calendar/train.jsonl
         license: Apache 2.0
       - name: validation
         type: validation
@@ -29,7 +29,7 @@ calendar_simple_agent:
         gitlab_identifier:
           dataset_name: calendar
           version: 0.0.1
-          artifact_fpath: calendar_validation.jsonl
+          artifact_fpath: calendar/validation.jsonl
         license: Apache 2.0
       - name: example
         type: example
