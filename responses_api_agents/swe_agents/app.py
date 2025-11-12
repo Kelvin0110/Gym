@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import json
 import logging
-import os
 import subprocess
+import sys
 import time
-import asyncio
-import ray
+from asyncio import Semaphore
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
-import sys
-from pydantic import Field
+
+import ray
+from pydantic import ConfigDict, Field
 
 from nemo_gym.base_resources_server import (
     BaseRunRequest,
@@ -69,6 +70,7 @@ except ImportError:
 if not NEMO_SKILLS_AVAILABLE:
     LOG.warning("NeMo-Skills is not installed. Please install with: uv sync --extra nemo-skills")
 
+
 @ray.remote(
     scheduling_strategy="SPREAD",
     runtime_env={
@@ -77,7 +79,7 @@ if not NEMO_SKILLS_AVAILABLE:
 )
 def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
     """Execute runner function in Ray worker.
-    
+
     Note: agent_config paths should either be:
     1. Paths within the agent framework repo (e.g., "eval/swe-bench/swe-agent/default_one_tool")
     2. Absolute paths accessible from all nodes
@@ -88,6 +90,7 @@ def runner_ray_remote(runner: Callable, params: dict[str, Any]) -> Any:
     if asyncio.iscoroutine(result):
         result = asyncio.run(result)
     return result
+
 
 class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
     """Configuration for SWE-bench wrapper agent."""
@@ -121,6 +124,9 @@ class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
         default_factory=dict, description="Additional configuration to pass to NeMo-Skills"
     )
 
+    # Concurrency control
+    concurrency: int = Field(default=1, description="Maximum number of concurrent SWE-bench runs")
+
 
 class SWEBenchRunRequest(BaseRunRequest):
     """Request format for SWE-bench runs."""
@@ -153,17 +159,19 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
     """Wrapper for NeMo-Skills SWE-bench evaluation in NeMo-Gym."""
 
     config: SWEBenchWrapperConfig
+    sem: Semaphore = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, *args, **kwargs):
+    def model_post_init(self, __context: Any) -> None:
         """Initialize the wrapper and check dependencies."""
-        super().__init__(*args, **kwargs)
-
+        self.sem = Semaphore(self.config.concurrency)
+        print(f"Semaphore initialized with {self.config.concurrency} tokens")
         if not NEMO_SKILLS_AVAILABLE:
             raise ImportError(
                 "NeMo-Skills is required for SWE-bench wrapper. Please install it with: uv sync --extra nemo-skills"
             )
         LOG.info("in init for swe bench")
-        
+
         # Install Apptainer on Ubuntu/Debian
         LOG.info("Checking Apptainer installation...")
         try:
@@ -174,21 +182,27 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
             else:
                 LOG.info("Installing Apptainer...")
                 # Download and install Apptainer
-                subprocess.run("cd /tmp && wget https://github.com/apptainer/apptainer/releases/download/v1.3.1/apptainer_1.3.1_amd64.deb", shell=True, check=True)
-                subprocess.run("apt-get update && apt-get install -y /tmp/apptainer_1.3.1_amd64.deb", shell=True, check=True)
+                subprocess.run(
+                    "cd /tmp && wget https://github.com/apptainer/apptainer/releases/download/v1.3.1/apptainer_1.3.1_amd64.deb",
+                    shell=True,
+                    check=True,
+                )
+                subprocess.run(
+                    "apt-get update && apt-get install -y /tmp/apptainer_1.3.1_amd64.deb", shell=True, check=True
+                )
                 LOG.info("Apptainer installation completed")
         except subprocess.CalledProcessError as e:
             LOG.warning(f"Apptainer installation failed (may already be installed): {e}")
         except Exception as e:
             LOG.warning(f"Error during Apptainer setup: {e}")
-        
+
         # Ensure symlink exists for /nemo_run/code
         ensure_nemo_run_symlink()
-        
+
         # Resolve agent_config path if it's relative
         if self.config.agent_config and not Path(self.config.agent_config).is_absolute():
             # If it starts with eval/ or config/, it's a path within the SWE-agent repo, leave as-is
-            if not self.config.agent_config.startswith(("eval/", "config/")):
+            if not self.config.agent_config.startswith(("eval/")):
                 # It's a relative path to a local file - resolve it to absolute path
                 module_dir = Path(__file__).parent
                 resolved_path = (module_dir / self.config.agent_config).resolve()
@@ -198,7 +212,7 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
                 else:
                     LOG.error(f"Config file not found at: {resolved_path}")
                     raise FileNotFoundError(f"Agent config not found: {resolved_path}")
-    
+
     def _copy_config_to_nemo_run(self, config_path: Path):
         """Copy custom config file to /nemo_run/code for container access."""
         nemo_run_code = Path("/nemo_run/code")
@@ -206,16 +220,17 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
             LOG.warning(f"/nemo_run/code does not exist, using absolute path: {config_path}")
             self.config.agent_config = str(config_path)
             return
-        
+
         # Copy to /nemo_run/code/swe_agent_configs/
         config_dest_dir = nemo_run_code / "swe_agent_configs"
         config_dest_dir.mkdir(exist_ok=True)
         config_dest = config_dest_dir / config_path.name
-        
+
         import shutil
+
         shutil.copy2(config_path, config_dest)
         LOG.info(f"Copied custom config from {config_path} to {config_dest}")
-        
+
         # Update config path to the mounted location inside container
         self.config.agent_config = f"/nemo_run/code/swe_agent_configs/{config_path.name}"
         LOG.info(f"Updated agent_config to container path: {self.config.agent_config}")
@@ -248,6 +263,20 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
             }
             future = runner_ray_remote.remote(run_swebench_evaluation, params)
             result = await asyncio.to_thread(ray.get, future)
+
+            # result = await run_swebench_evaluation(
+            #     problem_info,
+            #     model_endpoint,
+            #     body,
+            #     self.config.agent_framework,
+            #     self.config.agent_config,
+            #     self.config.agent_tools_file,
+            #     self.config.agent_max_turns,
+            #     self.config.swebench_tests_timeout,
+            #     self.config.nemo_skills_config,
+            #     self.config.agent_framework_repo,
+            #     self.config.agent_framework_commit,
+            # )
 
             # Extract trajectory and convert to proper NeMoGym format
             output_items = []
@@ -337,71 +366,72 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
 
     async def run(self, body: SWEBenchRunRequest) -> SWEBenchVerifyResponse:
         """Run and verify SWE-bench solution."""
-        # Fix None values in responses_create_params to use defaults
-        # This is needed because the pydantic model has non-Optional fields with defaults
-        update_dict = {}
-        # SWE-agent processes tool calls sequentially, OpenHands can do parallel
-        update_dict["parallel_tool_calls"] = False if self.config.agent_framework == "swe_agent" else True
-        if body.responses_create_params.tool_choice is None:
-            update_dict["tool_choice"] = "auto"  # OpenAI default
+        async with self.sem:
+            # Fix None values in responses_create_params to use defaults
+            # This is needed because the pydantic model has non-Optional fields with defaults
+            update_dict = {}
+            # SWE-agent processes tool calls sequentially, OpenHands can do parallel
+            update_dict["parallel_tool_calls"] = False if self.config.agent_framework == "swe_agent" else True
+            if body.responses_create_params.tool_choice is None:
+                update_dict["tool_choice"] = "auto"  # OpenAI default
 
-        # Create a copy with the fixed values if needed
-        fixed_params = (
-            body.responses_create_params.model_copy(update=update_dict)
-            if update_dict
-            else body.responses_create_params
-        )
+            # Create a copy with the fixed values if needed
+            fixed_params = (
+                body.responses_create_params.model_copy(update=update_dict)
+                if update_dict
+                else body.responses_create_params
+            )
 
-        # Run the evaluation
-        response = await self.responses(fixed_params)
+            # Run the evaluation
+            response = await self.responses(fixed_params)
 
-        # Extract initial input messages from the response output and get filtered output
-        # These are the system/user messages that were actually sent to the agent
-        input_messages, filtered_output = extract_input_messages_from_trajectory(response.output)
+            # Extract initial input messages from the response output and get filtered output
+            # These are the system/user messages that were actually sent to the agent
+            input_messages, filtered_output = extract_input_messages_from_trajectory(response.output)
 
-        # Update response with filtered output (system/user messages removed)
-        response = response.model_copy(update={"output": filtered_output})
+            # Update response with filtered output (system/user messages removed)
+            response = response.model_copy(update={"output": filtered_output})
 
-        # Add the extracted input messages and tools to the params
-        # Note: tools should already be in the correct format from the response
-        params_with_input = fixed_params.model_copy(
-            update={"input": input_messages, "tools": response.tools if response.tools else []}
-        )
+            # Add the extracted input messages and tools to the params
+            # Note: tools should already be in the correct format from the response
+            params_with_input = fixed_params.model_copy(
+                update={"input": input_messages, "tools": response.tools if response.tools else []}
+            )
 
-        # Extract metrics from response metadata
-        metadata = response.metadata or {}
-        # Remove metadata from response after extracting metrics
-        response = response.model_copy(update={"metadata": None})
+            # Extract metrics from response metadata
+            metadata = response.metadata or {}
+            # Remove metadata from response after extracting metrics
+            response = response.model_copy(update={"metadata": None})
 
-        # Parse metrics from JSON string if present
-        metrics = json.loads(metadata.get("swe-bench-metrics", "{}")) if "swe-bench-metrics" in metadata else {}
+            # Parse metrics from JSON string if present
+            metrics = json.loads(metadata.get("swe-bench-metrics", "{}")) if "swe-bench-metrics" in metadata else {}
 
-        # Extract individual metrics with proper type conversion
-        resolved = metrics.get("resolved") or (metadata.get("resolved") == "True")
-        patch_exists = metrics.get("patch_exists") or (metadata.get("patch_exists") == "True")
-        patch_applied = metrics.get("patch_successfully_applied") or (
-            metadata.get("patch_successfully_applied") == "True"
-        )
+            # Extract individual metrics with proper type conversion
+            resolved = metrics.get("resolved") or (metadata.get("resolved") == "True")
+            patch_exists = metrics.get("patch_exists") or (metadata.get("patch_exists") == "True")
+            patch_applied = metrics.get("patch_successfully_applied") or (
+                metadata.get("patch_successfully_applied") == "True"
+            )
 
-        reward = 1.0 if resolved else 0.0
+            reward = 1.0 if resolved else 0.0
 
-        # Build verification response with top-level numeric fields for statistics
-        return SWEBenchVerifyResponse(
-            responses_create_params=params_with_input,  # Include the input messages
-            response=response,
-            reward=reward,
-            resolved=1.0 if resolved else 0.0,  # Top-level numeric field
-            patch_exists=1.0 if patch_exists else 0.0,  # Top-level numeric field
-            patch_successfully_applied=1.0 if patch_applied else 0.0,  # Top-level numeric field
-            swebench_metrics=metrics,
-            metadata={
-                "instance_id": metadata.get("instance_id", "unknown"),
-                "agent_framework": self.config.agent_framework,
-                "patch_exists": patch_exists,
-                "patch_successfully_applied": patch_applied,
-                "resolved": resolved,
-            },
-        )
+            # Build verification response with top-level numeric fields for statistics
+            return SWEBenchVerifyResponse(
+                responses_create_params=params_with_input,  # Include the input messages
+                response=response,
+                reward=reward,
+                resolved=1.0 if resolved else 0.0,  # Top-level numeric field
+                patch_exists=1.0 if patch_exists else 0.0,  # Top-level numeric field
+                patch_successfully_applied=1.0 if patch_applied else 0.0,  # Top-level numeric field
+                swebench_metrics=metrics,
+                metadata={
+                    "instance_id": metadata.get("instance_id", "unknown"),
+                    "agent_framework": self.config.agent_framework,
+                    "patch_exists": patch_exists,
+                    "patch_successfully_applied": patch_applied,
+                    "resolved": resolved,
+                },
+            )
 
 
 if __name__ == "__main__":

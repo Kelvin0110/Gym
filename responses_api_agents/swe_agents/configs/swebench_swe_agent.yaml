@@ -16,6 +16,7 @@ swe_agents:
       container_formatter: "/lustre/fsw/portfolios/llmservice/users/igitman/images/swe-bench/swebench_sweb.eval.x86_64.{instance_id}.sif"
       container_folder_path: null
       swebench_tests_timeout: 1800  # 30 minutes
+      concurrency: 16
       
       # Optional model server reference
       model_server:
