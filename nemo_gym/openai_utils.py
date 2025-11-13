@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import uuid
 from asyncio import sleep
 from time import time
 from typing import (
@@ -25,7 +26,6 @@ from typing import (
     TypeAlias,
     Union,
 )
-from uuid import uuid4
 
 from openai.types.chat import (
     ChatCompletion,
@@ -529,7 +529,7 @@ def empty_response(
         }
     ]
     return NeMoGymResponse(
-        id=f"resp_{uuid4().hex}",
+        id=f"resp_{uuid.uuid4().hex}",
         created_at=int(time()),
         model=body.model,
         object="response",
