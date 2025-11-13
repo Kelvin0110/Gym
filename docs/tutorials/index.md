@@ -7,11 +7,6 @@ Hands-on learning experiences that guide you through building, training, and dep
 :::{tip}
 **New to NeMo Gym?** Begin with the {doc}`Get Started <../get-started/index>` section for a guided tutorial experience from installation through your first verified agent. Return here after completing those tutorials to learn about advanced topics like additional rollout collection methods and training data generation.
 :::
-
-:::{tip}
-**Need a quick definition?** Check the {doc}`Glossary <../about/glossary>` for essential terminology.
-:::
-
 ---
 
 ## Rollout Collection and Training Data
@@ -54,3 +49,16 @@ Build custom environments, tools, and verification systems.
 ## Advanced Operations
 
 Apply configuration, testing, deployment, and scaling.
+
+::::{grid} 1 1 1 1
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`gear;1.5em;sd-mr-1` Managing Configurations Across Environments
+:link: configuration-management
+:link-type: doc
+Master NeMo Gym's three-layer configuration system to securely manage secrets and switch between dev/prod environments.
++++
+{bdg-secondary}`configuration` {bdg-secondary}`deployment`
+:::
+
+::::
