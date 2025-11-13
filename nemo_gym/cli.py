@@ -54,15 +54,20 @@ from nemo_gym.server_utils import (
 
 
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
+    # https://docs.astral.sh/uv/reference/cli/#uv-venv--seed
+    pre_install_cmd = "uv pip install setuptools setuptools_scm packaging wheel"
+
     install_cmd = "uv pip install -r requirements.txt"
     head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
     install_cmd += " " + " ".join(head_server_deps)
 
-    return f"""cd {dir_path} \\
-    && uv venv --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
+    cmd = f"""cd {dir_path} \\
+    && uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
     && source .venv/bin/activate \\
+    && {pre_install_cmd} \\
     && {install_cmd} \\
-   """
+    """
+    return cmd
 
 
 def _run_command(command: str, working_directory: Path) -> Popen:  # pragma: no cover
@@ -228,6 +233,18 @@ class RunHelper:  # pragma: no cover
 
         for process_name, process in self._processes.items():
             if process.poll() is not None:
+                proc_out, proc_err = process.communicate()
+                print(f"DEBUG: Process `{process_name}` finished unexpectedly!")
+                print(f"DEBUG: Process `{process_name}` stdout:", flush=True)
+                if isinstance(proc_out, bytes):
+                    print(proc_out.decode("utf-8"), flush=True)
+                else:
+                    print(proc_out, flush=True)
+                print(f"DEBUG: Process `{process_name}` stderr:", flush=True)
+                if isinstance(proc_err, bytes):
+                    print(proc_err.decode("utf-8"), flush=True)
+                else:
+                    print(proc_err, flush=True)
                 raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
 
     def wait_for_spinup(self) -> None:

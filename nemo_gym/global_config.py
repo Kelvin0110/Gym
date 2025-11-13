@@ -255,7 +255,7 @@ class GlobalConfigDictParser(BaseModel):
             # Constrain sensitive package versions
             global_config_dict[HEAD_SERVER_DEPS_KEY_NAME] = [
                 # The ray version is very sensitive. The children ray versions must exactly match those of the parent ray.
-                f"ray=={ray_version}",
+                f"ray[default]=={ray_version}",
                 # OpenAI version is also sensitive since it changes so often and may introduce subtle incompatibilities.
                 f"openai=={openai_version}",
             ]
