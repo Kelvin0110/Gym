@@ -129,6 +129,10 @@ Online Training
 
 Offline Training
   Agent learns from pre-collected rollout data (SFT/DPO).
+
+SDG
+Synthetic Data Generation
+  Creating training examples programmatically using models or templates. In NeMo Gym context, corresponds to rollout collection.
 ```
 
 ---
@@ -159,4 +163,17 @@ Offline Training
 | **OpenAI API** | Commercial hosted models | Quick prototyping, GPT-4 |
 | **Azure OpenAI** | Enterprise OpenAI access | Corporate deployments |
 | **vLLM** | Self-hosted open models | Privacy, cost control, custom models |
+
+### Coming from SFT? Term Mapping
+
+| SFT Term | NeMo Gym Term | What It Means |
+|----------|---------------|---------------|
+| Synthetic Data Generation (SDG) | Rollout Collection | Generating training examples at scale |
+| Quality Filtering | Verification + Reward Assignment | Scoring outputs to identify quality |
+| Generated Example | Rollout | Complete interaction sequence |
+| Prompt Template | Task Prompt + Agent System Prompt | Instructions for agent behavior |
+| Keep/Discard | Reward Score (0.0–1.0) | Continuous quality signal |
+| Demonstration | High-reward rollout | Example of successful behavior |
+
+**Need more details?** See the complete {doc}`SFT to RL terminology guide <sft-to-rl-terminology>`.
 
