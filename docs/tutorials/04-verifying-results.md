@@ -12,7 +12,7 @@ In the last tutorial, you ran your weather agent and saw it call the `get_weathe
 4. Experiment with stricter verification criteria
 
 :::{tip}
-**Terminology note**: For definitions of key terms like rollout, reward signal, and verification, refer to the [RL Terms Glossary](../about/concepts/glossary.md).
+**Terminology note**: For definitions of key terms like rollout, reward signal, and verification, refer to the [RL Terms Glossary](../about/glossary.md).
 :::
 
 :::{button-ref} 03-your-first-agent

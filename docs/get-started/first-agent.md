@@ -28,7 +28,7 @@ In the setup tutorial, you ran a command and saw JSON output from a weather agen
 :::
 
 :::{tip}
-**Terminology note**: For definitions of key terms like **agent**, **policy model**, and **resource server**, refer to the [RL Terms Glossary](../about/concepts/glossary.md).
+**Terminology note**: For definitions of key terms like **agent**, **policy model**, and **resource server**, refer to the [RL Terms Glossary](../about/glossary.md).
 :::
 
 ---
