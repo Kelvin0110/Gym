@@ -91,7 +91,7 @@ def parse_server_info(proc, cmdline: List[str], env: dict) -> Optional[ServerPro
             entrypoint=entrypoint,
         )
     except (KeyError, IndexError, AttributeError, TypeError) as e:
-        print(f"  ❌ Error parsing PID {proc.info['pid']}: {type(e).__name__}: {e}")
+        print(f"Error parsing PID {proc.info['pid']}: {type(e).__name__}: {e}")
         return None
 
 
