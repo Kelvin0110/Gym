@@ -792,7 +792,6 @@ You now have hands-on experience with:
 You've completed dual-model configuration! Continue exploring:
 
 - **[Offline Training with Rollouts](offline-training-w-rollouts.md)**: Use your dual-model rollouts for training
-- **[Configuration System](../about/concepts/configuration-system.md)**: Deeper understanding of configuration mechanics
 - **[How-to: Configure Multiple Environments](../how-to-faq.md#multiple-environments)**: Dev/staging/prod setups
 
 Or return to the [Tutorials Overview](index.md) to explore other topics.

@@ -9,7 +9,7 @@ Hands-on learning experiences that guide you through building, training, and dep
 :::
 
 :::{tip}
-**Need a quick definition?** Check the {doc}`Glossary <../resources/glossary>` for essential terminology.
+**Need a quick definition?** Check the {doc}`Glossary <../about/concepts/glossary>` for essential terminology.
 :::
 
 ---

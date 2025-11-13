@@ -28,14 +28,14 @@ In the last tutorial, you ran your weather agent and saw it call the `get_weathe
 :::
 
 :::{tip}
-**Going deeper**: For comprehensive coverage of **verification patterns**, **design considerations**, and the theory behind **reward signals**, refer to [Verifying Agent Results (Concepts)](../about/concepts/verifying-agent-results.md).
+**Terminology note**: For definitions of key terms like **rollout**, **reward signal**, and **verification**, refer to the [RL Terms Glossary](../about/concepts/glossary.md).
 :::
 
 ---
 
 ## Examine the Current Verification Function
 
-Your weather agent's resource server already has a `verify()` function, but it doesn't actually check anything—it just returns a fixed [reward](../resources/glossary.md#reward) of 1.0 regardless of performance.
+Your weather agent's resource server already has a `verify()` function, but it doesn't actually check anything—it just returns a fixed [reward](../about/concepts/glossary.md#reward) of 1.0 regardless of performance.
 
 Open `resources_servers/simple_weather/app.py` and locate the verify function:
 
@@ -368,11 +368,7 @@ What you just implemented mirrors real RL training workflows:
 4. **Reward assigned** → Numerical score (0.0–1.0) returned
 5. **In RL training** → This reward would update model parameters
 
-The verification logic you wrote defines the objective the agent should learn to optimize. This connection between verification scores and model improvement is at the heart of [reinforcement learning](../resources/glossary.md#reinforcement-learning-rl)—the agent learns to take actions that maximize the [reward signal](../resources/glossary.md#reward) provided by verification.
-
-:::{tip}
-For production verification patterns including correctness checking, LLM judges, hybrid scoring, and design considerations, refer to [Verifying Agent Results (Concepts)](../about/concepts/verifying-agent-results.md).
-:::
+The verification logic you wrote defines the objective the agent should learn to optimize. This connection between verification scores and model improvement is at the heart of [reinforcement learning](../about/concepts/glossary.md#reinforcement-learning-rl)—the agent learns to take actions that maximize the [reward signal](../about/concepts/glossary.md#reward) provided by verification.
 
 ---
 

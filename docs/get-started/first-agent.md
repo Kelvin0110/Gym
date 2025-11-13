@@ -28,7 +28,7 @@ In the setup tutorial, you ran a command and saw JSON output from a weather agen
 :::
 
 :::{tip}
-**Going deeper**: For conceptual understanding of how **agents**, **models**, and **resource servers** work together, refer to [Core Abstractions (Concepts)](../about/concepts/core-abstractions.md).
+**Terminology note**: For definitions of key terms like **agent**, **policy model**, and **resource server**, refer to the [RL Terms Glossary](../about/concepts/glossary.md).
 :::
 
 ---

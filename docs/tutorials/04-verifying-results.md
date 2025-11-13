@@ -12,7 +12,7 @@ In the last tutorial, you ran your weather agent and saw it call the `get_weathe
 4. Experiment with stricter verification criteria
 
 :::{tip}
-**Going deeper**: For comprehensive coverage of verification patterns, design considerations, and the theory behind reward signals, refer to [Verifying Agent Results (Concepts)](../about/concepts/verifying-agent-results.md).
+**Terminology note**: For definitions of key terms like rollout, reward signal, and verification, refer to the [RL Terms Glossary](../about/concepts/glossary.md).
 :::
 
 :::{button-ref} 03-your-first-agent
@@ -309,9 +309,6 @@ What you just implemented mirrors real RL training workflows:
 
 The verification logic you wrote defines what the agent should learn to optimize for.
 
-:::{tip}
-For production verification patterns including correctness checking, LLM judges, hybrid scoring, and design considerations, refer to the [Verification Concepts](../about/concepts/verifying-agent-results.md) guide.
-:::
 
 ---
 
