@@ -230,7 +230,6 @@ get-started/collecting-rollouts
 
 Overview <tutorials/index>
 tutorials/offline-training-w-rollouts
-tutorials/separate-policy-and-judge-models
 ```
 
 

@@ -54,16 +54,3 @@ Build custom environments, tools, and verification systems.
 ## Advanced Operations
 
 Apply configuration, testing, deployment, and scaling.
-
-::::{grid} 1 1 1 1
-:gutter: 1 1 1 2
-
-:::{grid-item-card} {octicon}`cpu;1.5em;sd-mr-1` Separate Policy and Judge Models
-:link: separate-policy-and-judge-models
-:link-type: doc
-Configure multiple model servers for different roles—policy for generation, judge for verification. A production pattern for AI training and evaluation.
-+++
-{bdg-secondary}`configuration` {bdg-secondary}`multi-model` {bdg-secondary}`production-patterns`
-:::
-
-::::
