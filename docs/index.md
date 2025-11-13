@@ -2,11 +2,94 @@
 
 # NeMo Gym Documentation
 
-Welcome to the NeMo Gym documentation.
+NeMo Gym is a framework for building reinforcement learning training environments. It provides the infrastructure for creating high-quality training data through agentic model interactions. Use NeMo Gym to generate rollouts for RL training, collect trajectories for supervised fine-tuning, or create preference pairs for alignment.
+
+At the core of NeMo Gym are three server concepts: **Model** servers provide LLM inference capabilities, **Resources** servers expose tools and environments that agents interact with, and **Agent** servers orchestrate the interaction between models and resources to generate verified training data.
+
+## Quickstart
+
+Run a simple agent and start collecting rollouts for training in under 5 minutes.
+
+::::{tab-set}
+
+:::{tab-item} Setup and Installation
+
+```bash
+# Clone and install dependencies
+git clone git@github.com:NVIDIA-NeMo/Gym.git
+cd Gym
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+uv venv --python 3.12 && source .venv/bin/activate
+uv sync --extra dev --group docs
+```
+
+:::
+
+:::{tab-item} Your First Agent
+
+```bash
+# Configure your model API access
+echo "policy_base_url: https://api.openai.com/v1
+policy_api_key: your-openai-api-key
+policy_model_name: gpt-4.1-2025-04-14" > env.yaml
+
+# Start servers and run a simple weather agent
+config_paths="resources_servers/example_simple_weather/configs/simple_weather.yaml,responses_api_models/openai_model/configs/openai_model.yaml"
+ng_run "+config_paths=[${config_paths}]"
+
+# Interact with your agent
+python responses_api_agents/simple_agent/client.py
+```
+
+:::
+
+:::{tab-item} Collect Training Rollouts
+
+```bash
+# In a NEW terminal (keep servers running in first terminal)
+cd Gym && source .venv/bin/activate
+
+# Create a simple dataset with one query
+echo '{"responses_create_params":{"input":[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":"What is the weather in Seattle?"}]}}' > weather_query.jsonl
+
+# Collect verified rollouts
+ng_collect_rollouts \
+    +agent_name=simple_weather_simple_agent \
+    +input_jsonl_fpath=weather_query.jsonl \
+    +output_jsonl_fpath=weather_rollouts.jsonl
+
+# View the result
+cat weather_rollouts.jsonl | python -m json.tool
+```
+
+This generates training data with verification scores!
+
+:::
+
+::::
+
+````{div} sd-d-flex-row
+
+```{button-ref} tutorials/index
+:ref-type: doc
+:color: secondary
+:class: sd-rounded-pill sd-mr-3
+
+Browse Tutorials
+```
+
+```{button-link} https://github.com/NVIDIA-NeMo/Gym
+:color: primary
+:class: sd-rounded-pill
+
+View on GitHub
+```
+````
 
 ## Introduction to Gym
 
-Learn about the Gym, how it works at a high-level, and the key features.
+Learn more about Gym, how it works at a high-level, and the key features.
 
 ::::{grid} 1 2 2 2
 :gutter: 1 1 1 2
@@ -49,7 +132,7 @@ NeMo Gym's place in the NVIDIA NeMo Framework and ecosystem.
 
 New to NeMo Gym? Follow our guided tutorial path to build your first agent.
 
-::::{grid} 1 1 1 1
+::::{grid} 1 1 2 2
 :gutter: 1 1 1 2
 
 :::{grid-item-card} {octicon}`package;1.5em;sd-mr-1` 1. Setup and Installation
@@ -88,24 +171,10 @@ Generate your first batch of rollouts and understand how they become training da
 
 ---
 
-## Resources
-
-Quick reference materials to support your work with NeMo Gym.
-
-::::{grid} 1 2 2 2
-:gutter: 1 1 1 2
-
-:::{grid-item-card} {octicon}`book;1.5em;sd-mr-1` Glossary
-:link: resources/glossary
-:link-type: doc
-Essential terminology for agent training and RL workflows.
-+++
-{bdg-secondary}`reference` {bdg-secondary}`terminology`
+:::{toctree}
+:hidden:
+Home <self>
 :::
-
-::::
-
----
 
 ```{toctree}
 :caption: About
@@ -148,15 +217,4 @@ tutorials/separate-policy-and-judge-models
 :hidden:
 
 apidocs/index.rst
-README
 ```
-
-```{toctree}
-:caption: Resources
-:hidden:
-:maxdepth: 1
-
-Overview <resources/index>
-resources/glossary
-```
-
