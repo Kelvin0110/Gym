@@ -19,6 +19,7 @@ from pytest import MonkeyPatch
 
 from nemo_gym.openai_utils import (
     NeMoGymAsyncOpenAI,
+    NeMoGymResponseCreateParamsNonStreaming,
     empty_response,
 )
 
@@ -33,7 +34,23 @@ class TestOpenAIUtils:
         uuid4_mock.return_value = uuid_value
         monkeypatch.setattr(uuid, "uuid4", uuid4_mock)
         expected_response_id = f"resp_{uuid_value.hex}"
+
         actual_response = empty_response()
         assert actual_response.id == expected_response_id
+        assert actual_response.output[0].role == "assistant"
+        assert len(actual_response.output[0].content) == 0
+
+        responses_create_params = NeMoGymResponseCreateParamsNonStreaming.model_validate(
+            {
+                "model": "yet/another/model",
+                "input": [],
+                "parallel_tool_calls": True,
+                "tool_choice": "auto",
+                "tools": [],
+            }
+        )
+        actual_response = empty_response(responses_create_params)
+        assert actual_response.id == expected_response_id
+        assert actual_response.model == "yet/another/model"
         assert actual_response.output[0].role == "assistant"
         assert len(actual_response.output[0].content) == 0
