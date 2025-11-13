@@ -527,17 +527,18 @@ def empty_response(
             }
         )
     body = responses_create_params
+    empty_output = [
+        {
+            "role": "assistant",
+            "content": "",
+        }
+    ]
     return NeMoGymResponse(
         id=f"resp_{uuid4().hex}",
         created_at=int(time()),
         model=body.model,
         object="response",
-        output=[
-            {
-                "role": "assistant",
-                "content": "",
-            }
-        ],
+        output=empty_output,
         tool_choice=body.tool_choice if "tool_choice" in body else "auto",
         parallel_tool_calls=body.parallel_tool_calls,
         tools=body.tools,
