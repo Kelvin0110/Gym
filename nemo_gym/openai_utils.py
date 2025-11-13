@@ -15,7 +15,6 @@
 import json
 from asyncio import sleep
 from time import time
-from uuid import uuid4
 from typing import (
     Any,
     Dict,
@@ -26,6 +25,7 @@ from typing import (
     TypeAlias,
     Union,
 )
+from uuid import uuid4
 
 from openai.types.chat import (
     ChatCompletion,
