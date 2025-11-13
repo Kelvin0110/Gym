@@ -175,5 +175,3 @@ Synthetic Data Generation
 | Keep/Discard | Reward Score (0.0–1.0) | Continuous quality signal |
 | Demonstration | High-reward rollout | Example of successful behavior |
 
-**Need more details?** See the complete {doc}`SFT to RL terminology guide <sft-to-rl-terminology>`.
-

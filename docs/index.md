@@ -206,7 +206,6 @@ Overview <about/index>
 Concepts <about/concepts/index>
 Architecture <about/architecture>
 Ecosystem <about/ecosystem>
-SFT to RL Terminology <about/sft-to-rl-terminology>
 Glossary <about/glossary>
 <!-- Key Features <about/features> -->
 Release Notes <about/release-notes/index>
