@@ -12,7 +12,7 @@ Run a simple agent and start collecting rollouts for training in under 5 minutes
 
 ::::{tab-set}
 
-:::{tab-item} Setup and Installation
+:::{tab-item} 1. Set Up
 
 ```bash
 # Clone and install dependencies
@@ -22,21 +22,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.local/bin/env
 uv venv --python 3.12 && source .venv/bin/activate
 uv sync --extra dev --group docs
-```
 
-:::
-
-:::{tab-item} Your First Agent
-
-```bash
 # Configure your model API access
 echo "policy_base_url: https://api.openai.com/v1
 policy_api_key: your-openai-api-key
 policy_model_name: gpt-4.1-2025-04-14" > env.yaml
+```
 
-# Start servers and run a simple weather agent
+:::
+
+:::{tab-item} 2. Run Agent
+
+**Terminal 1** (start servers):
+
+```bash
+# Start servers (this will keep running)
 config_paths="resources_servers/example_simple_weather/configs/simple_weather.yaml,responses_api_models/openai_model/configs/openai_model.yaml"
 ng_run "+config_paths=[${config_paths}]"
+```
+
+**Terminal 2** (interact with agent):
+
+```bash
+# In a NEW terminal, activate environment
+cd Gym && source .venv/bin/activate
 
 # Interact with your agent
 python responses_api_agents/simple_agent/client.py
@@ -44,12 +53,11 @@ python responses_api_agents/simple_agent/client.py
 
 :::
 
-:::{tab-item} Collect Training Rollouts
+:::{tab-item} 3. Collect Rollouts
+
+**Terminal 2** (keep servers running in Terminal 1):
 
 ```bash
-# In a NEW terminal (keep servers running in first terminal)
-cd Gym && source .venv/bin/activate
-
 # Create a simple dataset with one query
 echo '{"responses_create_params":{"input":[{"role":"developer","content":"You are a helpful assistant."},{"role":"user","content":"What is the weather in Seattle?"}]}}' > weather_query.jsonl
 
@@ -64,6 +72,19 @@ cat weather_rollouts.jsonl | python -m json.tool
 ```
 
 This generates training data with verification scores!
+
+:::
+
+:::{tab-item} 4. Clean Up Servers
+
+**Terminal 1** (or any terminal with venv activated):
+
+```bash
+# Stop all servers and clean up Ray processes
+ray stop
+```
+
+You can also use `Ctrl+C` in Terminal 1 to stop the `ng_run` process, then run `ray stop` to clean up.
 
 :::
 
