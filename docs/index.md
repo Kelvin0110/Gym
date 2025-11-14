@@ -97,8 +97,7 @@ You can also use `Ctrl+C` in Terminal 1 to stop the `ng_run` process, then run `
 about/glossary.md
 tutorials/01-concepts.md
 get-started/setup-installation.md
-get-started/first-agent.md
-tutorials/04-verifying-results.md
+about/concepts/task-verification.md
 tutorials/offline-training-w-rollouts.md
 about/concepts/rollout-collection-fundamentals.md
 about/concepts/configuration-system.md
