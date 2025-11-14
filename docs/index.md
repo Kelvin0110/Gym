@@ -109,7 +109,9 @@ how-to-faq.md
 :hidden:
 :maxdepth: 1
 
+Overview <tutorials/index>
 tutorials/offline-training-w-rollouts
+tutorials/configuration-management
 ```
 
 
