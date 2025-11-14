@@ -8,6 +8,5 @@ policy_model:
       return_token_id_information: true
       uses_reasoning_parser: true
 
-      enable_two_pass_reasoning: true
       reasoning_token_budget: 100
 
