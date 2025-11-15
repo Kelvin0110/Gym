@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from multiprocessing import Process
 from time import time
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientResponseError
@@ -66,16 +67,62 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     uses_reasoning_parser: bool
     replace_developer_role_with_system: bool = False
 
+    spinup_server: bool = False
+    server_args: Optional[Dict[str, Any]] = None
+
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
             self.base_url = [self.base_url]
         return super().model_post_init(context)
 
 
+def _spinup_vllm_server(config: VLLMModelConfig) -> None:
+    import sys
+
+    import uvloop
+    import vllm.engine.arg_utils
+    import vllm.entrypoints.openai.api_server
+    import vllm.entrypoints.openai.cli_args
+    import vllm.utils
+
+    sys.argv = sys.argv[:1]
+    sys.argv.append("--model")
+    sys.argv.append(config.model)
+    if config.server_args:
+        for k, v in config.server_args.items():
+            if isinstance(v, bool):
+                if not v:
+                    arg_key = f"--no-{k.replace('_', '-')}"
+                else:
+                    arg_key = f"--{k.replace('_', '-')}"
+                sys.argv.append(arg_key)
+            else:
+                arg_key = f"--{k.replace('_', '-')}"
+                sys.argv.append(arg_key)
+                sys.argv.append(f"{v}")
+
+    server_args = vllm.utils.FlexibleArgumentParser()
+    server_args = vllm.entrypoints.openai.cli_args.make_arg_parser(server_args)
+    server_args = server_args.parse_args()
+    vllm.entrypoints.openai.cli_args.validate_parsed_serve_args(server_args)
+
+    uvloop.run(vllm.entrypoints.openai.api_server.run_server(server_args))
+
+
 class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
+        self._vllm_proc = None
+        if self.config.spinup_server:
+            vllm_proc = Process(
+                target=_spinup_vllm_server,
+                args=(self.config,),
+                daemon=False,
+            )
+            vllm_proc.start()
+            self._vllm_proc = vllm_proc
+
         self._clients = [
             NeMoGymAsyncOpenAI(
                 base_url=base_url,
