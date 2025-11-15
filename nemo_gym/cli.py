@@ -55,8 +55,11 @@ from nemo_gym.server_utils import (
 
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
     pyproject_toml = False
-    with open(f"{dir_path}/pyproject.toml", "r") as _f:
-        pyproject_toml = True
+    try:
+        with open(f"{dir_path}/pyproject.toml", "r") as _f:
+            pyproject_toml = True
+    except OSError:
+        pass
 
     cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
     && source .venv/bin/activate \\
