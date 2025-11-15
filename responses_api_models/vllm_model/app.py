@@ -27,6 +27,7 @@ from nemo_gym.base_responses_api_model import (
     Body,
     SimpleResponsesAPIModel,
 )
+from nemo_gym.global_config import find_open_port
 from nemo_gym.openai_utils import (
     RESPONSES_TO_TRAIN,
     NeMoGymAsyncOpenAI,
@@ -85,9 +86,16 @@ def _spinup_vllm_server(config: VLLMModelConfig) -> None:
     import vllm.entrypoints.openai.cli_args
     import vllm.utils
 
+    server_host = "127.0.0.1"
+    server_port = find_open_port()
+
     sys.argv = sys.argv[:1]
     sys.argv.append("--model")
     sys.argv.append(config.model)
+    sys.argv.append("--host")
+    sys.argv.append(server_host)
+    sys.argv.append("--port")
+    sys.argv.append(server_port)
     if config.server_args:
         for k, v in config.server_args.items():
             if isinstance(v, bool):
