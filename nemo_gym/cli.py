@@ -56,6 +56,8 @@ from nemo_gym.server_utils import (
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
     head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
 
+    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]}"
+
     pyproject_toml = False
     try:
         with open(f"{dir_path / 'pyproject.toml'}", "r") as _f:
@@ -64,7 +66,7 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         pass
 
     if pyproject_toml:
-        cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
+        cmd = f"""{uv_venv_cmd} \\
         && source .venv/bin/activate \\
         && uv pip install {" ".join(head_server_deps)} \\
         && uv pip install --editable . \\
@@ -78,7 +80,7 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         install_cmd = "uv pip install -r requirements.txt"
         install_cmd += " " + " ".join(head_server_deps)
 
-        cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
+        cmd = f"""{uv_venv_cmd} \\
         && source .venv/bin/activate \\
         && {pre_install_cmd} \\
         && {install_cmd} \\
