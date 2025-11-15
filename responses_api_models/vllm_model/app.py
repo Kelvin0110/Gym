@@ -12,9 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import re
 from time import time
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientResponseError
@@ -65,6 +66,12 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
 
     uses_reasoning_parser: bool
     replace_developer_role_with_system: bool = False
+
+    chat_template_kwargs: Optional[Dict[str, Any]] = None
+
+    thinking_budget: Optional[int] = None
+    thinking_budget_grace_period: Optional[int] = None
+    end_token_ids: Optional[List[int]] = None
 
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
@@ -197,6 +204,18 @@ class VLLMModel(SimpleResponsesAPIModel):
                     pass
                 else:
                     raise NotImplementedError
+
+        if self.config.thinking_budget is not None:
+            vllm_xargs = {
+                "thinking_budget": self.config.thinking_budget,
+            }
+            if self.config.thinking_budget_grace_period is not None:
+                vllm_xargs["thinking_budget_grace_period"] = self.config.thinking_budget_grace_period
+            if self.config.end_token_ids is not None:
+                vllm_xargs["end_token_ids"] = json.dumps(self.config.end_token_ids)
+
+            create_params["extra_body"] = create_params.get("extra_body", {})
+            create_params["extra_body"]["vllm_xargs"] = vllm_xargs
 
         try:
             chat_completion_dict = await client.create_chat_completion(**create_params)
