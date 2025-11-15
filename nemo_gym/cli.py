@@ -54,6 +54,7 @@ from nemo_gym.server_utils import (
 
 
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
+    # For python >= 3.12, uv venv --seed no longer installs setuptools and wheels.
     # https://docs.astral.sh/uv/reference/cli/#uv-venv--seed
     pre_install_cmd = "uv pip install setuptools setuptools_scm packaging wheel"
 
@@ -234,13 +235,13 @@ class RunHelper:  # pragma: no cover
         for process_name, process in self._processes.items():
             if process.poll() is not None:
                 proc_out, proc_err = process.communicate()
-                print(f"DEBUG: Process `{process_name}` finished unexpectedly!")
-                print(f"DEBUG: Process `{process_name}` stdout:", flush=True)
+                print(f"Process `{process_name}` finished unexpectedly!")
+                print(f"Process `{process_name}` stdout:", flush=True)
                 if isinstance(proc_out, bytes):
                     print(proc_out.decode("utf-8"), flush=True)
                 else:
                     print(proc_out, flush=True)
-                print(f"DEBUG: Process `{process_name}` stderr:", flush=True)
+                print(f"Process `{process_name}` stderr:", flush=True)
                 if isinstance(proc_err, bytes):
                     print(proc_err.decode("utf-8"), flush=True)
                 else:
