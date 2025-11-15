@@ -54,6 +54,8 @@ from nemo_gym.server_utils import (
 
 
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
+    head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
+
     pyproject_toml = False
     try:
         with open(f"{dir_path / 'pyproject.toml'}", "r") as _f:
@@ -61,12 +63,11 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
     except OSError:
         pass
 
-    cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
-    && source .venv/bin/activate \\
-    """
-
     if pyproject_toml:
-        cmd += """&& uv pip install --editable . \\
+        cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
+        && source .venv/bin/activate \\
+        && uv pip install {' '.join(head_server_deps)} \\
+        && uv pip install --editable . \\
         """
 
     else:
@@ -75,10 +76,11 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         pre_install_cmd = "uv pip install setuptools setuptools_scm packaging wheel"
 
         install_cmd = "uv pip install -r requirements.txt"
-        head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
         install_cmd += " " + " ".join(head_server_deps)
 
-        cmd += f"""&& {pre_install_cmd} \\
+        cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
+        && source .venv/bin/activate \\
+        && {pre_install_cmd} \\
         && {install_cmd} \\
         """
 
