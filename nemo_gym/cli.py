@@ -66,7 +66,7 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
     if pyproject_toml:
         cmd = f"""uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
         && source .venv/bin/activate \\
-        && uv pip install {' '.join(head_server_deps)} \\
+        && uv pip install {" ".join(head_server_deps)} \\
         && uv pip install --editable . \\
         """
 
