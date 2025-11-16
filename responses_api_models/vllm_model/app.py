@@ -106,18 +106,17 @@ def _spinup_vllm_server(
         argv.append(config.router_backend)
     else:
         argv.append("mp")
-    if config.server_args:
-        for k, v in config.server_args.items():
-            if isinstance(v, bool):
-                if not v:
-                    arg_key = f"--no-{k.replace('_', '-')}"
-                else:
-                    arg_key = f"--{k.replace('_', '-')}"
-                argv.append(arg_key)
+    for k, v in (config.server_args or {}).items():
+        if isinstance(v, bool):
+            if not v:
+                arg_key = f"--no-{k.replace('_', '-')}"
             else:
                 arg_key = f"--{k.replace('_', '-')}"
-                argv.append(arg_key)
-                argv.append(f"{v}")
+            argv.append(arg_key)
+        else:
+            arg_key = f"--{k.replace('_', '-')}"
+            argv.append(arg_key)
+            argv.append(f"{v}")
 
     if config.enable_router and config.router_backend == "mp":
         tp_size = (config.server_args or {}).get("tensor_parallel_size", 1)
