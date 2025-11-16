@@ -26,6 +26,7 @@ dependencies = [
 nemo-gym = { path = "../.." }
 
 [tool.setuptools.packages.find]
+where = [".."]
 include = ["vllm_model"]
 
 [build-system]
