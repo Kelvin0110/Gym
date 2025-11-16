@@ -12,9 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import re
+import urllib
 from multiprocessing import Process
-from time import time
+from time import sleep, time
 from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
@@ -75,7 +77,7 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     # router_backend values should be one of "ray" or "mp" (matching the allowed
     # values of VLLM --distributed-executor-backend).
     router_backend: str = "mp"
-    router_dp_size: Optional[int] = 1
+    router_dp_size: int = 1
 
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
@@ -134,11 +136,47 @@ def _spinup_vllm_server(
     uvloop.run(vllm.entrypoints.openai.api_server.run_server(server_args))
 
 
+# Use this to query the VLLM servers during spinup without having to start an
+# asyncio event loop for the async client.
+def _vllm_server_heartbeat(base_url: str):
+    req_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    req_body = {
+        "messages": [
+            {
+                "role": "user",
+                "content": "hi",
+            }
+        ],
+        "max_tokens": 8,
+        "temperature": 1.0,
+    }
+    req_data = json.dumps(req_body).encode("utf-8")
+    req_url = f"{base_url}/chat/completions"
+    req = urllib.request.Request(
+        req_url,
+        headers=req_headers,
+        data=req_data,
+    )
+    with urllib.request.urlopen(req, timeout=5) as out:
+        out_status = out.status
+        out_data = out.read()
+    output = out_data.decode("utf-8")
+    return {
+        "_status": out_status,
+        "output": output,
+        "except": None,
+    }
+
+
 class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
         if self.config.spinup_server:
+            self._server_urls = []
             self._server_procs = []
             self._clients = []
 
@@ -150,6 +188,7 @@ class VLLMModel(SimpleResponsesAPIModel):
                 # FIXME: this server host is wrong for multi-node via ray.
                 server_host = "127.0.0.1"
                 server_port = find_open_port()
+                server_url = f"http://{server_host}:{server_port}/v1"
 
                 server_proc = Process(
                     target=_spinup_vllm_server,
@@ -163,15 +202,26 @@ class VLLMModel(SimpleResponsesAPIModel):
                 )
                 server_proc.start()
 
+                self._server_urls.append(server_url)
                 self._server_procs.append(server_proc)
                 self._clients.append(
                     NeMoGymAsyncOpenAI(
-                        base_url=f"http://{server_host}:{server_port}/v1",
+                        base_url=server_url,
                         api_key=self.config.api_key,
                     )
                 )
 
+            for server_url in self._server_urls:
+                while True:
+                    try:
+                        _vllm_server_heartbeat(server_url)
+                        break
+                    except Exception:
+                        sleep(5)
+                        continue
+
         else:
+            self._server_urls = None
             self._server_procs = None
             self._clients = [
                 NeMoGymAsyncOpenAI(
