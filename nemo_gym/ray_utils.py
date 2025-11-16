@@ -14,16 +14,21 @@
 # limitations under the License.
 import os
 import sys
-from typing import Optional
+
+from ray.actor import ActorClass
+from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
 
 from nemo_gym.server_utils import (
     get_global_config_dict,
 )
 
 
-def spinup_single_ray_gpu_node_worker(worker_cls, num_gpus: Optional[int] = None):  # pragma: no cover
-    from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
-
+def spinup_single_ray_gpu_node_worker(
+    worker_cls: ActorClass,
+    num_gpus: int,
+    *worker_args,
+    **worker_kwargs,
+):  # pragma: no cover
     cfg = get_global_config_dict()
     nodes = cfg.get("ray_gpu_nodes", [])
     num_gpus_per_node = cfg.get("ray_num_gpus_per_node", 1)
@@ -44,6 +49,6 @@ def spinup_single_ray_gpu_node_worker(worker_cls, num_gpus: Optional[int] = None
             },
         }
         worker_options["runtime_env"] = worker_runtime_env
-        worker = worker_cls.options(**worker_options).remote()
+        worker = worker_cls.options(**worker_options).remote(*worker_args, **worker_kwargs)
         return worker
     raise RuntimeError(f"No available Ray GPU nodes for spinning up {worker_cls}")
