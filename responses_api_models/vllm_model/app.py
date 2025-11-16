@@ -77,7 +77,7 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
         return super().model_post_init(context)
 
 
-def _spinup_vllm_server(config: VLLMModelConfig, server_host, server_port) -> None:
+def _spinup_vllm_server(config: VLLMModelConfig, server_host: str, server_port: int) -> None:
     import sys
 
     import uvloop
@@ -92,7 +92,7 @@ def _spinup_vllm_server(config: VLLMModelConfig, server_host, server_port) -> No
     sys.argv.append("--host")
     sys.argv.append(server_host)
     sys.argv.append("--port")
-    sys.argv.append(server_port)
+    sys.argv.append(f"{server_port}")
     if config.server_args:
         for k, v in config.server_args.items():
             if isinstance(v, bool):
@@ -121,7 +121,7 @@ class VLLMModel(SimpleResponsesAPIModel):
         self._server_proc = None
         if self.config.spinup_server:
             server_host = "127.0.0.1"
-            server_port = f"{find_open_port()}"
+            server_port = find_open_port()
 
             server_proc = Process(
                 target=_spinup_vllm_server,
