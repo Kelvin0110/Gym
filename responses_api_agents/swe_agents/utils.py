@@ -457,19 +457,81 @@ async def run_swebench_evaluation(
 
     await process.wait()
 
+    # Check for subprocess failure, but handle known recoverable errors gracefully
+    subprocess_failed = False
     if process.returncode != 0:
         error_msg = f"NeMo-Skills failed with code {process.returncode}"
         if stdout_lines:
             error_msg += f": {' '.join(stdout_lines[-5:])}"  # Show last 5 lines
         LOG.error(error_msg)
-        raise RuntimeError(error_msg)
+        
+        # Check if this is a known recoverable error (like missing async file)
+        error_output = ' '.join(stdout_lines[-10:]) if stdout_lines else ""
+        is_recoverable_error = (
+            "output.jsonl-async" in error_output or
+            "FileNotFoundError" in error_output or
+            "restore_async_order" in error_output
+        )
+        
+        if is_recoverable_error:
+            LOG.warning(f"Detected recoverable error in NeMo-Skills subprocess. Will create dummy result.")
+            subprocess_failed = True
+        else:
+            # For non-recoverable errors, fail immediately
+            raise RuntimeError(error_msg)
 
-    # Read results
-    if not output_file.exists():
-        raise RuntimeError("No output file generated")
-
-    with open(output_file, "r") as f:
-        result = json.loads(f.read().strip())
+    # Read results - handle missing or invalid output gracefully
+    result = None
+    failure_reason = None
+    
+    if subprocess_failed:
+        failure_reason = f"NeMo-Skills subprocess failed: {error_msg}"
+        LOG.error(f"{failure_reason}")
+    elif not output_file.exists():
+        failure_reason = "No output file generated"
+        LOG.error(f"{failure_reason} at {output_file}")
+    else:
+        with open(output_file, "r") as f:
+            content = f.read().strip()
+        
+        if not content:
+            failure_reason = "Output file is empty (generation produced no results)"
+            LOG.error(f"{failure_reason}: {output_file}")
+        else:
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as e:
+                failure_reason = f"Invalid JSON in output file: {e}"
+                LOG.error(f"{failure_reason}")
+                LOG.error(f"File content preview: {content[:500]}")
+    
+    # If parsing failed, create a dummy result with reward=0 so training can continue
+    if result is None:
+        LOG.warning(f"Creating dummy failure result for {instance_id}. Reason: {failure_reason}")
+        result = {
+            "swe-bench-metrics": {
+                "patch_is_None": True,
+                "patch_exists": False,
+                "patch_successfully_applied": False,
+                "resolved": False,
+                "tests_status": {
+                    "FAIL_TO_PASS": {"success": [], "failure": []},
+                    "PASS_TO_PASS": {"success": [], "failure": []},
+                    "FAIL_TO_FAIL": {"success": [], "failure": []},
+                    "PASS_TO_FAIL": {"success": [], "failure": []},
+                },
+            },
+            "swe-bench-outputs": {
+                "instance_id": instance_id,
+                "model_patch": "",
+                "generation": "",
+                "error": failure_reason,
+                "evaluation_failed": True,
+            },
+            "_evaluation_failed": True,
+            "_failure_reason": failure_reason,
+        }
+        LOG.info(f"Dummy result created - this will result in reward=0 for failed evaluation")
 
     # Try to find and include trajectory file
     trajectories_dir = persistent_dir / "trajectories"
@@ -484,7 +546,7 @@ async def run_swebench_evaluation(
     if tools:
         result["tools"] = tools
         LOG.info(f"Added {len(tools)} tools to result")
-
+    print(result)
     return result
 
 
