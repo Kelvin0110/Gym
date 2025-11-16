@@ -73,16 +73,11 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         """
 
     else:
-        # For python >= 3.12, uv venv --seed no longer installs setuptools and wheels.
-        # https://docs.astral.sh/uv/reference/cli/#uv-venv--seed
-        pre_install_cmd = "uv pip install setuptools setuptools_scm packaging wheel"
-
         install_cmd = "uv pip install -r requirements.txt"
         install_cmd += " " + " ".join(head_server_deps)
 
         cmd = f"""{uv_venv_cmd} \\
         && source .venv/bin/activate \\
-        && {pre_install_cmd} \\
         && {install_cmd} \\
         """
 
