@@ -23,7 +23,7 @@ Make sure you have these prerequisites ready before beginning the tutorials:
 
 ## Tutorial Path
 
-Follow these four tutorials in sequence to build your first AI agent from scratch:
+Follow these tutorials to get started with NeMo Gym:
 
 ::::{grid} 1 1 1 1
 :gutter: 3
@@ -44,6 +44,15 @@ Get NeMo Gym installed and servers running with your first successful agent inte
 Generate your first batch of rollouts and understand how they become training data.
 +++
 {bdg-secondary}`training-data` {bdg-secondary}`scale`
+:::
+
+:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` 3. Debugging Servers
+:link: debugging
+:link-type: doc
+
+Learn how to debug NeMo Gym servers using VS Code's debugger.
++++
+{bdg-secondary}`development` {bdg-secondary}`debugging`
 :::
 
 ::::

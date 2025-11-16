@@ -137,6 +137,13 @@ class RunHelper:  # pragma: no cover
         self._processes: Dict[str, Popen] = dict()
         self._server_instance_display_configs: List[ServerInstanceDisplayConfig] = []
 
+        # Check if debug mode is enabled for subprocess debugging
+        debug_enabled = environ.get("NEMO_GYM_DEBUG_SUBPROCESS", "").lower() in ("1", "true", "yes")
+        if debug_enabled:
+            debug_base_port = int(environ.get("NEMO_GYM_DEBUG_PORT", "5678"))
+            server_index = 0
+            print(f"🐛 Subprocess debug mode enabled - servers will use ports starting from {debug_base_port}")
+
         # TODO there is a better way to resolve this that uses nemo_gym/global_config.py::ServerInstanceConfig
         for top_level_path in top_level_paths:
             server_config_dict = global_config_dict[top_level_path]
@@ -161,10 +168,19 @@ class RunHelper:  # pragma: no cover
 
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
+            # Set up debugging for this subprocess if enabled
+            if debug_enabled:
+                debug_port = debug_base_port + server_index
+                python_cmd = f"python -m debugpy --listen 0.0.0.0:{debug_port}"
+                print(f"   [{top_level_path}] listening for debugger on port {debug_port}")
+                server_index += 1
+            else:
+                python_cmd = "python"
+
             command = f"""{_setup_env_command(dir_path, global_config_dict)} \\
     && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
-    python {str(entrypoint_fpath)}"""
+    {python_cmd} {str(entrypoint_fpath)}"""
 
             process = _run_command(command, dir_path)
             self._processes[top_level_path] = process
