@@ -16,11 +16,15 @@ import os
 import sys
 
 from ray.actor import ActorClass
-from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
 
-from nemo_gym.server_utils import (
-    get_global_config_dict,
-)
+
+# from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
+
+# from nemo_gym.global_config import (
+#     RAY_GPU_NODES_KEY_NAME,
+#     RAY_NUM_GPUS_PER_NODE_KEY_NAME,
+#     get_global_config_dict,
+# )
 
 
 def spinup_single_ray_gpu_node_worker(
@@ -29,26 +33,23 @@ def spinup_single_ray_gpu_node_worker(
     *worker_args,
     **worker_kwargs,
 ):  # pragma: no cover
-    cfg = get_global_config_dict()
-    nodes = cfg.get("ray_gpu_nodes", [])
-    num_gpus_per_node = cfg.get("ray_num_gpus_per_node", 1)
-    if num_gpus is None:
-        num_gpus = num_gpus_per_node
-    for node in nodes:
-        worker_options = {}
-        worker_options["num_gpus"] = num_gpus
-        worker_options["scheduling_strategy"] = NodeAffinitySchedulingStrategy(
-            node_id=node["node_id"],
-            soft=False,
-        )
-        py_exec = sys.executable
-        worker_runtime_env = {
-            "py_executable": py_exec,
-            "env_vars": {
-                **os.environ,
-            },
-        }
-        worker_options["runtime_env"] = worker_runtime_env
-        worker = worker_cls.options(**worker_options).remote(*worker_args, **worker_kwargs)
-        return worker
-    raise RuntimeError(f"No available Ray GPU nodes for spinning up {worker_cls}")
+    # cfg = get_global_config_dict()
+    # nodes = cfg.get(RAY_GPU_NODES_KEY_NAME, [])
+    # num_gpus_per_node = cfg.get(RAY_NUM_GPUS_PER_NODE_KEY_NAME, 1)
+    worker_options = {}
+    worker_options["num_gpus"] = num_gpus
+    # worker_options["scheduling_strategy"] = NodeAffinitySchedulingStrategy(
+    #     node_id=node["node_id"],
+    #     soft=False,
+    # )
+    py_exec = sys.executable
+    worker_runtime_env = {
+        "py_executable": py_exec,
+        "env_vars": {
+            **os.environ,
+        },
+    }
+    worker_options["runtime_env"] = worker_runtime_env
+    worker = worker_cls.options(**worker_options).remote(*worker_args, **worker_kwargs)
+    return worker
+    # raise RuntimeError(f"No available Ray GPU nodes for spinning up {worker_cls}")
