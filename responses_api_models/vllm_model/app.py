@@ -77,7 +77,7 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
         return super().model_post_init(context)
 
 
-def _spinup_vllm_server(config: VLLMModelConfig) -> None:
+def _spinup_vllm_server(config: VLLMModelConfig, server_host, server_port) -> None:
     import sys
 
     import uvloop
@@ -85,9 +85,6 @@ def _spinup_vllm_server(config: VLLMModelConfig) -> None:
     import vllm.entrypoints.openai.api_server
     import vllm.entrypoints.openai.cli_args
     import vllm.utils
-
-    server_host = "127.0.0.1"
-    server_port = find_open_port()
 
     sys.argv = sys.argv[:1]
     sys.argv.append("--model")
@@ -121,23 +118,35 @@ class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
-        self._vllm_proc = None
+        self._server_proc = None
         if self.config.spinup_server:
-            vllm_proc = Process(
+            server_host = "127.0.0.1"
+            server_port = f"{find_open_port()}"
+
+            server_proc = Process(
                 target=_spinup_vllm_server,
-                args=(self.config,),
+                args=(self.config, server_host, server_port),
                 daemon=False,
             )
-            vllm_proc.start()
-            self._vllm_proc = vllm_proc
+            server_proc.start()
 
-        self._clients = [
-            NeMoGymAsyncOpenAI(
-                base_url=base_url,
-                api_key=self.config.api_key,
-            )
-            for base_url in self.config.base_url
-        ]
+            self._server_proc = server_proc
+            self._clients = [
+                NeMoGymAsyncOpenAI(
+                    base_url=f"http://{server_host}:{server_port}/v1",
+                    api_key=self.config.api_key,
+                )
+            ]
+
+        else:
+            self._server_proc = None
+            self._clients = [
+                NeMoGymAsyncOpenAI(
+                    base_url=base_url,
+                    api_key=self.config.api_key,
+                )
+                for base_url in self.config.base_url
+            ]
 
         self._session_id_to_client: Dict[str, NeMoGymAsyncOpenAI] = dict()
 
