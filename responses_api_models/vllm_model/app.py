@@ -72,6 +72,8 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     server_args: Optional[Dict[str, Any]] = None
 
     enable_router: bool = False
+    # router_backend values should be one of "ray" or "mp" (matching the allowed
+    # values of VLLM --distributed-executor-backend).
     router_backend: str = "ray"
     router_dp_size: Optional[int] = 1
 
