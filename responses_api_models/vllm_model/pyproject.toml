@@ -22,13 +22,13 @@ dependencies = [
     "vllm",
 ]
 
-[tool.uv.sources]
-nemo-gym = { path = "../.." }
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = [".."]
 include = ["vllm_model"]
 
-[build-system]
-requires = ["setuptools>=61", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+[tool.uv.sources]
+nemo-gym = { path = "../.." }
