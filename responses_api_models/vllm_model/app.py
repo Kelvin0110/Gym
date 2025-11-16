@@ -87,7 +87,6 @@ def _spinup_vllm_server(
     config: VLLMModelConfig, server_host: str, server_port: int, router_dp_rank: Optional[int]
 ) -> None:
     import os
-    import sys
 
     import uvloop
     import vllm.engine.arg_utils
@@ -95,18 +94,18 @@ def _spinup_vllm_server(
     import vllm.entrypoints.openai.cli_args
     import vllm.utils
 
-    sys.argv = sys.argv[:1]
-    sys.argv.append("--model")
-    sys.argv.append(config.model)
-    sys.argv.append("--host")
-    sys.argv.append(server_host)
-    sys.argv.append("--port")
-    sys.argv.append(f"{server_port}")
-    sys.argv.append("--distributed-executor-backend")
+    argv = []
+    argv.append("--model")
+    argv.append(config.model)
+    argv.append("--host")
+    argv.append(server_host)
+    argv.append("--port")
+    argv.append(f"{server_port}")
+    argv.append("--distributed-executor-backend")
     if config.enable_router:
-        sys.argv.append(config.router_backend)
+        argv.append(config.router_backend)
     else:
-        sys.argv.append("mp")
+        argv.append("mp")
     if config.server_args:
         for k, v in config.server_args.items():
             if isinstance(v, bool):
@@ -114,11 +113,11 @@ def _spinup_vllm_server(
                     arg_key = f"--no-{k.replace('_', '-')}"
                 else:
                     arg_key = f"--{k.replace('_', '-')}"
-                sys.argv.append(arg_key)
+                argv.append(arg_key)
             else:
                 arg_key = f"--{k.replace('_', '-')}"
-                sys.argv.append(arg_key)
-                sys.argv.append(f"{v}")
+                argv.append(arg_key)
+                argv.append(f"{v}")
 
     if config.enable_router and config.router_backend == "mp":
         tp_size = (config.server_args or {}).get("tensor_parallel_size", 1)
@@ -130,7 +129,7 @@ def _spinup_vllm_server(
 
     server_args = vllm.utils.FlexibleArgumentParser()
     server_args = vllm.entrypoints.openai.cli_args.make_arg_parser(server_args)
-    server_args = server_args.parse_args()
+    server_args = server_args.parse_args(argv)
     vllm.entrypoints.openai.cli_args.validate_parsed_serve_args(server_args)
 
     uvloop.run(vllm.entrypoints.openai.api_server.run_server(server_args))
