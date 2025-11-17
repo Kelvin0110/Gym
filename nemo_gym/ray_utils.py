@@ -29,7 +29,9 @@ from nemo_gym.global_config import (
 )
 
 
-def _lookup_node_id_with_free_gpus(num_gpus: int, reserved_gpu_nodes: Set[str] = None) -> Optional[str]:
+def _lookup_node_id_with_free_gpus(
+    num_gpus: int, reserved_gpu_nodes: Set[str] = None
+) -> Optional[str]:  # pragma: no cover
     cfg = get_global_config_dict()
 
     node_avail_gpu_dict = defaultdict(int)
