@@ -368,6 +368,7 @@ async def run_swebench_evaluation(
     agent_framework_repo: Optional[str] = None,
     agent_framework_commit: str = "HEAD",
     openhands_setup_dir: Optional[Path] = None,
+    swebench_setup_dir: Optional[Path] = None,
 ) -> Dict:
     """Run SWE-bench evaluation using NeMo-Skills.
 
@@ -384,6 +385,7 @@ async def run_swebench_evaluation(
         agent_framework_repo: URL of the agent framework repo to clone (optional)
         agent_framework_commit: Commit/branch to use when cloning (default: HEAD)
         openhands_setup_dir: Path to pre-built OpenHands directory (optional)
+        swebench_setup_dir: Path to pre-built SWE-bench directory (optional)
 
     Returns:
         Evaluation results dictionary
@@ -436,7 +438,7 @@ async def run_swebench_evaluation(
         **nemo_skills_config,
     )
 
-    run_oh = RunOpenHandsAgent(cfg=cfg, openhands_setup_dir=openhands_setup_dir)
+    run_oh = RunOpenHandsAgent(cfg=cfg, openhands_setup_dir=openhands_setup_dir, swebench_setup_dir=swebench_setup_dir)
     result = await run_oh.process_single_datapoint(problem_info)
     print(f"Process completed for {instance_id}", flush=True)
 
@@ -809,6 +811,189 @@ def convert_tools_to_function_format(raw_tools: List[Dict]) -> List:
     return tools
 
 
+def setup_swebench_environment(
+    swebench_repo: Optional[str] = None,
+    swebench_commit: str = "HEAD",
+    setup_dir: Optional[Path] = None,
+) -> Path:
+    """Set up SWE-bench environment once during initialization.
+
+    This function builds SWE-bench in a persistent location that can be mounted
+    into Apptainer containers, avoiding repeated setup for each request.
+
+    Args:
+        swebench_repo: URL of the SWE-bench repo (default: HeyyyyyyG/SWE-bench)
+        swebench_commit: Commit/branch to use (default: HEAD)
+        setup_dir: Directory to set up SWE-bench (default: workspace_root/swebench_setup)
+
+    Returns:
+        Path to the built SWE-bench directory
+
+    Raises:
+        RuntimeError: If setup fails
+    """
+    if swebench_repo is None:
+        swebench_repo = "https://github.com/HeyyyyyyG/SWE-bench.git"
+
+    # Determine setup directory
+    if setup_dir is None:
+        workspace_root = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
+        setup_dir = workspace_root / "swebench_setup"
+
+    # Resolve to absolute path to handle symlinks
+    setup_dir = setup_dir.resolve()
+
+    swebench_dir = setup_dir / "SWE-bench"
+    uv_dir = setup_dir / "uv"
+    python_dir = setup_dir / "python"
+
+    # Check if already set up (validate all critical components exist)
+    if (
+        swebench_dir.exists()
+        and (swebench_dir / "pyproject.toml").exists()
+        and (swebench_dir / "venv" / "bin" / "python").exists()
+        and (swebench_dir / "venv" / "pyvenv.cfg").exists()
+        and (uv_dir / "bin" / "uv").exists()
+        and python_dir.exists()
+    ):
+        LOG.info(f"SWE-bench already set up at {setup_dir}")
+        LOG.info(f"  - SWE-bench: {swebench_dir}")
+        LOG.info(f"  - venv: {swebench_dir / 'venv'}")
+        LOG.info(f"  - uv: {uv_dir}")
+        LOG.info(f"  - Python: {python_dir}")
+        return setup_dir  # Return parent directory, not SWE-bench subdirectory
+
+    # If partial setup exists, log that we'll rebuild
+    if setup_dir.exists():
+        LOG.warning(f"Incomplete setup detected at {setup_dir}, will rebuild/complete setup...")
+
+    LOG.info(f"Setting up SWE-bench environment at {setup_dir}...")
+    setup_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create setup script
+    setup_script = setup_dir / "setup_swebench.sh"
+    uv_dir = setup_dir / "uv"
+    python_dir = setup_dir / "python"  # Portable Python installation directory
+    script_content = f"""#!/bin/bash
+set -e
+set -x  # Enable debug output
+
+cd {setup_dir}
+
+# Set UV_INSTALL_DIR to install uv in the swebench setup directory
+export UV_INSTALL_DIR="{uv_dir}"
+
+# Set UV_PYTHON_INSTALL_DIR to install Python in a portable location
+export UV_PYTHON_INSTALL_DIR="{python_dir}"
+
+# Install uv if not already installed
+if [ ! -f "{uv_dir}/bin/uv" ]; then
+    echo "Installing uv to {uv_dir}..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+else
+    echo "uv already installed at {uv_dir}"
+fi
+
+# Add uv to PATH
+export PATH="{uv_dir}/bin:$PATH"
+
+# Verify uv is available
+echo "Verifying uv installation..."
+which uv
+uv --version
+
+# Clone SWE-bench
+if [ ! -d "{swebench_dir}/.git" ]; then
+    echo "Cloning SWE-bench..."
+    # Clean up any partial clone
+    rm -rf "{swebench_dir}"
+    git clone {swebench_repo} {swebench_dir}
+else
+    echo "SWE-bench already cloned at {swebench_dir}"
+fi
+
+cd {swebench_dir}
+echo "Checking out {swebench_commit}..."
+git checkout {swebench_commit}
+
+# First, explicitly install Python 3.12 to the portable location
+echo "Installing Python 3.12 to portable location..."
+uv python install 3.12
+
+# Verify Python was installed in the right place
+echo "Python installations:"
+uv python list
+
+# Create virtual environment with uv using the portable Python
+echo "Creating virtual environment with uv..."
+# Remove any existing venv first
+rm -rf venv
+uv venv --python 3.12 venv
+
+# Install SWE-bench in editable mode
+echo "Installing SWE-bench..."
+uv pip install -p {swebench_dir}/venv/bin/python -e .
+
+echo "Verifying venv was created..."
+if [ -d venv ] && [ -f venv/bin/python ]; then
+    echo "✓ venv created at $(pwd)/venv"
+    echo "✓ Python version: $(venv/bin/python --version)"
+else
+    echo "✗ ERROR: venv was not created properly!"
+    exit 1
+fi
+
+echo "SWE-bench setup complete!"
+"""
+
+    with open(setup_script, "w") as f:
+        f.write(script_content)
+
+    setup_script.chmod(0o755)
+
+    LOG.info("Running SWE-bench setup script...")
+    LOG.info(f"Setup script: {setup_script}")
+    LOG.info("=" * 80)
+
+    process = None
+    try:
+        process = subprocess.Popen(
+            [str(setup_script)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
+        output_lines = []
+        for line in process.stdout:
+            print(line, end="", flush=True)
+            output_lines.append(line)
+
+        process.wait(timeout=600)
+
+        if process.returncode != 0:
+            full_output = "".join(output_lines)
+            raise RuntimeError(f"SWE-bench setup failed with return code {process.returncode}:\n{full_output}")
+
+        LOG.info("=" * 80)
+        LOG.info(f"SWE-bench setup completed successfully!")
+        LOG.info(f"Setup directory: {setup_dir}")
+        LOG.info(f"  - SWE-bench: {swebench_dir}")
+        LOG.info(f"  - venv: {swebench_dir / 'venv'}")
+        LOG.info(f"  - uv: {uv_dir}")
+        LOG.info(f"  - Python: {python_dir}")
+
+        return setup_dir
+
+    except subprocess.TimeoutExpired:
+        if process:
+            process.kill()
+        raise RuntimeError("SWE-bench setup timed out after 10 minutes")
+    except Exception as e:
+        raise RuntimeError(f"SWE-bench setup failed: {e}")
+
+
 def setup_openhands_environment(
     agent_framework_repo: Optional[str] = None,
     agent_framework_commit: str = "HEAD",
@@ -854,7 +1039,7 @@ def setup_openhands_environment(
         LOG.info(f"OpenHands already set up at {setup_dir}")
         LOG.info(f"  - Miniforge: {miniforge_dir}")
         LOG.info(f"  - OpenHands: {openhands_dir}")
-        return setup_dir  # Return parent directory, not OpenHands subdirectory
+        return setup_dir
 
     # If partial setup exists, log that we'll rebuild
     if setup_dir.exists():
@@ -983,25 +1168,20 @@ echo "OpenHands setup complete!"
 
     process = None
     try:
-        # Use Popen to stream output in real-time
         process = subprocess.Popen(
             [str(setup_script)],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # Merge stderr into stdout
+            stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1,  # Line buffered
+            bufsize=1,
         )
 
-        # Stream output line by line
         output_lines = []
         for line in process.stdout:
-            # Print to console
             print(line, end="", flush=True)
-            # Also collect for error reporting
             output_lines.append(line)
 
-        # Wait for process to complete
-        process.wait(timeout=1800)  # 30 minute timeout
+        process.wait(timeout=1800)
 
         if process.returncode != 0:
             full_output = "".join(output_lines)
@@ -1013,7 +1193,7 @@ echo "OpenHands setup complete!"
         LOG.info(f"  - Miniforge: {miniforge_dir}")
         LOG.info(f"  - OpenHands: {openhands_dir}")
 
-        return setup_dir  # Return parent directory containing both miniforge3 and OpenHands
+        return setup_dir
 
     except subprocess.TimeoutExpired:
         if process:

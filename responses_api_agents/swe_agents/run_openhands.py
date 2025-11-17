@@ -108,6 +108,7 @@ class RunOpenHandsAgent:
     cfg: SweBenchGenerationConfig
     output_dir: str = None
     openhands_setup_dir: Path | None = None  # Pre-built OpenHands directory to mount
+    swebench_setup_dir: Path | None = None  # Pre-built SWE-bench directory to mount
 
     async def _run_swe_agent(self, data_point, api_base):
         """
@@ -484,6 +485,14 @@ class RunOpenHandsAgent:
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst=/openhands_setup")
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst={self.openhands_setup_dir}")
 
+        # Add SWE-bench setup directory mount if available (for evaluation)
+        if self.swebench_setup_dir is not None:
+            # Mount the entire setup directory at both /swebench_setup and its original absolute path
+            # This is needed because uv venv has hardcoded absolute paths in its wrappers
+            print(f"Mounting pre-built SWE-bench from: {self.swebench_setup_dir}", flush=True)
+            mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst=/swebench_setup")
+            mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst={self.swebench_setup_dir}")
+
         mount_str = " ".join(mount_args)
 
         # Launch Apptainer container and execute the command
@@ -587,26 +596,48 @@ class RunOpenHandsAgent:
             }
         else:
             # Run full evaluation with streaming output
-            swe_bench_cmd = (
-                # first installing SWE-bench repo
-                "curl -LsSf https://astral.sh/uv/install.sh | sh && "
-                "source /root/.local/bin/env && "
-                "cd /root && "
-                "git clone https://github.com/HeyyyyyyG/SWE-bench.git && "
-                "cd SWE-bench && "
-                "uv venv --python 3.12 venv && "
-                # DO NOT activate venv, use uv pip with -p flag instead
-                "uv pip install -p /root/SWE-bench/venv/bin/python -e . && "
-                # Run with clean environment to avoid venv contamination
-                f"env -u VIRTUAL_ENV /root/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
-                f"    --predictions_path {pred_mounted_path} "
-                f"    --instance_ids {data_point['instance_id']} "
-                f"    --run_id eval-outputs "
-                f"    --timeout {self.cfg.swebench_tests_timeout} "
-                f"    --dataset_name {data_point['dataset_name']} "
-                f"    --split {data_point['split']} && "
-                f"cp -r logs/run_evaluation/eval-outputs /trajectories_mount/"
-            )
+            if self.swebench_setup_dir is not None:
+                # Use pre-built SWE-bench mounted at /swebench_setup
+                swebench_cmd = (
+                    # Use pre-built SWE-bench
+                    "cd /swebench_setup/SWE-bench && "
+                    # Set UV environment variables to use the mounted portable directories
+                    f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
+                    f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
+                    f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
+                    # Run with clean environment to avoid venv contamination
+                    # Use the pre-built venv directly with its absolute path
+                    f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
+                    f"    --predictions_path {pred_mounted_path} "
+                    f"    --instance_ids {data_point['instance_id']} "
+                    f"    --run_id eval-outputs "
+                    f"    --timeout {self.cfg.swebench_tests_timeout} "
+                    f"    --dataset_name {data_point['dataset_name']} "
+                    f"    --split {data_point['split']} && "
+                    f"cp -r logs/run_evaluation/eval-outputs /trajectories_mount/"
+                )
+            else:
+                # Fall back to in-container installation (original behavior)
+                swebench_cmd = (
+                    # first installing SWE-bench repo
+                    "curl -LsSf https://astral.sh/uv/install.sh | sh && "
+                    "source /root/.local/bin/env && "
+                    "cd /root && "
+                    "git clone https://github.com/HeyyyyyyG/SWE-bench.git && "
+                    "cd SWE-bench && "
+                    "uv venv --python 3.12 venv && "
+                    # DO NOT activate venv, use uv pip with -p flag instead
+                    "uv pip install -p /root/SWE-bench/venv/bin/python -e . && "
+                    # Run with clean environment to avoid venv contamination
+                    f"env -u VIRTUAL_ENV /root/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
+                    f"    --predictions_path {pred_mounted_path} "
+                    f"    --instance_ids {data_point['instance_id']} "
+                    f"    --run_id eval-outputs "
+                    f"    --timeout {self.cfg.swebench_tests_timeout} "
+                    f"    --dataset_name {data_point['dataset_name']} "
+                    f"    --split {data_point['split']} && "
+                    f"cp -r logs/run_evaluation/eval-outputs /trajectories_mount/"
+                )
 
             # Execute SWE-bench evaluation command
             search_path = os.path.join(
@@ -619,7 +650,7 @@ class RunOpenHandsAgent:
             try:
                 report_file = await self._execute_container_command(
                     data_point,
-                    swe_bench_cmd,
+                    swebench_cmd,
                     search_path,
                     mode="eval",
                     timeout=self.cfg.swebench_tests_timeout + 120,

@@ -51,6 +51,7 @@ from responses_api_agents.swe_agents.utils import (
     get_model_endpoint,
     run_swebench_evaluation,
     setup_openhands_environment,
+    setup_swebench_environment,
 )
 
 
@@ -122,6 +123,13 @@ class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
         exclude=True,
     )
 
+    # Pre-built SWE-bench directory path (set during initialization)
+    swebench_setup_dir: Optional[Path] = Field(
+        default=None,
+        description="Path to pre-built SWE-bench directory (automatically set during initialization)",
+        exclude=True,
+    )
+
 
 class SWEBenchRunRequest(BaseRunRequest):
     """Request format for SWE-bench runs."""
@@ -178,6 +186,15 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
                 LOG.error(f"Failed to set up OpenHands environment: {e}")
                 raise
 
+        # Pre-build SWE-bench environment (needed for evaluation regardless of agent framework)
+        LOG.info("Setting up SWE-bench environment during initialization...")
+        try:
+            self.config.swebench_setup_dir = setup_swebench_environment()
+            LOG.info(f"SWE-bench environment ready at: {self.config.swebench_setup_dir}")
+        except Exception as e:
+            LOG.error(f"Failed to set up SWE-bench environment: {e}")
+            raise
+
     async def responses(self, body: NeMoGymResponseCreateParamsNonStreaming = Body()) -> NeMoGymResponse:
         """Run NeMo-Skills SWE-bench evaluation."""
 
@@ -204,6 +221,7 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
                 "agent_framework_repo": self.config.agent_framework_repo,
                 "agent_framework_commit": self.config.agent_framework_commit,
                 "openhands_setup_dir": self.config.openhands_setup_dir,
+                "swebench_setup_dir": self.config.swebench_setup_dir,
             }
             future = runner_ray_remote.remote(run_swebench_evaluation, params)
             result = await asyncio.to_thread(ray.get, future)
