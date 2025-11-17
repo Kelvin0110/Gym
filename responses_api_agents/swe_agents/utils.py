@@ -179,20 +179,24 @@ def convert_trajectory_to_output_items(
                     content_data = item.get("content", "")
 
                     # Add assistant message if there's content (even if there are also tool calls)
+                    prompt_token_ids = item.get("prompt_token_ids", [])
+                    generation_token_ids = item.get("generation_token_ids", [])
+                    generation_log_probs = item.get("generation_log_probs", [])
+
                     if content_data:
+                        content_data = content_data if isinstance(content_data, str) else str(content_data)
                         output_items.append(
-                            NeMoGymResponseOutputMessage(
+                            NeMoGymResponseOutputMessageForTraining(
                                 id=f"msg-{len(output_items)}",
                                 content=[
-                                    NeMoGymResponseOutputText(
-                                        type="output_text",
-                                        text=content_data if isinstance(content_data, str) else str(content_data),
-                                        annotations=[],
-                                    )
+                                    NeMoGymResponseOutputText(type="output_text", text=text_content, annotations=[])
                                 ],
                                 role="assistant",
                                 status="completed",
                                 type="message",
+                                prompt_token_ids=prompt_token_ids,
+                                generation_token_ids=generation_token_ids,
+                                generation_log_probs=generation_log_probs,
                             )
                         )
 
