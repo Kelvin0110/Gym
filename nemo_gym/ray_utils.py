@@ -31,6 +31,7 @@ from nemo_gym.global_config import (
 
 def _lookup_node_id_with_free_gpus(num_gpus: int, reserved_gpu_nodes: Set[str] = None) -> Optional[str]:
     cfg = get_global_config_dict()
+
     node_avail_gpu_dict = defaultdict(int)
     node_states = ray.util.state.list_nodes(
         cfg["ray_head_node_address"],
@@ -41,6 +42,7 @@ def _lookup_node_id_with_free_gpus(num_gpus: int, reserved_gpu_nodes: Set[str] =
         if reserved_gpu_nodes is not None and state.node_id in reserved_gpu_nodes:
             continue
         node_avail_gpu_dict[state.node_id] += state.resources_total.get("GPU", 0)
+
     while True:
         retry = False
         node_used_gpu_dict = defaultdict(int)
@@ -57,6 +59,7 @@ def _lookup_node_id_with_free_gpus(num_gpus: int, reserved_gpu_nodes: Set[str] =
             sleep(2)
             continue
         break
+
     for node_id, avail_num_gpus in node_avail_gpu_dict.items():
         used_num_gpus = node_used_gpu_dict[node_id]
         if used_num_gpus + num_gpus <= avail_num_gpus:
