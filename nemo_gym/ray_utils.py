@@ -19,7 +19,7 @@ from time import sleep
 from typing import Optional, Set
 
 import ray.util.state
-from ray.actor import ActorClass
+from ray.actor import ActorClass, ActorProxy
 from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
 
 from nemo_gym.global_config import (
@@ -72,7 +72,7 @@ def spinup_single_ray_gpu_node_worker(
     num_gpus: int,
     *worker_args,
     **worker_kwargs,
-):  # pragma: no cover
+) -> ActorProxy:  # pragma: no cover
     cfg = get_global_config_dict()
 
     # If value of RAY_GPU_NODES_KEY_NAME is None, then Gym will use all Ray GPU nodes.
