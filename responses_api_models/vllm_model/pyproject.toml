@@ -31,4 +31,4 @@ where = [".."]
 include = ["vllm_model"]
 
 [tool.uv.sources]
-nemo-gym = { path = "../.." }
+nemo-gym = { path = "../..", editable = true }
