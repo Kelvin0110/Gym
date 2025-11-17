@@ -390,7 +390,7 @@ class RunOpenHandsAgent:
         command,
         expected_file_pattern,
         mode,
-        max_retries=1,
+        max_retries=5,
         timeout=100000,
     ):
         """Execute a command in an Apptainer container with retry logic."""
