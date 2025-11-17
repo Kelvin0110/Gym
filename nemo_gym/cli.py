@@ -36,6 +36,8 @@ from tqdm.auto import tqdm
 from nemo_gym import PARENT_DIR
 from nemo_gym.config_types import BaseNeMoGymCLIConfig
 from nemo_gym.global_config import (
+    DEBUG_MODE_KEY_NAME,
+    DEBUG_PORT_KEY_NAME,
     HEAD_SERVER_DEPS_KEY_NAME,
     NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME,
     NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME,
@@ -106,6 +108,7 @@ class ServerInstanceDisplayConfig(BaseModel):
     entrypoint: str
     host: Optional[str] = None
     port: Optional[int] = None
+    debug_port: Optional[int] = None
     pid: Optional[int] = None
     config_path: str
     url: Optional[str] = None
@@ -138,11 +141,9 @@ class RunHelper:  # pragma: no cover
         self._server_instance_display_configs: List[ServerInstanceDisplayConfig] = []
 
         # Check if debug mode is enabled for subprocess debugging
-        debug_enabled = environ.get("NEMO_GYM_DEBUG_SUBPROCESS", "").lower() in ("1", "true", "yes")
-        if debug_enabled:
-            debug_base_port = int(environ.get("NEMO_GYM_DEBUG_PORT", "5678"))
-            server_index = 0
-            print(f"🐛 Subprocess debug mode enabled - servers will use ports starting from {debug_base_port}")
+        if global_config_dict.get(DEBUG_MODE_KEY_NAME, False):
+            debug_base_port = global_config_dict.get(DEBUG_PORT_KEY_NAME, 5678)
+            print(f"🐛 Debug mode enabled - servers will use ports starting from {debug_base_port}")
 
         # TODO there is a better way to resolve this that uses nemo_gym/global_config.py::ServerInstanceConfig
         for top_level_path in top_level_paths:
@@ -169,11 +170,10 @@ class RunHelper:  # pragma: no cover
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
             # Set up debugging for this subprocess if enabled
-            if debug_enabled:
-                debug_port = debug_base_port + server_index
+            # Debug port is pre-resolved in the server config during global config parsing
+            debug_port = server_config_dict.get("debug_port")
+            if debug_port is not None:
                 python_cmd = f"python -m debugpy --listen 0.0.0.0:{debug_port}"
-                print(f"   [{top_level_path}] listening for debugger on port {debug_port}")
-                server_index += 1
             else:
                 python_cmd = "python"
 
@@ -197,6 +197,7 @@ class RunHelper:  # pragma: no cover
                     entrypoint=str(entrypoint_fpath),
                     host=host,
                     port=port,
+                    debug_port=debug_port,
                     url=f"http://{host}:{port}" if host and port else None,
                     pid=process.pid,
                     config_path=top_level_path,

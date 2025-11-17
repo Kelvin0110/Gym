@@ -204,7 +204,7 @@ dev = [
 
     # debugpy: Used for VS Code remote debugging of server processes
     # Updated: Nov 16, 2025 with debugpy>=1.8.0
-    # License: MIT https://github.com/microsoft/debugpy/blob/main/LICENSE
+    # License: MIT https://github.com/microsoft/debugpy/blob/82e409e88311aced08885fc9ec19f8e077e5b00e/LICENSE
     "debugpy>=1.8.0",
 ]
 

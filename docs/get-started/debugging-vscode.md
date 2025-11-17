@@ -1,4 +1,4 @@
-# Debugging Servers
+# Debugging Servers in VS Code
 
 This guide shows you how to debug NeMo Gym servers using VS Code's debugger.
 
@@ -94,22 +94,32 @@ If you already have a `launch.json`, just add these configurations to your exist
 
 ## Debugging Workflow
 
-### Step 1: Start Servers with Debug Mode
+### Step 1: Enable Debug Mode
 
-In your terminal, enable debug mode and start your servers:
+Enable debug mode using command-line overrides or config files:
+
+**Option A: Command-line Override** (Quick)
 
 ```bash
-# Enable subprocess debugging
-export NEMO_GYM_DEBUG_SUBPROCESS=1
-export NEMO_GYM_DEBUG_PORT=5678
+ng_run "+config_paths=[your_config.yaml]" debug_mode=true debug_port=5678
+```
 
-# Start your servers (adjust config paths as needed)
-ng_run "+config_paths=[resources_servers/example_simple_weather/configs/simple_weather.yaml,responses_api_models/openai_model/configs/openai_model.yaml]"
+**Option B: YAML Configuration** (Persistent)
+
+Add to your config file:
+```yaml
+debug_mode: true
+debug_port: 5678
+```
+
+Then run:
+```bash
+ng_run "+config_paths=[your_config.yaml]"
 ```
 
 You'll see output like:
 ```
-🐛 Subprocess debug mode enabled - servers will use ports starting from 5678
+🐛 Debug mode enabled - servers will use ports starting from 5678
    [openai_model] listening for debugger on port 5678
    [weather_server] listening for debugger on port 5679
 ```
@@ -139,12 +149,22 @@ Your breakpoints will now hit! 🎉
 
 ## Quick Reference
 
-### Environment Variables
+### Configuration Options
 
-| Variable | Description |
-|----------|-------------|
-| `NEMO_GYM_DEBUG_SUBPROCESS` | Set to `1` to enable debug mode for subprocesses |
-| `NEMO_GYM_DEBUG_PORT` | Base port number (default: 5678). Each server gets sequential ports |
+| Config Key | Type | Default | Description |
+|------------|------|---------|-------------|
+| `debug_mode` | bool | `false` | Enable debug mode for server subprocesses |
+| `debug_port` | int | `5678` | Base port number. Each server gets sequential ports |
+
+**Usage:**
+```bash
+# Command-line
+ng_run debug_mode=true debug_port=5678
+
+# Or in YAML
+debug_mode: true
+debug_port: 5678
+```
 
 ### Port Assignment
 
@@ -170,7 +190,7 @@ VS Code will show multiple debug sessions in the Call Stack panel.
 
 - Make sure servers are running with `ng_run`
 - Check the port numbers in the terminal output
-- Verify `NEMO_GYM_DEBUG_SUBPROCESS=1` is set
+- Verify `debug_mode=true` is set in your config or command-line
 
 ### Breakpoints not hitting
 
@@ -188,11 +208,20 @@ pip install -e ".[dev]"
 
 ## How It Works
 
-When `NEMO_GYM_DEBUG_SUBPROCESS=1` is set, the CLI automatically starts each server subprocess with:
+When debug mode is enabled via `debug_mode=true`, the CLI automatically starts each server subprocess with:
 
 ```bash
 python -m debugpy --listen 0.0.0.0:PORT app.py
 ```
+
+The debug configuration is integrated into NeMo Gym's global config system as reserved keywords:
+- `debug_mode` - Controls whether debugging is enabled (default: `false`)
+- `debug_port` - Sets the base port (default: `5678`). Servers use sequential ports from this base.
+
+You can set these via:
+- Command-line overrides: `ng_run debug_mode=true debug_port=5678`
+- YAML config files: Add `debug_mode: true` to your config
+- Hydra's configuration system: Any valid Hydra override syntax
 
 This enables remote debugging without modifying your application code. VS Code connects to these debug ports using the attach configurations.
 

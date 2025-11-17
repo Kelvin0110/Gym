@@ -46,13 +46,13 @@ Generate your first batch of rollouts and understand how they become training da
 {bdg-secondary}`training-data` {bdg-secondary}`scale`
 :::
 
-:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` 3. Debugging Servers
-:link: debugging
+:::{grid-item-card} {octicon}`bug;1.5em;sd-mr-1` 3. Debugging in VS Code
+:link: debugging-vscode
 :link-type: doc
 
 Learn how to debug NeMo Gym servers using VS Code's debugger.
 +++
-{bdg-secondary}`development` {bdg-secondary}`debugging`
+{bdg-secondary}`development` {bdg-secondary}`vscode`
 :::
 
 ::::
