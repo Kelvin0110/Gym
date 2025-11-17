@@ -369,6 +369,7 @@ async def run_swebench_evaluation(
     agent_framework_commit: str = "HEAD",
     openhands_setup_dir: Optional[Path] = None,
     swebench_setup_dir: Optional[Path] = None,
+    dataset_path: Optional[str] = None,
 ) -> Dict:
     """Run SWE-bench evaluation using NeMo-Skills.
 
@@ -438,7 +439,12 @@ async def run_swebench_evaluation(
         **nemo_skills_config,
     )
 
-    run_oh = RunOpenHandsAgent(cfg=cfg, openhands_setup_dir=openhands_setup_dir, swebench_setup_dir=swebench_setup_dir)
+    run_oh = RunOpenHandsAgent(
+        cfg=cfg,
+        openhands_setup_dir=openhands_setup_dir,
+        swebench_setup_dir=swebench_setup_dir,
+        dataset_path=dataset_path,
+    )
     result = await run_oh.process_single_datapoint(problem_info)
     print(f"Process completed for {instance_id}", flush=True)
 
@@ -824,7 +830,7 @@ def setup_swebench_environment(
     Args:
         swebench_repo: URL of the SWE-bench repo (default: HeyyyyyyG/SWE-bench)
         swebench_commit: Commit/branch to use (default: HEAD)
-        setup_dir: Directory to set up SWE-bench (default: workspace_root/swebench_setup)
+        setup_dir: Directory to set up SWE-bench (default: workspace_root/swe_swebench_setup)
 
     Returns:
         Path to the built SWE-bench directory
@@ -838,7 +844,7 @@ def setup_swebench_environment(
     # Determine setup directory
     if setup_dir is None:
         workspace_root = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
-        setup_dir = workspace_root / "swebench_setup"
+        setup_dir = workspace_root / "swe_swebench_setup"
 
     # Resolve to absolute path to handle symlinks
     setup_dir = setup_dir.resolve()
@@ -1007,7 +1013,7 @@ def setup_openhands_environment(
     Args:
         agent_framework_repo: URL of the OpenHands repo (default: official repo)
         agent_framework_commit: Commit/branch to use (default: HEAD)
-        setup_dir: Directory to set up OpenHands (default: workspace_root/openhands_setup)
+        setup_dir: Directory to set up OpenHands (default: workspace_root/swe_openhands_setup)
 
     Returns:
         Path to the built OpenHands directory
@@ -1021,7 +1027,7 @@ def setup_openhands_environment(
     # Determine setup directory
     if setup_dir is None:
         workspace_root = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
-        setup_dir = workspace_root / "openhands_setup"
+        setup_dir = workspace_root / "swe_openhands_setup"
 
     # Resolve to absolute path to handle symlinks
     setup_dir = setup_dir.resolve()

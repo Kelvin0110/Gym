@@ -9,11 +9,13 @@ swe_agents:
       agent_config: /lustre/fsw/portfolios/llmservice/users/sdevare/repos/nemo-rl-sl/3rdparty/Penguin-workspace/Penguin/responses_api_agents/swe_agents/configs/oh_config.toml
       agent_max_turns: 100
       agent_framework_repo: https://github.com/sdevare-nv/nv-OpenHands.git
-      agent_framework_commit: 2efc3e17bf44e36fd5dc74f2c6bc14e9bf6b2cff
+      agent_framework_commit: 9f1a06c1169d53bf0dea64dc5a0233c8e8ab27d1
       # Container configuration
       container_formatter: "/lustre/fsw/portfolios/llmservice/users/igitman/images/swe-bench/swebench_sweb.eval.x86_64.{instance_id}.sif"
       container_folder_path: null
       swebench_tests_timeout: 1800  # 30 minutes
+
+      dataset_path: /lustre/fsw/portfolios/llmservice/users/sdevare/repos/nemo-rl-sl/3rdparty/Penguin-workspace/Penguin/data/swe_agents/train_with_metadata_2.jsonl
       
       # Optional model server reference
       model_server:

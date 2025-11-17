@@ -107,8 +107,9 @@ NS_TO_OPENHANDS_PARAM = {
 class RunOpenHandsAgent:
     cfg: SweBenchGenerationConfig
     output_dir: str = None
-    openhands_setup_dir: Path | None = None  # Pre-built OpenHands directory to mount
-    swebench_setup_dir: Path | None = None  # Pre-built SWE-bench directory to mount
+    openhands_setup_dir: Path | None = None
+    swebench_setup_dir: Path | None = None
+    dataset_path: str | None = None
 
     async def _run_swe_agent(self, data_point, api_base):
         """
@@ -179,7 +180,7 @@ class RunOpenHandsAgent:
 
         return pred_jsonl_file
 
-    async def _run_openhands(self, data_point, api_base):
+    async def _run_openhands(self, data_point, api_base, run_id):
         """
         Runs OpenHands on one instance.
         Returns the absolute (not mounted) path to a .jsonl file in the SWE-bench evaluation format.
@@ -214,127 +215,64 @@ class RunOpenHandsAgent:
 
         config_str = tomlkit.dumps(config)
 
-        eval_dir_in_openhands = f"evaluation/oh/{data_point['instance_id']}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
+        eval_dir_in_openhands = f"evaluation/oh/{run_id}"
 
-        # Check if we have a pre-built OpenHands setup to use
-        if self.openhands_setup_dir is not None:
-            # Use pre-built OpenHands mounted at /openhands_setup
-            openhands_cmd = (
-                # make sure /workspace isn't mounted as a safety precaution
-                "if [ -d /workspace ]; then "
-                "    echo 'Exiting because /workspace is mounted.' && "
-                "    echo 'Please make sure /workspace is not mounted inside of Apptainer before running OpenHands.' && "
-                "    echo 'This is because OpenHands DELETES EVERYTHING in the /workspace folder if it exists.' && "
-                "    exit 1; "
-                "fi && "
-                # Add miniforge bin to PATH (for tmux, node, poetry, etc.)
-                "export PATH=/openhands_setup/miniforge3/bin:$PATH && "
-                # Setup tmux socket (OpenHands requirement)
-                "uid=$(id -ru 2>/dev/null || id -u) && "
-                "export TMUX_TMPDIR=/tmp && "
-                "export TMUX=/tmp/tmux-$uid/default && "
-                "mkdir -p /tmp/tmux-$uid && "
-                "chown $uid:$uid /tmp/tmux-$uid || true && "
-                "chmod 700 /tmp/tmux-$uid && "
-                "tmux -S /tmp/tmux-$uid/default start-server || true && "
-                # Add miniforge bin to PATH to get Python, poetry, tmux, etc. (no conda activation needed)
-                "export PATH=/openhands_setup/miniforge3/bin:$PATH && "
-                "echo 'Using miniforge tools from PATH' && "
-                # Use pre-built OpenHands
-                "cd /openhands_setup/OpenHands && "
-                # CRITICAL: Configure poetry to only use the OpenHands venv (ignore external venvs)
-                "export POETRY_VIRTUALENVS_IN_PROJECT=true && "
-                "export POETRY_VIRTUALENVS_CREATE=false && "
-                "export POETRY_VIRTUALENVS_PATH=/openhands_setup/OpenHands && "
-                # Directly activate the existing venv (so 'poetry run' uses it)
-                "export VIRTUAL_ENV=/openhands_setup/OpenHands/.venv && "
-                "export PATH=/openhands_setup/OpenHands/.venv/bin:$PATH && "
-                # set up config files
-                f"echo {shlex.quote(config_str)} >config.toml && "
-                # set local runtime & force verbose logs
-                "export RUNTIME=local && "
-                "export LOG_ALL_EVENTS=true && "
-                "export LOG_LEVEL=DEBUG && "
-                # run the agent
-                # f" export EVAL_OUTPUT_DIR={eval_dir_in_openhands} && "
-                f"./evaluation/benchmarks/swe_bench/scripts/run_infer.sh "
-                f"    llm.model "  # name of llm config section in config.toml
-                f"    {self.cfg.agent_framework_commit} "  # openhands commit
-                f"    CodeActAgent "  # agent
-                f"    0 "  # Note: this is eval limit which randomly chooses an instance from the dataset
-                f"    {self.cfg.agent_max_turns} "  # max agent iterations
-                f"    1 "  # number of workers
-                f"    {data_point['dataset_name']} "  # dataset name
-                f"    {data_point['split']} "  # dataset split
-                f"    {eval_dir_in_openhands} "
-                f"    {data_point['instance_id']} "
-                f"    {shlex.quote(data_point['instance_dict'])} && "
-                # move outputs to the mounted directory
-                f"mkdir -p /trajectories_mount/trajectories && "
-                f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/"
-            )
-        else:
-            # Fall back to in-container setup (original behavior)
-            openhands_cmd = (
-                # make sure /workspace isn't mounted as a safety precaution
-                # (mounting it in the nemo-skills cluster config is ok, just not inside of apptainer specifically)
-                "if [ -d /workspace ]; then "
-                "    echo 'Exiting because /workspace is mounted.' && "
-                "    echo 'Please make sure /workspace is not mounted inside of Apptainer before running OpenHands.' && "
-                "    echo 'This is because OpenHands DELETES EVERYTHING in the /workspace folder if it exists.' && "
-                "    exit 1; "
-                "fi && "
-                # install openhands repo + dependencies
-                "cd /root && "
-                'curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" && '
-                "bash Miniforge3-$(uname)-$(uname -m).sh -b && "
-                'eval "$(/root/miniforge3/bin/conda shell.bash hook)" && '
-                "mamba install -y --override-channels conda-forge::python=3.12 conda-forge::nodejs conda-forge::poetry conda-forge::tmux && "
-                # OpenHands LocalRuntime uses tmux to manage a bash session. In Apptainer, the real UID (id -ru)
-                # can differ from the effective UID (root) due to `su root -`. tmux chooses its default socket
-                # path based on the REAL UID, e.g., /tmp/tmux-<real-uid>/default. Below we:
-                #  - derive the real UID (fallback to id -u)
-                #  - force tmux to use that socket path via TMUX/TMUX_TMPDIR
-                #  - ensure the directory exists, has proper ownership and permissions
-                #  - start the tmux server idempotently on that exact socket
-                # This avoids 'error connecting to /tmp/tmux-<uid>/default' during LocalRuntime startup.
-                # Ensure tmux socket directory exists with proper permissions, using real UID when available
-                "uid=$(id -ru 2>/dev/null || id -u) && "
-                "export TMUX_TMPDIR=/tmp && "
-                "export TMUX=/tmp/tmux-$uid/default && "
-                "mkdir -p /tmp/tmux-$uid && "
-                "chown $uid:$uid /tmp/tmux-$uid || true && "
-                "chmod 700 /tmp/tmux-$uid && "
-                # Start tmux server on the exact socket path (idempotent)
-                "tmux -S /tmp/tmux-$uid/default start-server || true && "
-                "mkdir OpenHands && "
-                "cd OpenHands && "
-                f"git clone {self.cfg.agent_framework_repo} . && "
-                f"git checkout {self.cfg.agent_framework_commit} && "
-                "export INSTALL_DOCKER=0 && "
-                "make build && "
-                "poetry run python -m pip install datasets && "
-                # set up config files
-                f"echo {shlex.quote(config_str)} >config.toml && "
-                f"echo \"selected_ids = ['{data_point['instance_id']}']\" >evaluation/benchmarks/swe_bench/config.toml && "
-                # set local runtime & force verbose logs
-                "export RUNTIME=local && "
-                "export LOG_ALL_EVENTS=true && "
-                "export LOG_LEVEL=DEBUG && "
-                # run the agent
-                f"./evaluation/benchmarks/swe_bench/scripts/run_infer.sh "
-                f"    llm.model "  # name of llm config section in config.toml
-                f"    {self.cfg.agent_framework_commit} "  # openhands commit
-                f"    CodeActAgent "  # agent
-                f"    0 "  # number of instances
-                f"    {self.cfg.agent_max_turns} "  # max agent iterations
-                f"    1 "  # number of workers
-                f"    {data_point['dataset_name']} "  # dataset name
-                f"    {data_point['split']} && "  # dataset split
-                # move outputs to the mounted directory
-                f"mkdir -p /trajectories_mount/trajectories && "
-                f"cp -r evaluation/evaluation_outputs/outputs/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}"
-            )
+        assert self.openhands_setup_dir is not None, "OpenHands setup directory is not set"
+
+        openhands_cmd = (
+            # make sure /workspace isn't mounted as a safety precaution
+            "if [ -d /workspace ]; then "
+            "    echo 'Exiting because /workspace is mounted.' && "
+            "    echo 'Please make sure /workspace is not mounted inside of Apptainer before running OpenHands.' && "
+            "    echo 'This is because OpenHands DELETES EVERYTHING in the /workspace folder if it exists.' && "
+            "    exit 1; "
+            "fi && "
+            # Add miniforge bin to PATH (for tmux, node, poetry, etc.)
+            "export PATH=/openhands_setup/miniforge3/bin:$PATH && "
+            # Setup tmux socket (OpenHands requirement)
+            "uid=$(id -ru 2>/dev/null || id -u) && "
+            "export TMUX_TMPDIR=/tmp && "
+            "export TMUX=/tmp/tmux-$uid/default && "
+            "mkdir -p /tmp/tmux-$uid && "
+            "chown $uid:$uid /tmp/tmux-$uid || true && "
+            "chmod 700 /tmp/tmux-$uid && "
+            "tmux -S /tmp/tmux-$uid/default start-server || true && "
+            # Add miniforge bin to PATH to get Python, poetry, tmux, etc. (no conda activation needed)
+            "export PATH=/openhands_setup/miniforge3/bin:$PATH && "
+            "echo 'Using miniforge tools from PATH' && "
+            # Use pre-built OpenHands
+            "cd /openhands_setup/OpenHands && "
+            # CRITICAL: Configure poetry to only use the OpenHands venv (ignore external venvs)
+            "export POETRY_VIRTUALENVS_IN_PROJECT=true && "
+            "export POETRY_VIRTUALENVS_CREATE=false && "
+            "export POETRY_VIRTUALENVS_PATH=/openhands_setup/OpenHands && "
+            # Directly activate the existing venv (so 'poetry run' uses it)
+            "export VIRTUAL_ENV=/openhands_setup/OpenHands/.venv && "
+            "export PATH=/openhands_setup/OpenHands/.venv/bin:$PATH && "
+            # set up config files
+            f"echo {shlex.quote(config_str)} >config.toml && "
+            # set local runtime & force verbose logs
+            "export RUNTIME=local && "
+            "export LOG_ALL_EVENTS=true && "
+            "export LOG_LEVEL=DEBUG && "
+            # run the agent
+            # f" export EVAL_OUTPUT_DIR={eval_dir_in_openhands} && "
+            f"./evaluation/benchmarks/swe_bench/scripts/run_infer.sh "
+            f"    llm.model "  # name of llm config section in config.toml
+            f"    {self.cfg.agent_framework_commit} "  # openhands commit
+            f"    CodeActAgent "  # agent
+            f"    0 "  # Note: this is eval limit which randomly chooses an instance from the dataset
+            f"    {self.cfg.agent_max_turns} "  # max agent iterations
+            f"    1 "  # number of workers
+            f"    {data_point['dataset_name']} "  # dataset name
+            f"    {data_point['split']} "  # dataset split
+            f"    {eval_dir_in_openhands} "
+            f"    {data_point['instance_id']} "
+            f"    {shlex.quote(data_point['instance_dict'])} && "
+            # move outputs to the mounted directory
+            f"mkdir -p /trajectories_mount/trajectories && "
+            f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/"
+        )
 
         # Execute OpenHands command
         search_path = os.path.join(
@@ -478,7 +416,7 @@ class RunOpenHandsAgent:
         ]
 
         # Add OpenHands setup directory mount if available (for OpenHands)
-        if self.openhands_setup_dir is not None:
+        if mode == "agent" and self.openhands_setup_dir is not None:
             # Mount the entire setup directory at both /openhands_setup and its original absolute path
             # This is needed because poetry and other tools have hardcoded absolute paths in their wrappers
             print(f"Mounting pre-built OpenHands from: {self.openhands_setup_dir}", flush=True)
@@ -486,12 +424,13 @@ class RunOpenHandsAgent:
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst={self.openhands_setup_dir}")
 
         # Add SWE-bench setup directory mount if available (for evaluation)
-        if self.swebench_setup_dir is not None:
+        if mode == "eval" and self.swebench_setup_dir is not None:
             # Mount the entire setup directory at both /swebench_setup and its original absolute path
             # This is needed because uv venv has hardcoded absolute paths in its wrappers
             print(f"Mounting pre-built SWE-bench from: {self.swebench_setup_dir}", flush=True)
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst=/swebench_setup")
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst={self.swebench_setup_dir}")
+            mount_args.append(f"--mount type=bind,src={self.dataset_path},dst=/dataset/data.jsonl")
 
         mount_str = " ".join(mount_args)
 
@@ -563,6 +502,8 @@ class RunOpenHandsAgent:
         """Will do all necessary generations to get a single answer for the data point."""
         self.output_dir = Path(self.cfg.output_file).parent
 
+        run_id = f"{data_point['instance_id']}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
+
         # TODO: what's the right way to support api models, so that our standard parameters for that can be used?
         # TODO: use self.cfg.server.base_url, etc. Can we pass in API key?
 
@@ -572,7 +513,7 @@ class RunOpenHandsAgent:
         if self.cfg.agent_framework == SupportedAgentFrameworks.swe_agent:
             pred_file = await self._run_swe_agent(data_point, api_base)
         elif self.cfg.agent_framework == SupportedAgentFrameworks.openhands:
-            pred_file = await self._run_openhands(data_point, api_base)
+            pred_file = await self._run_openhands(data_point, api_base, run_id)
         else:
             raise ValueError(
                 f"Unsupported agent framework: {self.cfg.agent_framework}. "
@@ -586,6 +527,9 @@ class RunOpenHandsAgent:
         # Check if the trajectory has an empty patch before running evaluation
         has_patch = trajectory_dict["model_patch"] is not None
 
+        assert self.swebench_setup_dir is not None, "SWE-bench setup directory is not set"
+        assert self.dataset_path is not None, "Dataset path is not set"
+
         if not has_patch:
             report_json = {
                 data_point["instance_id"]: {
@@ -594,55 +538,35 @@ class RunOpenHandsAgent:
                     "patch_successfully_applied": False,
                 }
             }
+
         else:
             # Run full evaluation with streaming output
-            if self.swebench_setup_dir is not None:
-                # Use pre-built SWE-bench mounted at /swebench_setup
-                swebench_cmd = (
-                    # Use pre-built SWE-bench
-                    "cd /swebench_setup/SWE-bench && "
-                    # Set UV environment variables to use the mounted portable directories
-                    f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
-                    f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
-                    f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
-                    # Run with clean environment to avoid venv contamination
-                    # Use the pre-built venv directly with its absolute path
-                    f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
-                    f"    --predictions_path {pred_mounted_path} "
-                    f"    --instance_ids {data_point['instance_id']} "
-                    f"    --run_id eval-outputs "
-                    f"    --timeout {self.cfg.swebench_tests_timeout} "
-                    f"    --dataset_name {data_point['dataset_name']} "
-                    f"    --split {data_point['split']} && "
-                    f"cp -r logs/run_evaluation/eval-outputs /trajectories_mount/"
-                )
-            else:
-                # Fall back to in-container installation (original behavior)
-                swebench_cmd = (
-                    # first installing SWE-bench repo
-                    "curl -LsSf https://astral.sh/uv/install.sh | sh && "
-                    "source /root/.local/bin/env && "
-                    "cd /root && "
-                    "git clone https://github.com/HeyyyyyyG/SWE-bench.git && "
-                    "cd SWE-bench && "
-                    "uv venv --python 3.12 venv && "
-                    # DO NOT activate venv, use uv pip with -p flag instead
-                    "uv pip install -p /root/SWE-bench/venv/bin/python -e . && "
-                    # Run with clean environment to avoid venv contamination
-                    f"env -u VIRTUAL_ENV /root/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
-                    f"    --predictions_path {pred_mounted_path} "
-                    f"    --instance_ids {data_point['instance_id']} "
-                    f"    --run_id eval-outputs "
-                    f"    --timeout {self.cfg.swebench_tests_timeout} "
-                    f"    --dataset_name {data_point['dataset_name']} "
-                    f"    --split {data_point['split']} && "
-                    f"cp -r logs/run_evaluation/eval-outputs /trajectories_mount/"
-                )
+            swebench_cmd = (
+                # Use pre-built SWE-bench
+                "cd /swebench_setup/SWE-bench && "
+                # Set UV environment variables to use the mounted portable directories
+                f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
+                f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
+                f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
+                f"ls -lrt /dataset && "
+                # Run with clean environment to avoid venv contamination
+                # Use the pre-built venv directly with its absolute path
+                f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
+                f"    --predictions_path {pred_mounted_path} "
+                f"    --instance_ids {data_point['instance_id']} "
+                f"    --run_id eval-outputs "
+                f"    --timeout {self.cfg.swebench_tests_timeout} "
+                # TODO: use a correct way to pass the dataset path
+                f"    --dataset_name /dataset/data.jsonl "
+                f"    --split {data_point['split']} "
+                f"    --run_id {run_id} && "
+                f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/"
+            )
 
             # Execute SWE-bench evaluation command
             search_path = os.path.join(
                 self.output_dir,
-                "eval-outputs",
+                run_id,
                 "**",
                 f"{data_point['instance_id']}/report.json",
             )

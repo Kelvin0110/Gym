@@ -130,6 +130,11 @@ class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
         exclude=True,
     )
 
+    dataset_path: Optional[str] = Field(
+        default=None,
+        description="Path to the dataset for SWE-bench evaluation",
+    )
+
 
 class SWEBenchRunRequest(BaseRunRequest):
     """Request format for SWE-bench runs."""
@@ -201,7 +206,10 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
         LOG.info(f"Starting SWE-bench evaluation with framework: {self.config.agent_framework}")
 
         # Extract problem information from request
-        problem_info = extract_problem_info(body, self.config.container_formatter)
+        problem_info = extract_problem_info(
+            body,
+            self.config.container_formatter,
+        )
 
         # Determine model endpoint
         model_endpoint = get_model_endpoint(self.config.model_server.name if self.config.model_server else None)
@@ -222,6 +230,7 @@ class SWEBenchWrapper(SimpleResponsesAPIAgent):
                 "agent_framework_commit": self.config.agent_framework_commit,
                 "openhands_setup_dir": self.config.openhands_setup_dir,
                 "swebench_setup_dir": self.config.swebench_setup_dir,
+                "dataset_path": self.config.dataset_path,
             }
             future = runner_ray_remote.remote(run_swebench_evaluation, params)
             result = await asyncio.to_thread(ray.get, future)
