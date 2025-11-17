@@ -30,7 +30,7 @@ from nemo_gym.global_config import (
 
 
 def _lookup_node_id_with_free_gpus(
-    num_gpus: int, reserved_gpu_nodes: Optional[Set[str]] = None
+    num_gpus: int, allowed_gpu_nodes: Optional[Set[str]] = None
 ) -> Optional[str]:  # pragma: no cover
     cfg = get_global_config_dict()
 
@@ -41,7 +41,7 @@ def _lookup_node_id_with_free_gpus(
     )
     for state in node_states:
         assert state.node_id is not None
-        if reserved_gpu_nodes is not None and state.node_id in reserved_gpu_nodes:
+        if allowed_gpu_nodes is not None and state.node_id not in allowed_gpu_nodes:
             continue
         node_avail_gpu_dict[state.node_id] += state.resources_total.get("GPU", 0)
 
@@ -77,9 +77,10 @@ def spinup_single_ray_gpu_node_worker(
 ) -> ActorProxy:  # pragma: no cover
     cfg = get_global_config_dict()
 
-    # If value of RAY_GPU_NODES_KEY_NAME is None, then Gym will use all Ray GPU nodes.
+    # If value of RAY_GPU_NODES_KEY_NAME is None, then Gym will use all Ray GPU nodes
+    # for scheduling GPU actors.
     # Otherwise if value of RAY_GPU_NODES_KEY_NAME is a list, then Gym will only use
-    # the listed Ray GPU nodes.
+    # the listed Ray GPU nodes for scheduling GPU actors.
     gpu_nodes = cfg.get(RAY_GPU_NODES_KEY_NAME, None)
     if gpu_nodes is not None:
         gpu_nodes = set([node["node_id"] for node in gpu_nodes])
@@ -90,7 +91,7 @@ def spinup_single_ray_gpu_node_worker(
         f"Requested {num_gpus} > {num_gpus_per_node} GPU nodes for spinning up {worker_cls}"
     )
 
-    node_id = _lookup_node_id_with_free_gpus(num_gpus, reserved_gpu_nodes=gpu_nodes)
+    node_id = _lookup_node_id_with_free_gpus(num_gpus, allowed_gpu_nodes=gpu_nodes)
     if node_id is None:
         raise RuntimeError(f"Cannot find {num_gpus} available Ray GPU nodes for spinning up {worker_cls}")
 
