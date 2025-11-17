@@ -12,9 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import re
-from time import time
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+import urllib
+from multiprocessing import Process
+from time import sleep, time
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientResponseError
@@ -26,6 +29,7 @@ from nemo_gym.base_responses_api_model import (
     Body,
     SimpleResponsesAPIModel,
 )
+from nemo_gym.global_config import find_open_port
 from nemo_gym.openai_utils import (
     RESPONSES_TO_TRAIN,
     NeMoGymAsyncOpenAI,
@@ -66,23 +70,166 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     uses_reasoning_parser: bool
     replace_developer_role_with_system: bool = False
 
+    spinup_server: bool = False
+    server_args: Optional[Dict[str, Any]] = None
+
+    enable_router: bool = False
+    # router_backend values should be one of "ray" or "mp" (matching the allowed
+    # values of VLLM --distributed-executor-backend).
+    router_backend: str = "mp"
+    router_dp_size: int = 1
+
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
             self.base_url = [self.base_url]
         return super().model_post_init(context)
 
 
+def _spinup_vllm_server(
+    config: VLLMModelConfig, server_host: str, server_port: int, router_dp_rank: Optional[int]
+) -> None:
+    import os
+
+    import uvloop
+    import vllm.engine.arg_utils
+    import vllm.entrypoints.openai.api_server
+    import vllm.entrypoints.openai.cli_args
+    import vllm.utils
+
+    argv = []
+    argv.append("--model")
+    argv.append(config.model)
+    argv.append("--host")
+    argv.append(server_host)
+    argv.append("--port")
+    argv.append(f"{server_port}")
+    argv.append("--distributed-executor-backend")
+    if config.enable_router:
+        argv.append(config.router_backend)
+    else:
+        argv.append("mp")
+    for k, v in (config.server_args or {}).items():
+        if isinstance(v, bool):
+            if not v:
+                arg_key = f"--no-{k.replace('_', '-')}"
+            else:
+                arg_key = f"--{k.replace('_', '-')}"
+            argv.append(arg_key)
+        else:
+            arg_key = f"--{k.replace('_', '-')}"
+            argv.append(arg_key)
+            argv.append(f"{v}")
+
+    if config.enable_router and config.router_backend == "mp":
+        tp_size = (config.server_args or {}).get("tensor_parallel_size", 1)
+        tp_start = router_dp_rank * tp_size
+        tp_ranks = []
+        for tp_rank_offset in range(tp_size):
+            tp_ranks.append(tp_start + tp_rank_offset)
+        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([f"{r}" for r in tp_ranks])
+
+    server_args = vllm.utils.FlexibleArgumentParser()
+    server_args = vllm.entrypoints.openai.cli_args.make_arg_parser(server_args)
+    server_args = server_args.parse_args(argv)
+    vllm.entrypoints.openai.cli_args.validate_parsed_serve_args(server_args)
+
+    uvloop.run(vllm.entrypoints.openai.api_server.run_server(server_args))
+
+
+# Use this to query the VLLM servers during spinup without having to start an
+# asyncio event loop for the async client.
+def _vllm_server_heartbeat(base_url: str):
+    req_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    req_body = {
+        "messages": [
+            {
+                "role": "user",
+                "content": "hi",
+            }
+        ],
+        "max_tokens": 8,
+        "temperature": 1.0,
+    }
+    req_data = json.dumps(req_body).encode("utf-8")
+    req_url = f"{base_url}/chat/completions"
+    req = urllib.request.Request(
+        req_url,
+        headers=req_headers,
+        data=req_data,
+    )
+    with urllib.request.urlopen(req, timeout=5) as out:
+        out_status = out.status
+        out_data = out.read()
+    output = out_data.decode("utf-8")
+    return {
+        "_status": out_status,
+        "output": output,
+        "except": None,
+    }
+
+
 class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
-        self._clients = [
-            NeMoGymAsyncOpenAI(
-                base_url=base_url,
-                api_key=self.config.api_key,
-            )
-            for base_url in self.config.base_url
-        ]
+        if self.config.spinup_server:
+            self._server_urls = []
+            self._server_procs = []
+            self._clients = []
+
+            router_dp_size = 1
+            if self.config.enable_router:
+                router_dp_size = max(1, self.config.router_dp_size)
+
+            for router_dp_rank in range(router_dp_size):
+                # FIXME: this server host is wrong for multi-node via ray.
+                server_host = "127.0.0.1"
+                server_port = find_open_port()
+                server_url = f"http://{server_host}:{server_port}/v1"
+
+                server_proc = Process(
+                    target=_spinup_vllm_server,
+                    args=(
+                        self.config,
+                        server_host,
+                        server_port,
+                        router_dp_rank if self.config.enable_router else None,
+                    ),
+                    daemon=False,
+                )
+                server_proc.start()
+
+                self._server_urls.append(server_url)
+                self._server_procs.append(server_proc)
+                self._clients.append(
+                    NeMoGymAsyncOpenAI(
+                        base_url=server_url,
+                        api_key=self.config.api_key,
+                    )
+                )
+
+            for server_url in self._server_urls:
+                while True:
+                    try:
+                        _vllm_server_heartbeat(server_url)
+                        break
+                    except Exception:
+                        sleep(5)
+                        continue
+
+        else:
+            self._server_urls = None
+            self._server_procs = None
+            self._clients = [
+                NeMoGymAsyncOpenAI(
+                    base_url=base_url,
+                    api_key=self.config.api_key,
+                )
+                for base_url in self.config.base_url
+            ]
 
         self._session_id_to_client: Dict[str, NeMoGymAsyncOpenAI] = dict()
 
