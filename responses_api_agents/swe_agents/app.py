@@ -46,7 +46,6 @@ from nemo_gym.openai_utils import (
 from responses_api_agents.swe_agents.utils import (
     convert_tools_to_function_format,
     convert_trajectory_to_output_items,
-    ensure_nemo_run_symlink,
     extract_input_messages_from_trajectory,
     extract_problem_info,
     get_model_endpoint,
@@ -114,7 +113,7 @@ class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
     )
 
     # Concurrency control
-    concurrency: int = Field(default=1, description="Maximum number of concurrent SWE-bench runs")
+    concurrency: int = Field(default=16, description="Maximum number of concurrent SWE-bench runs")
 
     # Pre-built OpenHands directory path (set during initialization)
     openhands_setup_dir: Optional[Path] = Field(

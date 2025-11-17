@@ -803,44 +803,6 @@ def convert_tools_to_function_format(raw_tools: List[Dict]) -> List:
     return tools
 
 
-def ensure_nemo_run_symlink():
-    """Ensure /nemo_run/code symlink exists pointing to nemo_skills package.
-
-    Raises:
-        RuntimeError: If symlink cannot be created
-    """
-    # Find nemo_skills in the .venv directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    venv_lib = os.path.join(current_dir, ".venv/lib")
-
-    nemo_skills_path = None
-    if os.path.exists(venv_lib):
-        # Look for python* directories
-        for python_dir in os.listdir(venv_lib):
-            if python_dir.startswith("python"):
-                potential_path = os.path.join(venv_lib, python_dir, "site-packages/nemo_skills")
-                if os.path.exists(potential_path):
-                    nemo_skills_path = potential_path
-                    break
-
-    if not nemo_skills_path:
-        raise RuntimeError(f"Could not find nemo_skills package in {venv_lib}")
-
-    # Create symlink if it doesn't exist
-    if not os.path.exists("/nemo_run/code"):
-        # Create directory
-        result = subprocess.run(["mkdir", "-p", "/nemo_run"], capture_output=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to create /nemo_run directory: {result.stderr.decode()}")
-
-        # Create symlink
-        result = subprocess.run(["ln", "-sf", nemo_skills_path, "/nemo_run/code"], capture_output=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to create symlink: {result.stderr.decode()}")
-
-        LOG.info(f"Created symlink: /nemo_run/code -> {nemo_skills_path}")
-
-
 def setup_openhands_environment(
     agent_framework_repo: Optional[str] = None,
     agent_framework_commit: str = "HEAD",

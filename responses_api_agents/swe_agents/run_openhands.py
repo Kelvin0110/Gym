@@ -3,6 +3,8 @@ import glob
 import json
 import os
 import shlex
+import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -211,6 +213,8 @@ class RunOpenHandsAgent:
 
         config_str = tomlkit.dumps(config)
 
+        eval_dir_in_openhands = f"evaluation/oh/{data_point['instance_id']}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
+
         # Check if we have a pre-built OpenHands setup to use
         if self.openhands_setup_dir is not None:
             # Use pre-built OpenHands mounted at /openhands_setup
@@ -246,24 +250,26 @@ class RunOpenHandsAgent:
                 "export PATH=/openhands_setup/OpenHands/.venv/bin:$PATH && "
                 # set up config files
                 f"echo {shlex.quote(config_str)} >config.toml && "
-                f"echo \"selected_ids = ['{data_point['instance_id']}']\" >evaluation/benchmarks/swe_bench/config.toml && "
                 # set local runtime & force verbose logs
                 "export RUNTIME=local && "
                 "export LOG_ALL_EVENTS=true && "
                 "export LOG_LEVEL=DEBUG && "
                 # run the agent
+                # f" export EVAL_OUTPUT_DIR={eval_dir_in_openhands} && "
                 f"./evaluation/benchmarks/swe_bench/scripts/run_infer.sh "
                 f"    llm.model "  # name of llm config section in config.toml
                 f"    {self.cfg.agent_framework_commit} "  # openhands commit
                 f"    CodeActAgent "  # agent
-                f"    1 "  # number of instances
+                f"    0 "  # Note: this is eval limit which randomly chooses an instance from the dataset
                 f"    {self.cfg.agent_max_turns} "  # max agent iterations
                 f"    1 "  # number of workers
                 f"    {data_point['dataset_name']} "  # dataset name
-                f"    {data_point['split']} && "  # dataset split
+                f"    {data_point['split']} "  # dataset split
+                f"    {eval_dir_in_openhands} "
+                f"    {data_point['instance_id']} &&"
                 # move outputs to the mounted directory
                 f"mkdir -p /trajectories_mount/trajectories && "
-                f"cp -r evaluation/evaluation_outputs/outputs/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}"
+                f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/"
             )
         else:
             # Fall back to in-container setup (original behavior)
@@ -318,7 +324,7 @@ class RunOpenHandsAgent:
                 f"    llm.model "  # name of llm config section in config.toml
                 f"    {self.cfg.agent_framework_commit} "  # openhands commit
                 f"    CodeActAgent "  # agent
-                f"    1 "  # number of instances
+                f"    0 "  # number of instances
                 f"    {self.cfg.agent_max_turns} "  # max agent iterations
                 f"    1 "  # number of workers
                 f"    {data_point['dataset_name']} "  # dataset name
