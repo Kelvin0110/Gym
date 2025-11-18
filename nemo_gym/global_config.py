@@ -175,7 +175,7 @@ class GlobalConfigDictParser(BaseModel):
                 else:
                     # Port already exists, add it to the disallowed list.
                     disallowed_ports.append(run_server_config_dict["port"])
-                
+
                 # Populate debug_port if debug_mode is enabled
                 if debug_mode:
                     run_server_config_dict["debug_port"] = debug_base_port + server_index

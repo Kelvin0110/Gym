@@ -6,5 +6,5 @@ This allows debugging with: python -m nemo_gym
 
 if __name__ == "__main__":
     from nemo_gym.cli import run
-    run()
 
+    run()
