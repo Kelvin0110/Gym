@@ -180,7 +180,7 @@ class RunOpenHandsAgent:
 
         return pred_jsonl_file
 
-    async def _run_openhands(self, data_point, api_base, run_id):
+    async def _run_openhands(self, data_point, api_base, run_id, dataset_mount_path):
         """
         Runs OpenHands on one instance.
         Returns the absolute (not mounted) path to a .jsonl file in the SWE-bench evaluation format.
@@ -268,10 +268,12 @@ class RunOpenHandsAgent:
             f"    {data_point['split']} "  # dataset split
             f"    {eval_dir_in_openhands} "
             f"    {data_point['instance_id']} "
-            f"    {shlex.quote(data_point['instance_dict'])} && "
+            # f"    {shlex.quote(data_point['instance_dict'])} && "
+            f"    /root/dataset/data.jsonl && "
             # move outputs to the mounted directory
             f"mkdir -p /trajectories_mount/trajectories && "
             f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/"
+            # TODO: remove the eval_dir_in_openhands directory after the evaluation is done
         )
 
         # Execute OpenHands command
@@ -281,7 +283,13 @@ class RunOpenHandsAgent:
             data_point["instance_id"],
             "output.jsonl",
         )
-        out_file = await self._execute_container_command(data_point, openhands_cmd, search_path, mode="agent")
+        out_file = await self._execute_container_command(
+            data_point,
+            openhands_cmd,
+            search_path,
+            mode="agent",
+            dataset_mount_path=dataset_mount_path,
+        )
 
         with open(out_file, "r") as f:
             out_dict = json.loads(f.read().strip())
@@ -303,6 +311,28 @@ class RunOpenHandsAgent:
                 )
             )
         return pred_file
+
+    def _write_instance_dataset(self, data_point, run_id):
+        instance_dataset_dir = Path(self.output_dir) / "instance_datasets"
+        instance_dataset_dir.mkdir(parents=True, exist_ok=True)
+        instance_dataset_path = instance_dataset_dir / f"{run_id}.jsonl"
+        with open(instance_dataset_path, "w") as f:
+            f.write(data_point["instance_dict"] + "\n")
+        return instance_dataset_path
+
+    def _cleanup_instance_dataset(self, dataset_path):
+        if dataset_path is None:
+            return
+        try:
+            Path(dataset_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+        try:
+            parent_dir = Path(dataset_path).parent
+            if parent_dir.exists() and not any(parent_dir.iterdir()):
+                parent_dir.rmdir()
+        except OSError:
+            pass
 
     def _find_container(self, data_point):
         """Find the container file using multiple strategies.
@@ -392,10 +422,16 @@ class RunOpenHandsAgent:
         mode,
         max_retries=5,
         timeout=100000,
+        dataset_mount_path=None,
     ):
         """Execute a command in an Apptainer container with retry logic."""
         # Find the container using multiple strategies
         container_name = self._find_container(data_point)
+
+        dataset_path_to_mount = dataset_mount_path or self.dataset_path
+        if dataset_path_to_mount is None:
+            raise ValueError("Dataset path is not set")
+        dataset_path_to_mount = str(dataset_path_to_mount)
 
         # Create logs directory if it doesn't exist
         logs_dir = self.output_dir / "apptainer_logs"
@@ -411,7 +447,6 @@ class RunOpenHandsAgent:
 
         # Build mount arguments
         mount_args = [
-            "--mount type=bind,src=/nemo_run/code,dst=/nemo_run/code",
             f"--mount type=bind,src={self.output_dir},dst=/trajectories_mount",
         ]
 
@@ -422,6 +457,7 @@ class RunOpenHandsAgent:
             print(f"Mounting pre-built OpenHands from: {self.openhands_setup_dir}", flush=True)
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst=/openhands_setup")
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst={self.openhands_setup_dir}")
+            mount_args.append(f"--mount type=bind,src={dataset_path_to_mount},dst=/root/dataset/data.jsonl")
 
         # Add SWE-bench setup directory mount if available (for evaluation)
         if mode == "eval" and self.swebench_setup_dir is not None:
@@ -430,7 +466,7 @@ class RunOpenHandsAgent:
             print(f"Mounting pre-built SWE-bench from: {self.swebench_setup_dir}", flush=True)
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst=/swebench_setup")
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst={self.swebench_setup_dir}")
-            mount_args.append(f"--mount type=bind,src={self.dataset_path},dst=/dataset/data.jsonl")
+            mount_args.append(f"--mount type=bind,src={dataset_path_to_mount},dst=/root/dataset/data.jsonl")
 
         mount_str = " ".join(mount_args)
 
@@ -503,6 +539,7 @@ class RunOpenHandsAgent:
         self.output_dir = Path(self.cfg.output_file).parent
 
         run_id = f"{data_point['instance_id']}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
+        instance_dataset_path = self._write_instance_dataset(data_point, run_id)
 
         # TODO: what's the right way to support api models, so that our standard parameters for that can be used?
         # TODO: use self.cfg.server.base_url, etc. Can we pass in API key?
@@ -510,97 +547,101 @@ class RunOpenHandsAgent:
         if "base_url" in self.cfg.server:
             api_base = self.cfg.server["base_url"]
 
-        if self.cfg.agent_framework == SupportedAgentFrameworks.swe_agent:
-            pred_file = await self._run_swe_agent(data_point, api_base)
-        elif self.cfg.agent_framework == SupportedAgentFrameworks.openhands:
-            pred_file = await self._run_openhands(data_point, api_base, run_id)
-        else:
-            raise ValueError(
-                f"Unsupported agent framework: {self.cfg.agent_framework}. "
-                f"Supported frameworks: {', '.join(SupportedAgentFrameworks)}."
-            )
-
-        pred_mounted_path = pred_file.replace(str(self.output_dir), "/trajectories_mount")
-        with open(pred_file, "r") as f:
-            trajectory_dict = json.loads(f.read())
-
-        # Check if the trajectory has an empty patch before running evaluation
-        has_patch = trajectory_dict["model_patch"] is not None
-
-        assert self.swebench_setup_dir is not None, "SWE-bench setup directory is not set"
-        assert self.dataset_path is not None, "Dataset path is not set"
-
-        if not has_patch:
-            report_json = {
-                data_point["instance_id"]: {
-                    "resolved": False,
-                    "patch_exists": False,
-                    "patch_successfully_applied": False,
-                }
-            }
-
-        else:
-            # Run full evaluation with streaming output
-            swebench_cmd = (
-                # Use pre-built SWE-bench
-                "cd /swebench_setup/SWE-bench && "
-                # Set UV environment variables to use the mounted portable directories
-                f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
-                f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
-                f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
-                f"ls -lrt /dataset && "
-                # Run with clean environment to avoid venv contamination
-                # Use the pre-built venv directly with its absolute path
-                f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
-                f"    --predictions_path {pred_mounted_path} "
-                f"    --instance_ids {data_point['instance_id']} "
-                f"    --run_id eval-outputs "
-                f"    --timeout {self.cfg.swebench_tests_timeout} "
-                # TODO: use a correct way to pass the dataset path
-                f"    --dataset_name /dataset/data.jsonl "
-                f"    --split {data_point['split']} "
-                f"    --run_id {run_id} && "
-                f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/"
-            )
-
-            # Execute SWE-bench evaluation command
-            search_path = os.path.join(
-                self.output_dir,
-                run_id,
-                "**",
-                f"{data_point['instance_id']}/report.json",
-            )
-            # TODO: should we fail on errors here? Seems that json isn't always generated
-            try:
-                report_file = await self._execute_container_command(
-                    data_point,
-                    swebench_cmd,
-                    search_path,
-                    mode="eval",
-                    timeout=self.cfg.swebench_tests_timeout + 120,
+        try:
+            if self.cfg.agent_framework == SupportedAgentFrameworks.swe_agent:
+                pred_file = await self._run_swe_agent(data_point, api_base, instance_dataset_path)
+            elif self.cfg.agent_framework == SupportedAgentFrameworks.openhands:
+                pred_file = await self._run_openhands(data_point, api_base, run_id, instance_dataset_path)
+            else:
+                raise ValueError(
+                    f"Unsupported agent framework: {self.cfg.agent_framework}. "
+                    f"Supported frameworks: {', '.join(SupportedAgentFrameworks)}."
                 )
-            except ValueError:
-                print(
-                    f"Failed to execute SWE-bench evaluation command for {data_point['instance_id']}",
-                    flush=True,
-                )
+
+            pred_mounted_path = pred_file.replace(str(self.output_dir), "/trajectories_mount")
+            with open(pred_file, "r") as f:
+                trajectory_dict = json.loads(f.read())
+
+            # Check if the trajectory has an empty patch before running evaluation
+            has_patch = trajectory_dict["model_patch"] is not None
+
+            assert self.swebench_setup_dir is not None, "SWE-bench setup directory is not set"
+            assert self.dataset_path is not None, "Dataset path is not set"
+
+            if not has_patch:
                 report_json = {
                     data_point["instance_id"]: {
                         "resolved": False,
-                        "patch_exists": True,
+                        "patch_exists": False,
                         "patch_successfully_applied": False,
                     }
                 }
-                report_file = None
 
-            if report_file is not None:
-                with open(report_file, "r") as f:
-                    report_json = json.loads(f.read().strip())
+            else:
+                # Run full evaluation with streaming output
+                swebench_cmd = (
+                    # Use pre-built SWE-bench
+                    "cd /swebench_setup/SWE-bench && "
+                    # Set UV environment variables to use the mounted portable directories
+                    f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
+                    f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
+                    f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
+                    f"ls -lrt /root/dataset && "
+                    # Run with clean environment to avoid venv contamination
+                    # Use the pre-built venv directly with its absolute path
+                    f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
+                    f"    --predictions_path {pred_mounted_path} "
+                    f"    --instance_ids {data_point['instance_id']} "
+                    f"    --run_id eval-outputs "
+                    f"    --timeout {self.cfg.swebench_tests_timeout} "
+                    # TODO: use a correct way to pass the dataset path
+                    f"    --dataset_name /root/dataset/data.jsonl "
+                    f"    --split {data_point['split']} "
+                    f"    --run_id {run_id} && "
+                    f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/"
+                )
 
-        output_dict = {
-            "swe-bench-metrics": report_json[data_point["instance_id"]],
-            "swe-bench-outputs": trajectory_dict,
-            "generation": "",  # required TODO: we should fix this
-        }
+                # Execute SWE-bench evaluation command
+                search_path = os.path.join(
+                    self.output_dir,
+                    run_id,
+                    "**",
+                    f"{data_point['instance_id']}/report.json",
+                )
+                # TODO: should we fail on errors here? Seems that json isn't always generated
+                try:
+                    report_file = await self._execute_container_command(
+                        data_point,
+                        swebench_cmd,
+                        search_path,
+                        mode="eval",
+                        timeout=self.cfg.swebench_tests_timeout + 120,
+                        dataset_mount_path=instance_dataset_path,
+                    )
+                except ValueError:
+                    print(
+                        f"Failed to execute SWE-bench evaluation command for {data_point['instance_id']}",
+                        flush=True,
+                    )
+                    report_json = {
+                        data_point["instance_id"]: {
+                            "resolved": False,
+                            "patch_exists": True,
+                            "patch_successfully_applied": False,
+                        }
+                    }
+                    report_file = None
 
-        return output_dict
+                if report_file is not None:
+                    with open(report_file, "r") as f:
+                        report_json = json.loads(f.read().strip())
+
+            output_dict = {
+                "swe-bench-metrics": report_json[data_point["instance_id"]],
+                "swe-bench-outputs": trajectory_dict,
+                "generation": "",  # required TODO: we should fix this
+            }
+
+            return output_dict
+        finally:
+            self._cleanup_instance_dataset(instance_dataset_path)

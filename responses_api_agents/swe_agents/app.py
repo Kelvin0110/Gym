@@ -114,7 +114,7 @@ class SWEBenchWrapperConfig(BaseResponsesAPIAgentConfig):
     )
 
     # Concurrency control
-    concurrency: int = Field(default=16, description="Maximum number of concurrent SWE-bench runs")
+    concurrency: int = Field(default=256, description="Maximum number of concurrent SWE-bench runs")
 
     # Pre-built OpenHands directory path (set during initialization)
     openhands_setup_dir: Optional[Path] = Field(

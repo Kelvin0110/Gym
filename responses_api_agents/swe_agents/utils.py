@@ -762,7 +762,8 @@ def get_openhands_trajectory_from_completions(trajectories_dir: Path, instance_i
             if key in provider_specific_fields:
                 final_assistant_message[key] = provider_specific_fields[key]
 
-        messages.append(final_assistant_message)
+        if final_assistant_message.get("content") or final_assistant_message.get("tool_calls"):
+            messages.append(final_assistant_message)
 
         # Get tools (they should be the same across all turns)
         tools = data.get("kwargs", {}).get("tools", [])
@@ -864,11 +865,11 @@ def setup_swebench_environment(
     # Check if already set up (validate all critical components exist)
     if (
         swebench_dir.exists()
-        and (swebench_dir / "pyproject.toml").exists()
-        and (swebench_dir / "venv" / "bin" / "python").exists()
-        and (swebench_dir / "venv" / "pyvenv.cfg").exists()
-        and (uv_dir / "bin" / "uv").exists()
-        and python_dir.exists()
+        # and (swebench_dir / "pyproject.toml").exists()
+        # and (swebench_dir / "venv" / "bin" / "python").exists()
+        # # and (swebench_dir / "venv" / "pyvenv.cfg").exists()
+        # and (uv_dir / "bin" / "uv").exists()
+        # and python_dir.exists()
     ):
         LOG.info(f"SWE-bench already set up at {setup_dir}")
         LOG.info(f"  - SWE-bench: {swebench_dir}")
