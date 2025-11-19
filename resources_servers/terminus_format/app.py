@@ -27,7 +27,7 @@ from nemo_gym.base_resources_server import (
 )
 
 
-class TerminusFormatServerResourcesServerConfig(BaseResourcesServerConfig):
+class TerminusFormatResourcesServerConfig(BaseResourcesServerConfig):
     pass
 
 
@@ -85,8 +85,8 @@ TERMINUS_FORMAT_SCHEMA: Dict[str, Any] = {
 }
 
 
-class TerminusFormatServerResourcesServer(SimpleResourcesServer):
-    config: TerminusFormatServerResourcesServerConfig
+class TerminusFormatResourcesServer(SimpleResourcesServer):
+    config: TerminusFormatResourcesServerConfig
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -109,6 +109,7 @@ class TerminusFormatServerResourcesServer(SimpleResourcesServer):
                 assistant_responses.append(content_item.text)
 
         response_text = "".join(assistant_responses)
+        print(response_text)
 
         reward = self.evaluate_terminus_format_response_json(response_text)
         return BaseVerifyResponse(**body.model_dump(), reward=reward)
@@ -133,4 +134,4 @@ class TerminusFormatServerResourcesServer(SimpleResourcesServer):
 
 
 if __name__ == "__main__":
-    TerminusFormatServerResourcesServer.run_webserver()
+    TerminusFormatResourcesServer.run_webserver()
