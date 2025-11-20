@@ -1,10 +1,12 @@
 # Description
 
-Data links: ?
+This is a simple json format verifier environment intended to teach the model how to follow output formatting instructions.
 
-# Licensing information
-Code: ?
-Data: ?
+# Data
+
+The dataset was created by taking terminal-bench sft trajectories and slicing them into incremental step-by-step prefixes, each turned into a prompt asking the model for the next action, with outputs validated only for formatting correctness.
+
+Data: [Gitlab model registry link](https://gitlab-master.nvidia.com/bxyu/nemo-gym/-/ml/models/148/versions/170#/)
 
 Download this artifact:
 ```bash
@@ -17,6 +19,9 @@ ng_download_dataset_from_gitlab \
 
 Example data:
 `resources_servers/terminus_format/data/example.jsonl`
+
+# Licensing information
+?
 
 # Example usage
 
@@ -39,3 +44,10 @@ ng_collect_rollouts \
 Dependencies
 - nemo_gym: Apache 2.0
 - openapi-schema-validator: [BSD-3-Clause license](https://github.com/python-openapi/openapi-schema-validator/blob/master/LICENSE)
+
+
+# Next Steps
+
+- Add more template schemas
+- Add more generalisable/diverse data
+- Add stricter format validation during verification
