@@ -85,6 +85,81 @@ TERMINUS_FORMAT_SCHEMA: Dict[str, Any] = {
 }
 
 
+COMMAND_BATCH_RESPONSE_SCHEMA = {
+    "title": "CommandBatchResponse",
+    "type": "object",
+    "additionalProperties": False,
+    "definitions": {
+        "Command": {
+            "title": "Command",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "keystrokes": {
+                    "title": "Keystrokes",
+                    "description": (
+                        "Keystrokes to execute in the terminal. Use tmux-style escape "
+                        "sequences for modifier keys (e.g. C-c for ctrl-c). Modifier keys "
+                        "must be sent as their own commands otherwise the characters will "
+                        "be interpreted literally."
+                    ),
+                    "type": "string",
+                },
+                "is_blocking": {
+                    "title": "Is Blocking",
+                    "description": (
+                        "Whether to wait for and return the terminal output after executing "
+                        "these keystrokes. This will append '; tmux wait -S done' to your "
+                        "command. DO NOT block on modifier keys or inside interactive "
+                        "programs (e.g. vim or less). Only block when the command is "
+                        "executed in the command line, is not interactive, and you expect "
+                        "the output to be returned with no intervention. When in doubt, "
+                        "wait instead of blocking."
+                    ),
+                    "type": "boolean",
+                },
+                "timeout_sec": {
+                    "title": "Timeout Sec",
+                    "description": "The number of expected seconds to wait for the command to complete.",
+                    "type": "number",
+                },
+            },
+            "required": ["keystrokes", "is_blocking", "timeout_sec"],
+        }
+    },
+    "properties": {
+        "state_analysis": {
+            "title": "State Analysis",
+            "description": "Description of the current state of the terminal",
+            "type": "string",
+        },
+        "explanation": {
+            "title": "Explanation",
+            "description": "Brief explanation of what these commands will do",
+            "type": "string",
+        },
+        "commands": {
+            "title": "Commands",
+            "description": "List of shell interactions to execute in the Docker container",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Command",
+            },
+        },
+        "is_task_complete": {
+            "title": "Is Task Complete",
+            "description": (
+                "Whether the task is complete following the execution of these commands. "
+                "Make sure to check that the command you last executed worked before "
+                "saying you're done."
+            ),
+            "type": "boolean",
+        },
+    },
+    "required": ["state_analysis", "explanation", "commands", "is_task_complete"],
+}
+
+
 class TerminusFormatResourcesServer(SimpleResourcesServer):
     config: TerminusFormatResourcesServerConfig
 
@@ -96,7 +171,52 @@ class TerminusFormatResourcesServer(SimpleResourcesServer):
 
         return app
 
+    # async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
+    #     assistant_responses = []
+    #     for output_item in body.response.output:
+    #         if output_item.type != "message":
+    #             continue
+
+    #         for content_item in output_item.content:
+    #             if content_item.type != "output_text":
+    #                 continue
+
+    #             assistant_responses.append(content_item.text)
+
+    #     response_text = "".join(assistant_responses)
+    #     print(response_text)
+
+    #     reward = self.evaluate_terminus_format_response_json(response_text)
+    #     return BaseVerifyResponse(**body.model_dump(), reward=reward)
+
+    # ----- JSON Helpers ----- #
+    # def evaluate_terminus_format_response_json(self, response_text: str) -> float:
+    #     """Validate the model response against the fixed terminus format schema."""
+    #     try:
+    #         response_obj = json.loads(response_text)
+    #     except Exception:
+    #         # Not valid JSON
+    #         return 0.0
+
+    #     try:
+    #         validate_against_schema_openapi(response_obj, COMMAND_BATCH_RESPONSE_SCHEMA)
+    #     except Exception:
+    #         # JSON but does not match schema
+    #         return 0.0
+
+    #     # Valid JSON and matches schema
+    #     return 1.0
+
     async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
+        log_file = "validation_errors.txt"
+
+        # Log that verify was called
+        with open(log_file, "a") as f:
+            f.write(f"\n{'=' * 80}\n")
+            f.write(f"TIMESTAMP: {__import__('datetime').datetime.now()}\n")
+            f.write("🔍 Verify method called\n")
+            f.write(f"Body: {body.model_dump()}\n")
+
         assistant_responses = []
         for output_item in body.response.output:
             if output_item.type != "message":
@@ -109,27 +229,51 @@ class TerminusFormatResourcesServer(SimpleResourcesServer):
                 assistant_responses.append(content_item.text)
 
         response_text = "".join(assistant_responses)
+
+        # Log what we extracted
+        with open(log_file, "a") as f:
+            f.write(f"Extracted response text length: {len(response_text)}\n")
+            f.write(f"Response text preview: {response_text[:200]}\n")
+            f.write(f"{'=' * 80}\n\n")
+
         print(response_text)
 
         reward = self.evaluate_terminus_format_response_json(response_text)
         return BaseVerifyResponse(**body.model_dump(), reward=reward)
 
-    # ----- JSON Helpers ----- #
     def evaluate_terminus_format_response_json(self, response_text: str) -> float:
         """Validate the model response against the fixed terminus format schema."""
+        log_file = "validation_errors.txt"
+
         try:
             response_obj = json.loads(response_text)
-        except Exception:
-            # Not valid JSON
+        except Exception as e:
+            with open(log_file, "a") as f:
+                f.write(f"\n{'=' * 80}\n")
+                f.write(f"TIMESTAMP: {__import__('datetime').datetime.now()}\n")
+                f.write(f"❌ JSON parsing failed: {e}\n")
+                f.write(f"Response text: {response_text}\n")
+                f.write(f"{'=' * 80}\n\n")
             return 0.0
 
         try:
-            validate_against_schema_openapi(response_obj, TERMINUS_FORMAT_SCHEMA)
-        except Exception:
-            # JSON but does not match schema
+            validate_against_schema_openapi(response_obj, COMMAND_BATCH_RESPONSE_SCHEMA)
+        except Exception as e:
+            with open(log_file, "a") as f:
+                f.write(f"\n{'=' * 80}\n")
+                f.write(f"TIMESTAMP: {__import__('datetime').datetime.now()}\n")
+                f.write(f"❌ Schema validation failed: {e}\n")
+                f.write(f"Response object: {json.dumps(response_obj, indent=2)}\n")
+                f.write(f"{'=' * 80}\n\n")
             return 0.0
 
-        # Valid JSON and matches schema
+        # with open(log_file, "a") as f:
+        #     f.write(f"\n{'='*80}\n")
+        #     f.write(f"TIMESTAMP: {__import__('datetime').datetime.now()}\n")
+        #     f.write(f"✅ Validation passed!\n")
+        #     f.write(f"Response object: {json.dumps(response_obj, indent=2)}\n")
+        #     f.write(f"{'='*80}\n\n")
+
         return 1.0
 
 
