@@ -54,21 +54,50 @@ from nemo_gym.server_utils import (
 
 
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
-    install_cmd = "uv pip install -r requirements.txt"
     head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
-    install_cmd += " " + " ".join(head_server_deps)
 
-    return f"""cd {dir_path} \\
-    && uv venv --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} \\
-    && source .venv/bin/activate \\
-    && {install_cmd} \\
-   """
+    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]}"
+
+    pyproject_toml = False
+    try:
+        with open(f"{dir_path / 'pyproject.toml'}", "r") as _f:
+            pyproject_toml = True
+    except OSError:
+        pass
+
+    if pyproject_toml:
+        cmd = f"""{uv_venv_cmd} \\
+        && source .venv/bin/activate \\
+        && uv pip install '-e .' {" ".join(head_server_deps)} \\
+        """
+
+    else:
+        install_cmd = "uv pip install -r requirements.txt"
+        install_cmd += " " + " ".join(head_server_deps)
+
+        cmd = f"""{uv_venv_cmd} \\
+        && source .venv/bin/activate \\
+        && {install_cmd} \\
+        """
+
+    return cmd
 
 
-def _run_command(command: str, working_directory: Path) -> Popen:  # pragma: no cover
+def _run_command(command: str, working_dir_path: Path) -> Popen:  # pragma: no cover
+    work_dir = f"{working_dir_path.absolute()}"
     custom_env = environ.copy()
-    custom_env["PYTHONPATH"] = f"{working_directory.absolute()}:{custom_env.get('PYTHONPATH', '')}"
-    return Popen(command, executable="/bin/bash", shell=True, env=custom_env)
+    py_path = custom_env.get("PYTHONPATH", None)
+    if py_path is not None:
+        custom_env["PYTHONPATH"] = f"{work_dir}:{py_path}"
+    else:
+        custom_env["PYTHONPATH"] = work_dir
+    return Popen(
+        command,
+        executable="/bin/bash",
+        shell=True,
+        cwd=work_dir,
+        env=custom_env,
+    )
 
 
 class RunConfig(BaseNeMoGymCLIConfig):
@@ -228,6 +257,18 @@ class RunHelper:  # pragma: no cover
 
         for process_name, process in self._processes.items():
             if process.poll() is not None:
+                proc_out, proc_err = process.communicate()
+                print(f"Process `{process_name}` finished unexpectedly!")
+                print(f"Process `{process_name}` stdout:", flush=True)
+                if isinstance(proc_out, bytes):
+                    print(proc_out.decode("utf-8"), flush=True)
+                else:
+                    print(proc_out, flush=True)
+                print(f"Process `{process_name}` stderr:", flush=True)
+                if isinstance(proc_err, bytes):
+                    print(proc_err.decode("utf-8"), flush=True)
+                else:
+                    print(proc_err, flush=True)
                 raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
 
     def wait_for_spinup(self) -> None:
