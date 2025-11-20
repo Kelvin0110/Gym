@@ -17,7 +17,7 @@ import json
 import shlex
 import tomllib
 from glob import glob
-from os import environ, makedirs
+from os import environ, getcwd, makedirs
 from os.path import exists
 from pathlib import Path
 from signal import SIGINT
@@ -66,7 +66,8 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         pass
 
     if pyproject_toml:
-        cmd = f"""{uv_venv_cmd} \\
+        cmd = f"""cd {dir_path} \\
+        && {uv_venv_cmd} > {dir_path}/venv.out.log 2> {dir_path}/venv.err.log \\
         && source .venv/bin/activate \\
         && uv pip install '-e .' {" ".join(head_server_deps)} \\
         """
@@ -75,28 +76,41 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         install_cmd = "uv pip install -r requirements.txt"
         install_cmd += " " + " ".join(head_server_deps)
 
-        cmd = f"""{uv_venv_cmd} \\
+        cmd = f"""cd {dir_path} \\
+        && {uv_venv_cmd} \\
         && source .venv/bin/activate \\
         && {install_cmd} \\
         """
 
+    print(f"DEBUG: _setup_env_command: cmd = {cmd}", flush=True)
+
     return cmd
 
 
-def _run_command(command: str, working_dir_path: Path) -> Popen:  # pragma: no cover
+def _run_command(command: str, working_dir_path: Path, name: Optional[str] = None) -> Popen:  # pragma: no cover
     work_dir = f"{working_dir_path.absolute()}"
+    print(f"DEBUG: _run_command: cwd      = {getcwd()}", flush=True)
+    print(f"DEBUG: _run_command: work dir = {work_dir}", flush=True)
     custom_env = environ.copy()
     py_path = custom_env.get("PYTHONPATH", None)
     if py_path is not None:
         custom_env["PYTHONPATH"] = f"{work_dir}:{py_path}"
     else:
         custom_env["PYTHONPATH"] = work_dir
+    if name is not None:
+        out_log_file = open(f"{work_dir}/run-{name}.out.log", "a")
+        err_log_file = open(f"{work_dir}/run-{name}.err.log", "a")
+    else:
+        out_log_file = open(f"{work_dir}/run.out.log", "a")
+        err_log_file = open(f"{work_dir}/run.err.log", "a")
     return Popen(
         command,
         executable="/bin/bash",
         shell=True,
-        cwd=work_dir,
+        # cwd=work_dir,
         env=custom_env,
+        # stdout=out_log_file,
+        # stderr=err_log_file,
     )
 
 
@@ -149,6 +163,8 @@ class RunHelper:  # pragma: no cover
     _server_client: ServerClient
 
     def start(self, global_config_dict_parser_config: GlobalConfigDictParserConfig) -> None:
+        print(f"DEBUG: RunHelper.start: ...", flush=True)
+
         global_config_dict = get_global_config_dict(global_config_dict_parser_config=global_config_dict_parser_config)
 
         # Initialize Ray cluster in the main process
@@ -190,12 +206,25 @@ class RunHelper:  # pragma: no cover
 
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
+            print(f"DEBUG: RunHelper: 1st key  = {first_key}", flush=True)
+            print(f"DEBUG: RunHelper: 2nd key  = {second_key}", flush=True)
+            print(f"DEBUG: RunHelper: dir path = {dir_path}", flush=True)
+            if (
+                f"{dir_path}".endswith("/bin/python") or
+                f"{dir_path}".endswith("/bin/python3")
+            ):
+                dir_path = dir_path.parent
+                dir_path = dir_path.parent
+                print(f"DEBUG: RunHelper: dir path = {dir_path} (rewrite)", flush=True)
+
+            print(f"DEBUG: RunHelper: entry    = {str(entrypoint_fpath)}", flush=True)
+
             command = f"""{_setup_env_command(dir_path, global_config_dict)} \\
     && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
 
-            process = _run_command(command, dir_path)
+            process = _run_command(command, dir_path, top_level_path)
             self._processes[top_level_path] = process
 
             host = server_config_dict.get("host")
@@ -279,11 +308,20 @@ class RunHelper:  # pragma: no cover
             self.poll()
             statuses = self.check_http_server_statuses()
 
-            num_spun_up = statuses.count("success")
+            # num_spun_up = statuses.count("success")
+            num_spun_up = 0
+            waiting = []
+            for name, status in statuses:
+                if status == "success":
+                    num_spun_up += 1
+                else:
+                    # print(f"DEBUG: RunHelper.wait_for_spinup: waiting for: {name}", flush=True)
+                    waiting.append(name)
             if len(statuses) != num_spun_up:
                 print(
                     f"""{num_spun_up} / {len(statuses)} servers ready ({statuses.count("timeout")} timed out, {statuses.count("connection_error")} connection errored, {statuses.count("unknown_error")} had unknown errors).
-Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
+Waiting for servers to spin up: {waiting}
+Sleeping {sleep_interval}s..."""
                 )
             else:
                 print(f"All {num_spun_up} / {len(statuses)} servers ready! Polling every 60s")
@@ -333,7 +371,7 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
         for server_instance_display_config in self._server_instance_display_configs:
             name = server_instance_display_config.config_path
             status = self._server_client.poll_for_status(name)
-            statuses.append(status)
+            statuses.append((name, status))
 
         return statuses
 

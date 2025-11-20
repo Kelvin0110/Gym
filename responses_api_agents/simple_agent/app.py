@@ -61,6 +61,10 @@ class SimpleAgentVerifyResponse(BaseVerifyResponse):
 class SimpleAgent(SimpleResponsesAPIAgent):
     config: SimpleAgentConfig
 
+    def model_post_init(self, context):
+        print(f"DEBUG: SimpleAgent: config = {self.config}", flush=True)
+        return super().model_post_init(context)
+
     async def responses(
         self,
         request: Request,

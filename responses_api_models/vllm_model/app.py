@@ -15,6 +15,7 @@
 import json
 import os
 import re
+import sys
 import urllib
 from multiprocessing import Process
 from time import sleep, time
@@ -83,6 +84,9 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     enable_router: bool = False
     router_dp_size: int = 1
 
+    # debug_log_base_dir: Optional[str] = None
+    debug_log_base_dir: Optional[str] = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
+
     def model_post_init(self, context):
         if isinstance(self.base_url, str):
             self.base_url = [self.base_url]
@@ -134,8 +138,26 @@ class VLLMModelSpinupWorker:
         self._server_port = find_open_port()
         self._router_dp_rank = router_dp_rank
 
+        chdir_except = False
         if self.working_dir is not None:
-            os.chdir(self.working_dir)
+            try:
+                os.chdir(self.working_dir)
+            except Exception as e:
+                chdir_except = e
+
+        if self.config.debug_log_base_dir is not None:
+            debug_log_base_dir = self.config.debug_log_base_dir
+            name = self.config.name
+            type_name = f"VLLMModelSpinupWorker-{router_dp_rank}"
+            log_prefix = f"{name}-{type_name}"
+            os.makedirs(debug_log_base_dir, exist_ok=True)
+            sys.stdout = open(f"{debug_log_base_dir}/{log_prefix}.out.log", "a")
+            sys.stderr = open(f"{debug_log_base_dir}/{log_prefix}.err.log", "a")
+
+        print(f"DEBUG: VLLMModelSpinupWorker: config = {self.config}", flush=True)
+
+        if chdir_except is not None:
+            print(f"DEBUG: VLLMModelSpinupWorker: chdir except: {type(e).__name__} {e}", flush=True)
 
         server_proc = Process(
             target=_spinup_vllm_server,
@@ -196,6 +218,17 @@ class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
+        if False and self.config.debug_log_base_dir is not None:
+            debug_log_base_dir = self.config.debug_log_base_dir
+            name = self.config.name
+            type_name = "VLLMModel"
+            log_prefix = f"{name}-{type_name}"
+            os.makedirs(debug_log_base_dir, exist_ok=True)
+            sys.stdout = open(f"{debug_log_base_dir}/{log_prefix}.out.log", "a")
+            sys.stderr = open(f"{debug_log_base_dir}/{log_prefix}.err.log", "a")
+
+        print(f"DEBUG: VLLMModel: config = {self.config}", flush=True)
+
         working_dir = os.getcwd()
 
         if self.config.spinup_server:
