@@ -66,6 +66,8 @@ def _lookup_ray_node_with_free_gpus(
             detail=True,
         )
         for state in actor_states:
+            if state.state == "DEAD":
+                continue
             if state.state == "PENDING_CREATION" or state.node_id is None:
                 retry = True
                 break
