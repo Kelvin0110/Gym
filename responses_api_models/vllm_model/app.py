@@ -218,7 +218,7 @@ class VLLMModel(SimpleResponsesAPIModel):
     config: VLLMModelConfig
 
     def model_post_init(self, context):
-        if False and self.config.debug_log_base_dir is not None:
+        if self.config.debug_log_base_dir is not None:
             debug_log_base_dir = self.config.debug_log_base_dir
             name = self.config.name
             type_name = "VLLMModel"

@@ -38,14 +38,14 @@ from nemo_gym.ray_utils import (
 
 @ray.remote
 class TranslationMetricxModelWorker:
-    def __init__(self):
-        debug_log_base_dir= "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
+    def __init__(self, *args, **kwargs):
+        debug_log_base_dir = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
 
         if debug_log_base_dir is not None:
             name = "translation_metricx"
             type_name = f"TranslationMetricxModelWorker"
             log_prefix = f"{name}-{type_name}"
-            # os.makedirs(debug_log_base_dir, exist_ok=True)
+            os.makedirs(debug_log_base_dir, exist_ok=True)
             sys.stdout = open(f"{debug_log_base_dir}/{log_prefix}.out.log", "a")
             sys.stderr = open(f"{debug_log_base_dir}/{log_prefix}.err.log", "a")
 
@@ -55,6 +55,7 @@ class TranslationMetricxModelWorker:
         self.device_map = None
         self.output_dir = None
         self.model = None
+        self.trainer = None
 
     def _load_model(self, model_name, device_map, output_dir):
         print(f"DEBUG: TranslationMetricxModelWorker: load model: ...", flush=True)
@@ -149,7 +150,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
             name = "translation_metricx"
             type_name = f"TranslationMetricxResourcesServer"
             log_prefix = f"{name}-{type_name}"
-            # os.makedirs(debug_log_base_dir, exist_ok=True)
+            os.makedirs(debug_log_base_dir, exist_ok=True)
             sys.stdout = open(f"{debug_log_base_dir}/{log_prefix}.out.log", "a")
             sys.stderr = open(f"{debug_log_base_dir}/{log_prefix}.err.log", "a")
 

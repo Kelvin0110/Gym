@@ -100,7 +100,7 @@ def _run_command(command: str, working_dir_path: Path, name: Optional[str] = Non
     if name is not None:
         out_log_file = open(f"{work_dir}/run-{name}.out.log", "a")
         err_log_file = open(f"{work_dir}/run-{name}.err.log", "a")
-    else:
+    elif False:
         out_log_file = open(f"{work_dir}/run.out.log", "a")
         err_log_file = open(f"{work_dir}/run.err.log", "a")
     return Popen(
