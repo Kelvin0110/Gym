@@ -234,9 +234,24 @@ class RunHelper:  # pragma: no cover
         if not self._head_server_thread.is_alive():
             raise RuntimeError("Head server finished unexpectedly!")
 
+        # Clean up processes that have stopped
+        processes_to_delete = []
         for process_name, process in self._processes.items():
-            if process.poll() is not None:
-                raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
+            poll_result = process.poll()
+
+            if poll_result is not None:
+                # Assume the process exited
+                exit_code = poll_result
+                if exit_code <= 0:
+                    processes_to_delete.append(process_name)
+                else:
+                    raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
+
+        for process_name in processes_to_delete:
+            del self._processes[process_name]
+
+        if not self._processes:
+            raise KeyboardInterrupt()
 
     def wait_for_spinup(self) -> None:
         sleep_interval = 3
@@ -281,22 +296,28 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
     def run_forever(self) -> None:
         async def sleep():
             poll_interval = 60
-            check_interval = 1
+            sleep_interval = 1
+            secs_since_last_poll = 0
 
             # Indefinitely
             while True:
-                # Sleeping in smaller chunks allows for quick checks for server shutdown
-                for _ in range(poll_interval):
-                    alive_processes = []
-                    for name, proc in self._processes.items():
-                        if proc.poll() is None:  # still running
-                            alive_processes.append(name)
+                if secs_since_last_poll >= poll_interval:
+                    self.poll()
+                    secs_since_last_poll = 0
 
-                    if not alive_processes:
-                        print("All servers stopped, shutting down head server...")
-                        return
+                alive_count = 0
+                for proc in self._processes.values():
+                    if proc.poll() is None:  # still running
+                        alive_count += 1
 
-                    await asyncio.sleep(check_interval)
+                if self._processes and alive_count == 0:
+                    print(f"\n{'#' * 100}")
+                    print("All servers stopped. Shutting down head server...")
+                    print(f"{'#' * 100}\n")
+                    return
+
+                await asyncio.sleep(sleep_interval)
+                secs_since_last_poll += sleep_interval
 
         try:
             asyncio.run(sleep())
