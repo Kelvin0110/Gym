@@ -234,9 +234,25 @@ class RunHelper:  # pragma: no cover
         if not self._head_server_thread.is_alive():
             raise RuntimeError("Head server finished unexpectedly!")
 
+        processes_to_delete = []
+
         for process_name, process in self._processes.items():
-            if process.poll() is not None:
-                raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
+            poll_result = process.poll()
+
+            if poll_result is not None:
+                exit_code = poll_result
+                if exit_code <= 0:
+                    print(f"Process `{process_name}` stopped with exit code {exit_code}")
+                    processes_to_delete.append(process_name)
+                else:
+                    raise RuntimeError(f"Process `{process_name}` finished unexpectedly!")
+
+        for process_name in processes_to_delete:
+            del self._processes[process_name]
+
+        if not self._processes:
+            print("All servers stopped. Shutting down head server...")
+            raise KeyboardInterrupt()
 
     def wait_for_spinup(self) -> None:
         sleep_interval = 3
@@ -280,10 +296,22 @@ Waiting for servers to spin up. Sleeping {sleep_interval}s..."""
 
     def run_forever(self) -> None:
         async def sleep():
+            initial_count = len(self._processes)
+            poll_interval = 60
+
             # Indefinitely
             while True:
                 self.poll()
-                await asyncio.sleep(60)
+
+                # If servers start dying, poll more frequently
+                current_count = len(self._processes)
+                if current_count < initial_count:
+                    print("Servers started dying! Polling every 5s")
+                    poll_interval = 0.5
+                else:
+                    poll_interval = 60
+
+                await asyncio.sleep(poll_interval)
 
         try:
             asyncio.run(sleep())
