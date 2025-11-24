@@ -156,9 +156,11 @@ def spinup_single_ray_gpu_node_worker(
         f"Requested {num_gpus} > {num_gpus_per_node} GPU nodes for spinning up {worker_cls}"
     )
 
-    node_id = _lookup_ray_node_with_free_gpus(num_gpus, allowed_gpu_nodes=gpu_nodes)
-    if node_id is None:
-        raise RuntimeError(f"Cannot find {num_gpus} available Ray GPU nodes for spinning up {worker_cls}")
+    node_id = None
+    if False:
+        node_id = _lookup_ray_node_with_free_gpus(num_gpus, allowed_gpu_nodes=gpu_nodes)
+        if node_id is None:
+            raise RuntimeError(f"Cannot find {num_gpus} available Ray GPU nodes for spinning up {worker_cls}")
 
     print(f"DEBUG: spinup_single_ray_gpu_node_worker: node id = {node_id}", flush=True)
     print(f"DEBUG: spinup_single_ray_gpu_node_worker: py exec = {sys.executable}", flush=True)
@@ -166,18 +168,21 @@ def spinup_single_ray_gpu_node_worker(
     if False:
         print(f"DEBUG: spinup_single_ray_gpu_node_worker: apply num_gpus = {num_gpus}", flush=True)
         worker_options["num_gpus"] = num_gpus
-    if True:
+    if False:
+    # if True:
         print(f"DEBUG: spinup_single_ray_gpu_node_worker: apply NodeAffinitySchedulingStrategy", flush=True)
         worker_options["scheduling_strategy"] = NodeAffinitySchedulingStrategy(
             node_id=node_id,
             soft=False,
             # soft=True,
         )
+    env_vars = {
+        **os.environ,
+    }
+    # env_vars.pop("UV_CACHE_DIR", None)
     worker_runtime_env = {
         "py_executable": sys.executable,
-        "env_vars": {
-            **os.environ,
-        },
+        "env_vars": env_vars,
     }
     worker_options["runtime_env"] = worker_runtime_env
     worker = worker_cls.options(**worker_options).remote(*worker_args, **worker_kwargs)

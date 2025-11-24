@@ -84,8 +84,8 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     enable_router: bool = False
     router_dp_size: int = 1
 
-    # debug_log_base_dir: Optional[str] = None
-    debug_log_base_dir: Optional[str] = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
+    debug_log_base_dir: Optional[str] = None
+    # debug_log_base_dir: Optional[str] = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
 
     def model_post_init(self, context):
         if isinstance(self.base_url, str):

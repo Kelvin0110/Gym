@@ -350,6 +350,7 @@ def initialize_ray() -> None:
 
     global_config_dict = get_global_config_dict()
     ray_head_node_address = global_config_dict.get("ray_head_node_address")
+    ray_namespace = global_config_dict.get("ray_namespace", None)
     ray_init_kwargs = dict(ignore_reinit_error=True)
 
     if ray_head_node_address:
@@ -357,6 +358,13 @@ def initialize_ray() -> None:
         ray_init_kwargs["address"] = ray_head_node_address
     else:
         print("Starting Ray cluster...")
+
+    if ray_namespace is not None:
+        print(f"Ray namespace: {ray_namespace}")
+        ray_init_kwargs["namespace"] = ray_namespace
+
+    # ray_init_kwargs["include_dashboard"] = True
+    print(f"DEBUG: initialize_ray: init kwargs = {ray_init_kwargs}", flush=True)
 
     ray.init(**ray_init_kwargs)
 

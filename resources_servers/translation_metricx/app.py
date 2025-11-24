@@ -14,6 +14,7 @@
 import os
 import sys
 from pathlib import Path
+from time import sleep
 from typing import Any, Optional
 
 import datasets
@@ -36,10 +37,11 @@ from nemo_gym.ray_utils import (
 )
 
 
-@ray.remote
+@ray.remote(num_cpus=0)
 class TranslationMetricxModelWorker:
     def __init__(self, *args, **kwargs):
-        debug_log_base_dir = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
+        debug_log_base_dir = None
+        # debug_log_base_dir = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
 
         if debug_log_base_dir is not None:
             name = "translation_metricx"
@@ -59,6 +61,9 @@ class TranslationMetricxModelWorker:
 
     def _load_model(self, model_name, device_map, output_dir):
         print(f"DEBUG: TranslationMetricxModelWorker: load model: ...", flush=True)
+
+        # TODO: debug.
+        return None
 
         from metricx24.models import MT5ForRegression
 
@@ -144,7 +149,8 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
     config: TranslationMetricxResourcesServerConfig
 
     def model_post_init(self, context: Any) -> None:
-        debug_log_base_dir= "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
+        debug_log_base_dir = None
+        # debug_log_base_dir = "/opt/nemo-rl/3rdparty/Penguin-workspace/Penguin/debug_logs"
 
         if debug_log_base_dir is not None:
             name = "translation_metricx"
@@ -155,8 +161,12 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
             sys.stderr = open(f"{debug_log_base_dir}/{log_prefix}.err.log", "a")
 
         print(f"DEBUG: TranslationMetricxResourcesServer: config = {self.config}", flush=True)
-
-        print(f"DEBUG: TranslationMetricxResourcesServer: HF_HOME = {os.environ.get('HF_HOME', None)}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: cwd          = {os.getcwd()}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: PWD          = {os.environ.get('PWD', None)}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: HOME         = {os.environ.get('HOME', None)}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: XDG_HOME     = {os.environ.get('XDG_HOME', None)}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: HF_HOME      = {os.environ.get('HF_HOME', None)}", flush=True)
+        print(f"DEBUG: TranslationMetricxResourcesServer: UV_CACHE_DIR = {os.environ.get('UV_CACHE_DIR', None)}", flush=True)
 
         # Load tokenizer (MetricX models use MT5 tokenizers, separate from the model name)
         print(f"DEBUG: TranslationMetricxResourcesServer: load tokenizer...", flush=True)
@@ -188,22 +198,32 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
 
     async def verify(self, body: TranslationMetricxVerifyRequest) -> TranslationMetricxVerifyResponse:
         print(f"DEBUG: TranslationMetricxResourcesServer: verify...", flush=True)
-        debug_dump_ray_node_state()
-        debug_dump_ray_actor_state()
-        # debug_dump_ray_actor_state("TranslationMetricx")
-        print(f"DEBUG: TranslationMetricxResourcesServer: verify: debug dump: done", flush=True)
 
-        print(f"DEBUG: TranslationMetricxResourcesServer: verify: ray status...", flush=True)
-        os.system("ray status")
-        os.system("ray summary actors")
-        # os.system("ray list actors --format yaml")
-        os.system("ray list actors --format yaml --detail")
-        print(f"DEBUG: TranslationMetricxResourcesServer: verify: ray status: done", flush=True)
+        if False:
+            debug_dump_ray_node_state()
+            debug_dump_ray_actor_state()
+            # debug_dump_ray_actor_state("TranslationMetricx")
+            print(f"DEBUG: TranslationMetricxResourcesServer: verify: debug dump: done", flush=True)
 
-        print(f"DEBUG: TranslationMetricxResourcesServer: verify: nvidia-smi...", flush=True)
-        os.system("hostname -i")
-        # os.system("nvidia-smi")
-        print(f"DEBUG: TranslationMetricxResourcesServer: verify: nvidia-smi: done", flush=True)
+        if False:
+        # if True:
+            print(f"DEBUG: TranslationMetricxResourcesServer: verify: hostname...", flush=True)
+            os.system("hostname -i")
+            # os.system("nvidia-smi")
+            print(f"DEBUG: TranslationMetricxResourcesServer: verify: hostname: done", flush=True)
+
+        iter_ct = 0
+        if False:
+        # while True:
+            print(f"DEBUG: TranslationMetricxResourcesServer: verify: [{iter_ct}] ray status...", flush=True)
+            os.system("ray status")
+            os.system("ray summary actors")
+            # os.system("ray list actors --format yaml")
+            os.system("ray list actors --format yaml --detail")
+            print(f"DEBUG: TranslationMetricxResourcesServer: verify: [{iter_ct}] ray status: done", flush=True)
+
+            iter_ct += 1
+            sleep(10)
 
         assistant_responses = []
         for output_item in body.response.output:
@@ -231,6 +251,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
     ) -> tuple[float, str]:
         extracted_answer = self._extract_answer(model_response)
         ds = self._create_dataset_from_example(extracted_answer, source_text, target_text)
+
         if self._inputs_device is None:
             for model_worker in self._model_workers:
                 # Load model with device placement
@@ -240,6 +261,11 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
                     self.config.output_dir,
                 ))
             self._inputs_device = inputs_device
+
+            # TODO: debug.
+            reward = 1.0
+            return reward, extracted_answer
+
         predictions, _, _ = ray.get(self._model_workers[0].predict.remote(test_dataset=ds))
         score = float(predictions[0])
 

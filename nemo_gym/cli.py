@@ -109,8 +109,8 @@ def _run_command(command: str, working_dir_path: Path, name: Optional[str] = Non
         shell=True,
         # cwd=work_dir,
         env=custom_env,
-        # stdout=out_log_file,
-        # stderr=err_log_file,
+        stdout=out_log_file,
+        stderr=err_log_file,
     )
 
 
