@@ -249,6 +249,8 @@ class RunOpenHandsAgent:
             # Directly activate the existing venv (so 'poetry run' uses it)
             "export VIRTUAL_ENV=/openhands_setup/OpenHands/.venv && "
             "export PATH=/openhands_setup/OpenHands/.venv/bin:$PATH && "
+            # disable logging to file in the oh repo
+            "export LOG_TO_FILE=false && "
             # set up config files
             f"echo {shlex.quote(config_str)} >config.toml && "
             # set local runtime & force verbose logs
@@ -272,8 +274,9 @@ class RunOpenHandsAgent:
             f"    /root/dataset/data.jsonl && "
             # move outputs to the mounted directory
             f"mkdir -p /trajectories_mount/trajectories && "
-            f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/"
-            # TODO: remove the eval_dir_in_openhands directory after the evaluation is done
+            f"cp -r {eval_dir_in_openhands}/*/*/* /trajectories_mount/trajectories/{data_point['instance_id']}/ && "
+            # remove the eval_dir_in_openhands directory after the evaluation is done
+            f"rm -rf {eval_dir_in_openhands}"
         )
 
         # Execute OpenHands command
@@ -592,13 +595,15 @@ class RunOpenHandsAgent:
                     f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
                     f"    --predictions_path {pred_mounted_path} "
                     f"    --instance_ids {data_point['instance_id']} "
-                    f"    --run_id eval-outputs "
                     f"    --timeout {self.cfg.swebench_tests_timeout} "
                     # TODO: use a correct way to pass the dataset path
                     f"    --dataset_name /root/dataset/data.jsonl "
                     f"    --split {data_point['split']} "
                     f"    --run_id {run_id} && "
-                    f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/"
+                    f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/ && "
+
+                    # remove the logs directory after the evaluation is done
+                    f"rm -rf logs/run_evaluation/{run_id}"
                 )
 
                 # Execute SWE-bench evaluation command
