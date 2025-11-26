@@ -771,8 +771,12 @@ class UnslothVLLMModel(SimpleResponsesAPIModel):
             logger.debug(f"Enqueueing request {request_id}")
 
             chat_params = self._converter.responses_to_chat_completion_create_params(body)
+
             prompt_text = self.tokenizer.apply_chat_template(
-                chat_params.messages, tokenize=False, add_generation_prompt=True
+                chat_params.messages,
+                tools=chat_params.tools if chat_params.tools else None,
+                tokenize=False,
+                add_generation_prompt=True
             )
 
             from vllm import SamplingParams
