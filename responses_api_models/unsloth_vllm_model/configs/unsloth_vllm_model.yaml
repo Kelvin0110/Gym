@@ -1,0 +1,43 @@
+policy_model:
+  responses_api_models:
+    unsloth_vllm_model:
+      entrypoint: app.py
+      model_name: "unsloth/Qwen3-8B-FP8"
+
+      load_in_fp8: true
+      load_in_4bit: false
+
+      max_seq_length: 16384
+
+      # lora_r: 16
+      # lora_alpha: 16
+      # lora_dropout: 0.0
+      # target_modules:
+      #   - "q_proj"
+      #   - "k_proj"
+      #   - "v_proj"
+      #   - "o_proj"
+      #   - "gate_proj"
+      #   - "up_proj"
+      #   - "down_proj"
+
+      gpu_memory_utilization: 0.85
+
+      # probably should always be 1 since were not doing any fancy top-k logprob stuff
+      max_logprobs: 1
+
+      enable_prefix_caching: true
+      tensor_parallel_size: 1
+
+      # TODO: replace this batching with async vllm engine
+      batch_size: 64
+      batch_timeout_seconds: 0.1
+      max_concurrent_requests: 128
+
+      enable_standby: true
+      unsloth_vllm_standby: true
+
+      return_token_id_information: true
+      uses_reasoning_parser: true
+
+      port: 9800
