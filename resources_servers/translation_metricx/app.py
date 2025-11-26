@@ -63,7 +63,11 @@ class TranslationMetricxModelWorker:
         print(f"DEBUG: TranslationMetricxModelWorker: load model: ...", flush=True)
 
         # TODO: debug.
-        return None
+        # return None
+
+        if self.model is not None:
+            print(f"DEBUG: TranslationMetricxModelWorker: load model: done, already loaded", flush=True)
+            return self._inputs_device
 
         from metricx24.models import MT5ForRegression
 
@@ -179,7 +183,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
 
         # if False:
         print(f"DEBUG: TranslationMetricxResourcesServer: start model worker...", flush=True)
-        model_workers = [spinup_single_ray_gpu_node_worker(TranslationMetricxModelWorker, num_gpus=1)]
+        model_workers = [spinup_single_ray_gpu_node_worker(TranslationMetricxModelWorker, num_gpus=8)]
         self._model_workers = model_workers
         # else:
         # self._model_workers = []
@@ -252,6 +256,8 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
         extracted_answer = self._extract_answer(model_response)
         ds = self._create_dataset_from_example(extracted_answer, source_text, target_text)
 
+        # TODO: debug.
+        # if True:
         if self._inputs_device is None:
             for model_worker in self._model_workers:
                 # Load model with device placement
@@ -262,6 +268,8 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
                 ))
             self._inputs_device = inputs_device
 
+        # if True:
+        if False:
             # TODO: debug.
             reward = 1.0
             return reward, extracted_answer

@@ -46,7 +46,9 @@ def lookup_ray_node_id_to_ip_dict() -> Dict[str, str]:
 
 
 def debug_dump_ray_node_state(pattern = None):
-    head = "auto"
+    cfg = get_global_config_dict()
+    head = cfg["ray_head_node_address"]
+    # head = "auto"
     node_states = ray.util.state.list_nodes(
         head,
         detail=True,
@@ -57,7 +59,9 @@ def debug_dump_ray_node_state(pattern = None):
 
 
 def debug_dump_ray_actor_state(pattern = None):
-    head = "auto"
+    cfg = get_global_config_dict()
+    head = cfg["ray_head_node_address"]
+    # head = "auto"
     actor_states = ray.util.state.list_actors(
         head,
         detail=True,
@@ -83,12 +87,11 @@ def _lookup_ray_node_with_free_gpus(
         head = f"{head_ip}:8265"
         # head = f"{head_ip}:52365"
         # head = f"{head_ip}:53007"
-    head = "auto"
+    # head = "auto"
     print(f"DEBUG: _lookup_ray_node_with_free_gpus: head  = {head} (fix)", flush=True)
 
     node_avail_gpu_dict = defaultdict(int)
     node_states = ray.util.state.list_nodes(
-        # cfg["ray_head_node_address"],
         head,
         detail=True,
     )
@@ -103,7 +106,6 @@ def _lookup_ray_node_with_free_gpus(
         retry = False
         node_used_gpu_dict = defaultdict(int)
         actor_states = ray.util.state.list_actors(
-            # cfg["ray_head_node_address"],
             head,
             detail=True,
         )
@@ -157,7 +159,8 @@ def spinup_single_ray_gpu_node_worker(
     )
 
     node_id = None
-    if False:
+    # if False:
+    if True:
         node_id = _lookup_ray_node_with_free_gpus(num_gpus, allowed_gpu_nodes=gpu_nodes)
         if node_id is None:
             raise RuntimeError(f"Cannot find {num_gpus} available Ray GPU nodes for spinning up {worker_cls}")
@@ -165,24 +168,45 @@ def spinup_single_ray_gpu_node_worker(
     print(f"DEBUG: spinup_single_ray_gpu_node_worker: node id = {node_id}", flush=True)
     print(f"DEBUG: spinup_single_ray_gpu_node_worker: py exec = {sys.executable}", flush=True)
     worker_options = {}
-    if False:
+    # if False:
+    if True:
         print(f"DEBUG: spinup_single_ray_gpu_node_worker: apply num_gpus = {num_gpus}", flush=True)
         worker_options["num_gpus"] = num_gpus
-    if False:
-    # if True:
-        print(f"DEBUG: spinup_single_ray_gpu_node_worker: apply NodeAffinitySchedulingStrategy", flush=True)
+    # if False:
+    if True:
+        print("DEBUG: spinup_single_ray_gpu_node_worker: apply NodeAffinitySchedulingStrategy", flush=True)
         worker_options["scheduling_strategy"] = NodeAffinitySchedulingStrategy(
             node_id=node_id,
             soft=False,
             # soft=True,
         )
-    env_vars = {
+    worker_env_vars = {
         **os.environ,
     }
-    # env_vars.pop("UV_CACHE_DIR", None)
+    get_env_vars = [
+        # "CUDA_VISIBLE_DEVICES",
+    ]
+    for k in get_env_vars:
+        v = worker_env_vars.get(k, None)
+        if v is not None:
+            print(f"DEBUG: spinup_single_ray_gpu_node_worker: worker env vars: get {repr(k)} -> {repr(v)}", flush=True)
+    pop_env_vars = [
+        "CUDA_VISIBLE_DEVICES",
+        "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
+        "RAY_JOB_ID",
+        "RAY_RAYLET_PID",
+        # "RAY_CLIENT_MODE",
+        # "RAY_LD_PRELOAD",
+        # "RAY_USAGE_STATS_ENABLED",
+        # "UV_CACHE_DIR",
+    ]
+    for k in pop_env_vars:
+        v = worker_env_vars.pop(k, None)
+        if v is not None:
+            print(f"DEBUG: spinup_single_ray_gpu_node_worker: worker env vars: pop {repr(k)} -> {repr(v)}", flush=True)
     worker_runtime_env = {
         "py_executable": sys.executable,
-        "env_vars": env_vars,
+        "env_vars": worker_env_vars,
     }
     worker_options["runtime_env"] = worker_runtime_env
     worker = worker_cls.options(**worker_options).remote(*worker_args, **worker_kwargs)

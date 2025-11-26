@@ -16,6 +16,7 @@ import asyncio
 import atexit
 import json
 import resource
+from aiohttp.client_exceptions import ClientOSError
 from abc import abstractmethod
 from contextlib import asynccontextmanager
 from io import StringIO
@@ -24,7 +25,7 @@ from logging import LogRecord, getLogger
 from os import getenv
 from pathlib import Path
 from threading import Thread
-from traceback import print_exc
+from traceback import format_exc, print_exc
 from typing import Literal, Optional, Tuple, Type, Union, Unpack
 from uuid import uuid4
 
@@ -149,6 +150,8 @@ async def request(
             return await client.request(method=method, url=url, **kwargs)
         except ServerDisconnectedError:
             await asyncio.sleep(0.5)
+        except ClientOSError:
+            await asyncio.sleep(0.5)
         except Exception as e:
             if _GLOBAL_AIOHTTP_CLIENT_REQUEST_DEBUG:
                 print_exc()
@@ -156,10 +159,12 @@ async def request(
             # Don't increment internal since we know we are ok. If we are not, the head server will shut everything down anyways.
             if not _internal:
                 print(
-                    f"""Hit an exception while making a request (try {num_tries}): {type(e)}: {e}
-Sleeping 0.5s and retrying...
-"""
+                    f"DEBUG: nemo_gym.server_utils.request: Hit an exception while making a request (try {num_tries}): method = {repr(method)} url = {repr(url)} except = {type(e).__name__} {e}",
+                    flush=True,
                 )
+                print(format_exc(), flush=True)
+                print("DEBUG: nemo_gym.server_utils.request: request kwargs = {kwargs}", flush=True)
+                print("DEBUG: nemo_gym.server_utils.request: Sleeping 0.5s and retrying...", flush=True)
                 if num_tries >= MAX_NUM_TRIES:
                     raise e
 
