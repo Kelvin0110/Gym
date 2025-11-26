@@ -16,7 +16,7 @@ swe_agents:
       container_formatter: "/lustre/fsw/portfolios/llmservice/users/igitman/images/swe-bench/swebench_sweb.eval.x86_64.{instance_id}.sif"
       container_folder_path: null
       swebench_tests_timeout: 900  # 30 minutes
-      concurrency: 256
+      concurrency: 128
       
       # Optional model server reference
       model_server:
@@ -30,7 +30,7 @@ swe_agents:
         dry_run: false
         max_concurrent_requests: 16  
         inference.top_logprobs: 10  # Request logprobs to get token IDs for training
-        agent_timeout: 1500
+        agent_timeout: 500000
       
       # Dataset configurations
       datasets:

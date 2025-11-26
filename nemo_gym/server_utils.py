@@ -105,10 +105,6 @@ def set_global_aiohttp_client(cfg: GlobalAIOHTTPAsyncClientConfig) -> ClientSess
             limit_per_host=cfg.global_aiohttp_connector_limit_per_host,
         ),
         timeout=ClientTimeout(
-            total=900,  # 65 minutes - slightly longer than agent_timeout (3600s/1hr)
-            connect=30,  # 30 seconds to establish TCP connection
-            # sock_connect=10,  # 10 seconds for socket connection
-            # sock_read=300,  # 5 minutes for reading response chunks
         ),
         cookie_jar=DummyCookieJar(),
     )

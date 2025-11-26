@@ -227,12 +227,6 @@ async def execute_container_command(
     if os.getenv("HF_TOKEN"):
         env_flags += f" --env HF_TOKEN={shlex.quote(os.getenv('HF_TOKEN'))}"
         LOG.info("Passing HF_TOKEN to Apptainer container")
-    
-    # Add LiteLLM retry configuration for better connection handling
-    env_flags += " --env LITELLM_NUM_RETRIES=8"  # Increase retries from default 6
-    env_flags += " --env LITELLM_RETRY_DELAY=2"  # Initial delay 2s (exponential backoff)
-    env_flags += " --env LITELLM_MAX_RETRY_DELAY=120"  # Max delay 2 minutes
-    env_flags += " --env LITELLM_TIMEOUT=180"  # Request timeout 3 minutes
     if os.getenv("HF_HOME"):
         env_flags += f" --env HF_HOME={shlex.quote(os.getenv('HF_HOME'))}"
         LOG.info(f"Passing HF_HOME={os.getenv('HF_HOME')} to Apptainer container")
@@ -284,6 +278,7 @@ async def execute_container_command(
 
                 except asyncio.TimeoutError:
                     # Kill the process if it's still running
+                    LOG.error(f"TIMEOUT: Command exceeded {timeout} seconds for {instance_id}")
                     if process.returncode is None:
                         process.kill()
                         await process.wait()
@@ -312,11 +307,17 @@ async def execute_container_command(
             else:
                 LOG.error("All %d attempts failed for instance %s", max_retries, instance_id)
                 LOG.error("Apptainer command failed. Check logs at: %s", log_file_path)
-                raise ValueError(
-                    f"Job failed for {instance_id}. Check logs at: {log_file_path}. "
-                    f"Expected exactly one file matching {expected_file_pattern}, "
-                    f"found {len(pred_files) if 'pred_files' in locals() else 'unknown'}."
-                )
+                pred_files = glob.glob(expected_file_pattern, recursive=True)
+                if len(pred_files) == 1:
+                    # Success, break out of retry loop
+                    LOG.info(f"Found file matching {expected_file_pattern} for {instance_id} F")
+                    return pred_files[0]
+                else:
+                    raise ValueError(
+                        f"Job failed for {instance_id}. Check logs at: {log_file_path}. "
+                        f"Expected exactly one file matching {expected_file_pattern}, "
+                        f"found {len(pred_files) if 'pred_files' in locals() else 'unknown'}."
+                    )
 
 
 async def run_swe_agent_and_evaluate(
@@ -335,9 +336,11 @@ async def run_swe_agent_and_evaluate(
     swebench_setup_dir: Optional[Path] = None,  # Pre-built SWE-bench directory
     run_id: str = None,  # Unique run ID for organizing evaluation outputs
 ) -> Dict:
-    """Run SWE-agent and evaluation in a single container execution.
+    """Run SWE-agent and evaluation in separate container executions.
 
-    This combines agent execution and evaluation into one container call for efficiency.
+    This function executes two separate commands:
+    1. SWE-agent command to generate a patch
+    2. SWE-bench evaluation command to test the patch
 
     Args:
         problem_info: Problem information dict with keys: instance_id, problem_statement,
@@ -352,6 +355,9 @@ async def run_swe_agent_and_evaluate(
         agent_framework_repo: URL of SWE-agent repo (optional)
         agent_framework_commit: Commit/branch to use (default: HEAD)
         agent_timeout: Timeout for agent execution in seconds
+        sweagent_setup_dir: Pre-built SWE-agent directory (optional)
+        swebench_setup_dir: Pre-built SWE-bench directory (optional)
+        run_id: Unique run ID for organizing evaluation outputs
 
     Returns:
         dict: Evaluation results with keys:
@@ -360,7 +366,7 @@ async def run_swe_agent_and_evaluate(
             - generation: Empty string (for compatibility)
 
     Raises:
-        ValueError: If execution fails
+        ValueError: If agent execution fails
     """
     if agent_config is None:
         agent_config = "eval/swe-bench/swe-agent/default"
@@ -442,9 +448,12 @@ async def run_swe_agent_and_evaluate(
         combined_mounts[swebench_mount_src] = swebench_convenient_path
         LOG.info(f"Mounting SWE-bench at: {swebench_mount_src} -> {swebench_convenient_path}")
 
-    # Combined command: run agent, then evaluate
-    # Use pre-built venvs if they exist, otherwise setup from scratch
-    # We'll use a bash variable to track the pred file path
+
+    # Create output directory for trajectories (use "trajectories" subdirectory for consistency with downstream code)
+    trajectories_dir = output_dir / "trajectories"
+    trajectories_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine SWE-agent directory path in container
     if sweagent_setup_dir is not None:
         # Pre-built setup: Use ORIGINAL path (where venv was built) so hardcoded paths work
         # But the SWE-agent repo is under that path
@@ -461,7 +470,7 @@ async def run_swe_agent_and_evaluate(
             f"uv pip install -p {swe_agent_dir}/venv/bin/python -e . && "
         )
 
-    combined_cmd = (
+    swe_agent_cmd = (
         agent_setup_cmd + f"{swe_agent_dir}/venv/bin/python -m sweagent run "
         f"    --config {get_config_path(agent_config)} "
         f"    --agent.model.name hosted_vllm/{model_name} "
@@ -475,135 +484,121 @@ async def run_swe_agent_and_evaluate(
         f"    --env.repo.repo_name testbed "
         f"    --env.repo.base_commit {problem_info['base_commit']} "
         f"    --problem_statement.text {shlex.quote(problem_info['problem_statement'])} "
-        f"    --problem_statement.id {problem_info['instance_id']} && "
-        # Convert .pred to .jsonl and move to mounted directory
-        f"PRED_FILE=$(find trajectories -name '{problem_info['instance_id']}.pred' | head -1) && "
-        f"PRED_JSONL=$(echo $PRED_FILE | sed 's/.pred$/.jsonl/') && "
-        f"PRED_JSONL_NAME=$(basename $PRED_JSONL) && "
-        f"TRAJ_DIR=$(dirname $PRED_FILE) && "
-        f"cp $PRED_FILE $PRED_JSONL && "
-        # Copy only the specific trajectory directory for this instance
-        f"mkdir -p /trajectories_mount/trajectories && "
-        f"cp -r $TRAJ_DIR /trajectories_mount/trajectories/ && "
-        # Also copy the .jsonl file to the root for easy access by evaluation
-        f"cp $PRED_JSONL /trajectories_mount/$PRED_JSONL_NAME && "
-        # Setup and run SWE-bench evaluation (only if patch exists)
-        # Use pre-built venv if available, otherwise create it
+        f"    --problem_statement.id {problem_info['instance_id']} "
+        f"    --output_dir /trajectories_mount/trajectories"
     )
 
-    # Determine SWE-bench directory path in container
-    if swebench_setup_dir is not None:
-        # Pre-built setup: Use ORIGINAL path (where venv was built) so hardcoded paths work
-        swe_bench_dir = f"{swebench_original_path}/SWE-bench"
-    else:
-        swe_bench_dir = "/root/SWE-bench"
-
-    combined_cmd += (
-        f"cd {swe_bench_dir} && "
-        f"if [ -d 'venv' ] && [ -f 'venv/bin/python' ]; then "
-        f"  echo 'Using pre-built SWE-bench venv'; "
-        f"else "
-        f"  echo 'Creating SWE-bench venv'; "
-        f"  if [ ! -f /root/.local/bin/uv ]; then "
-        f"    curl -LsSf https://astral.sh/uv/install.sh | sh && source /root/.local/bin/env; "
-        f"  fi; "
-        f"  uv venv --python 3.12 venv && "
-        f"  uv pip install -p {swe_bench_dir}/venv/bin/python -e .; "
-        f"fi && "
-        # Check if patch exists before running evaluation (check for both None and empty string)
-        "if python3 -c \"import json; data=json.load(open('/trajectories_mount/'+'${PRED_JSONL_NAME}', 'r')); patch=data.get('model_patch'); exit(0 if patch and str(patch).strip() else 1)\"; then "
-        f"  env -u VIRTUAL_ENV {swe_bench_dir}/venv/bin/python -m swebench.harness.run_local_evaluation "
-        "    --predictions_path /trajectories_mount/${PRED_JSONL_NAME} "
-        f"    --instance_ids {problem_info['instance_id']} "
-        f"    --run_id {run_id} "
-        f"    --timeout {swebench_tests_timeout} "
-        f"    --dataset_name {problem_info['dataset_name']} "
-        f"    --split {problem_info['split']} && "
-        # Copy evaluation results preserving run_id directory structure
-        f"  cp -r logs/run_evaluation/{run_id} /trajectories_mount/; "
-        f"else "
-        f"  echo 'No patch found, skipping evaluation'; "
-        f"fi"
-    )
-
-    # Execute combined command
-    # We expect both the trajectory and potentially the report.json
-    search_path = os.path.join(output_dir / "trajectories", "**", f"{problem_info['instance_id']}.jsonl")
-
-    # Calculate total timeout (agent + evaluation + buffer)
-    total_timeout = agent_timeout + swebench_tests_timeout + 120
-
+    # Execute SWE-agent command
+    search_path = os.path.join(output_dir, "trajectories", "**", f"{problem_info['instance_id']}.pred")
+    LOG.info(f"Searching for agent output at pattern: {search_path}")
     try:
         pred_file = await execute_container_command(
             problem_info["instance_id"],
             problem_info["container_formatter"],
-            combined_cmd,
+            swe_agent_cmd,
             search_path,
             output_dir,
-            mode="combined",
-            timeout=total_timeout,
+            mode="agent",
+            timeout=agent_timeout,
             agent_config=agent_config,
             additional_mounts=combined_mounts,
         )
     except ValueError as e:
-        LOG.error(f"Combined execution failed for {problem_info['instance_id']}: {e}")
+        LOG.error(f"SWE-agent execution failed for {problem_info['instance_id']}: {e}")
         raise
 
-    # Read the trajectory/patch file
+    LOG.info(f"Found agent output file: {pred_file} for instance ID: {problem_info['instance_id']}")
+    
+    # Read the trajectory/patch file from agent
     with open(pred_file, "r") as f:
         trajectory_dict = json.loads(f.read().strip())
 
-    # Determine patch status
-    # patch_exists: Did the model attempt to generate a patch? (field exists in trajectory)
-    # has_valid_patch: Is the patch non-empty and potentially valid?
-    model_patch = trajectory_dict.get("model_patch")
-    patch_field_exists = "model_patch" in trajectory_dict
-    has_valid_patch = model_patch is not None and model_patch != ""
-
-    # Try to read evaluation report if valid patch existed
-    report_json = None
-    if has_valid_patch:
-        # Search for report within the run_id directory structure
-        report_path = os.path.join(output_dir, run_id, "**", f"{problem_info['instance_id']}/report.json")
-        report_files = glob.glob(report_path, recursive=True)
-
-        if report_files:
-            try:
-                with open(report_files[0], "r") as f:
-                    report_json = json.loads(f.read().strip())
-                LOG.info(f"Successfully read evaluation report for {problem_info['instance_id']}")
-            except Exception as e:
-                LOG.warning(f"Failed to read evaluation report: {e}")
-
-    # Build response based on whether we have evaluation results
-    if report_json and problem_info["instance_id"] in report_json:
-        metrics = report_json[problem_info["instance_id"]]
-    elif has_valid_patch:
-        # Valid patch exists but evaluation failed or report missing
-        metrics = {
-            "resolved": False,
-            "patch_exists": True,
-            "patch_successfully_applied": False,
-        }
-    elif patch_field_exists:
-        # Model attempted to generate patch but it's empty/None
-        # This happens when the model runs but fails to generate a valid patch
-        metrics = {
-            "resolved": False,
-            "patch_exists": True,  # Model attempted, so patch exists (even if empty)
-            "patch_successfully_applied": False,
+    # Convert .pred to .jsonl for SWE-bench evaluation
+    pred_jsonl_file = pred_file.replace(".pred", ".jsonl")
+    with open(pred_jsonl_file, "w") as f:
+        f.write(json.dumps(trajectory_dict))
+    LOG.info(f"Created JSONL file for evaluation: {pred_jsonl_file}")
+    
+    # Convert jsonl file path to mounted path for evaluation
+    pred_mounted_path = pred_jsonl_file.replace(str(output_dir), "/trajectories_mount")
+    LOG.info(f"pred_jsonl_relative: {pred_mounted_path}")
+    # Check if the trajectory has a valid patch before running evaluation
+    has_patch = trajectory_dict.get("model_patch") is not None
+    
+    if not has_patch:
+        # No patch - create default report
+        report_json = {
+            problem_info["instance_id"]: {
+                "resolved": False,
+                "patch_exists": False,
+                "patch_successfully_applied": False,
+            }
         }
     else:
-        # Model never attempted to generate a patch (field doesn't exist)
-        # This can happen if the agent errors out before reaching submission
-        metrics = {
-            "resolved": False,
-            "patch_exists": False,
-            "patch_successfully_applied": False,
-        }
+        # Has patch - run full evaluation
+        # Determine SWE-bench directory path in container
+        if swebench_setup_dir is not None:
+            # Pre-built setup: Use ORIGINAL path (where venv was built) so hardcoded paths work
+            swe_bench_dir = f"{swebench_original_path}/SWE-bench"
+            eval_setup_cmd = f"cd {swe_bench_dir} && "
+        else:
+            # On-the-fly setup
+            swe_bench_dir = "/root/SWE-bench"
+            eval_setup_cmd = (
+                f"if [ ! -f /root/.local/bin/uv ]; then "
+                f"  curl -LsSf https://astral.sh/uv/install.sh | sh && source /root/.local/bin/env; "
+                f"fi && "
+                f"cd {swe_bench_dir} && "
+                f"uv venv --python 3.12 venv && "
+                f"uv pip install -p {swe_bench_dir}/venv/bin/python -e . && "
+            )
+
+        swe_bench_cmd = (
+            eval_setup_cmd +
+            f"env -u VIRTUAL_ENV {swe_bench_dir}/venv/bin/python -m swebench.harness.run_local_evaluation "
+            f"    --predictions_path {pred_mounted_path} "
+            f"    --instance_ids {problem_info['instance_id']} "
+            f"    --run_id {run_id} "
+            f"    --timeout {swebench_tests_timeout} "
+            f"    --dataset_name {problem_info['dataset_name']} "
+            f"    --split {problem_info['split']} && "
+            # Copy evaluation results into trajectories directory (merge with trajectory files)
+            #f"cp -r logs/run_evaluation/{run_id}/trajectories/* /trajectories_mount/trajectories/"
+            f"cp -r logs/run_evaluation/{run_id} /trajectories_mount/"
+        )
+
+        # Execute SWE-bench evaluation command
+        eval_search_path = os.path.join(output_dir, run_id, "**", f"{problem_info['instance_id']}/report.json")
+        LOG.info(f"Running evaluation for instance {problem_info['instance_id']} with run_id {run_id}")
+        LOG.info(f"Evaluation will search for report at pattern: {eval_search_path}")
+        try:
+            report_file = await execute_container_command(
+                problem_info["instance_id"],
+                problem_info["container_formatter"],
+                swe_bench_cmd,
+                eval_search_path,
+                output_dir,
+                mode="eval",
+                timeout=swebench_tests_timeout + 120,
+                additional_mounts=combined_mounts,
+            )
+        except ValueError:
+            LOG.warning(f"Failed to execute SWE-bench evaluation command for {problem_info['instance_id']}")
+            report_json = {
+                problem_info["instance_id"]: {
+                    "resolved": False,
+                    "patch_exists": True,
+                    "patch_successfully_applied": False,
+                }
+            }
+            report_file = None
+
+        if report_file is not None:
+            with open(report_file, "r") as f:
+                report_json = json.loads(f.read().strip())
 
     output_dict = {
-        "swe-bench-metrics": metrics,
+        "swe-bench-metrics": report_json[problem_info["instance_id"]],
         "swe-bench-outputs": trajectory_dict,
         "generation": "",  # required for compatibility
     }
@@ -628,7 +623,7 @@ async def run_single_swe_agent_problem(
     """Run SWE-agent on a single problem and evaluate the results.
 
     This is the main entry point for processing a single SWE-bench problem.
-    Now uses a single container execution for both agent and evaluation.
+    Uses separate container executions for agent and evaluation.
 
     Args:
         problem_info: Problem information dict with keys: instance_id, problem_statement,
@@ -652,7 +647,6 @@ async def run_single_swe_agent_problem(
             - swe-bench-outputs: Trajectory and patch
             - generation: Empty string (for compatibility)
     """
-    LOG.info(f"Running SWE-agent and evaluation on problem: {problem_info['instance_id']}")
     # Generate unique run_id for organizing evaluation outputs (matching OpenHands pattern)
     run_id = f"{problem_info['instance_id']}_{int(time.time())}_{str(uuid.uuid4())[:8]}"
 
@@ -681,8 +675,7 @@ async def run_single_swe_agent_problem(
     end_time = time.time()
     generation_time = end_time - start_time
 
-    LOG.info(f"Combined execution completed for {problem_info['instance_id']} in {generation_time:.2f} seconds")
-    LOG.info("results", results)
+    LOG.info(f"Combined execution completed for {output_dir} in {generation_time:.2f} seconds")
 
     # Log generation time to a file in the instance's directory
     timing_file = output_dir / "generation_time.json"
