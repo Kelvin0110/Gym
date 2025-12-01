@@ -287,6 +287,11 @@ ng_status = "nemo_gym.cli:status"
 nemo_gym_stop = "nemo_gym.cli:stop"
 ng_stop = "nemo_gym.cli:stop"
 
+# Display version
+nemo_gym_version = "nemo_gym.cli:version"
+ng_version = "nemo_gym.cli:version"
+
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["resources_servers", "responses_api_agents", "responses_api_models", "nemo_gym", "penguin"]
