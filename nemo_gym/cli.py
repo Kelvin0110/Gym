@@ -131,9 +131,9 @@ class RunHelper:  # pragma: no cover
 
         # Initialize Ray cluster in the main process
         # Note: This function will modify the global config dict - update `ray_head_node_address`
-        init_node_id = initialize_ray()
+        initialize_ray()
 
-        self._head_ray_gpu_helper = _NeMoGymRayGPUSchedulingHelper._start_global(init_node_id)
+        self._head_ray_gpu_helper = _NeMoGymRayGPUSchedulingHelper._start_global()
 
         # Assume Nemo Gym Run is for a single agent.
         escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))
