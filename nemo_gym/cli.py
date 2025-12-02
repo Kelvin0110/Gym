@@ -36,6 +36,7 @@ import uvicorn
 from devtools import pprint
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, Field
+from ray import ActorProxy
 from tqdm.auto import tqdm
 
 from nemo_gym import PARENT_DIR, __version__
@@ -49,6 +50,7 @@ from nemo_gym.global_config import (
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
+from nemo_gym.ray_utils import _NeMoGymRayGPUSchedulingHelper
 from nemo_gym.server_utils import (
     HEAD_SERVER_KEY_NAME,
     HeadServer,
@@ -119,6 +121,7 @@ class ServerInstanceDisplayConfig(BaseModel):
 class RunHelper:  # pragma: no cover
     _head_server: uvicorn.Server
     _head_server_thread: Thread
+    _head_ray_gpu_helper: ActorProxy
 
     _processes: Dict[str, Popen]
     _server_instance_display_configs: List[ServerInstanceDisplayConfig]
@@ -129,7 +132,9 @@ class RunHelper:  # pragma: no cover
 
         # Initialize Ray cluster in the main process
         # Note: This function will modify the global config dict - update `ray_head_node_address`
-        initialize_ray()
+        init_node_id = initialize_ray()
+
+        self._head_ray_gpu_helper = _NeMoGymRayGPUSchedulingHelper._start_global(init_node_id)
 
         # Assume Nemo Gym Run is for a single agent.
         escaped_config_dict_yaml_str = shlex.quote(OmegaConf.to_yaml(global_config_dict))

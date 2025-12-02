@@ -336,7 +336,7 @@ class UvicornLoggingConfig(BaseModel):
     uvicorn_logging_show_200_ok: bool = False
 
 
-def initialize_ray() -> None:
+def initialize_ray() -> str:
     """
     Initialize ray cluster in a process.
     We store the Ray address in the global config dict so that child processes can connect to it.
@@ -346,7 +346,8 @@ def initialize_ray() -> None:
 
     if ray.is_initialized():
         print("Ray already initialized")
-        return
+        ray_ctx = ray.get_runtime_context()
+        return ray_ctx.get_node_id()
 
     global_config_dict = get_global_config_dict()
     ray_head_node_address = global_config_dict.get("ray_head_node_address")
@@ -359,16 +360,19 @@ def initialize_ray() -> None:
     else:
         print("Starting Ray cluster...")
 
-    if ray_namespace is not None:
-        print(f"Ray namespace: {ray_namespace}")
-        ray_init_kwargs["namespace"] = ray_namespace
+    if ray_namespace is None:
+        ray_namespace = "nemo_gym"
+    print(f"Ray namespace: {ray_namespace}")
+    ray_init_kwargs["namespace"] = ray_namespace
 
     ray.init(**ray_init_kwargs)
 
+    ray_ctx = ray.get_runtime_context()
     if not ray_head_node_address:
         with open_dict(global_config_dict):
-            global_config_dict["ray_head_node_address"] = ray.get_runtime_context().gcs_address
+            global_config_dict["ray_head_node_address"] = ray_ctx.gcs_address
         print(f"Started Ray cluster at {global_config_dict['ray_head_node_address']}")
+    return ray_ctx.get_node_id()
 
 
 class SimpleServer(BaseServer):
