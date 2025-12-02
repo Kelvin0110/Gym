@@ -61,8 +61,7 @@ from nemo_gym.openai_utils import (
     TokenIDLogProbMixin,
 )
 from nemo_gym.ray_utils import (
-    lookup_current_ray_node_id,
-    lookup_ray_node_id_to_ip_dict,
+    lookup_current_ray_node_ip,
     spinup_single_ray_gpu_node_worker,
 )
 from nemo_gym.server_utils import SESSION_ID_KEY
@@ -80,7 +79,6 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
     spinup_server: bool = False
     server_args: Optional[Dict[str, Any]] = None
 
-    enable_router: bool = False
     router_dp_size: int = 1
 
     def model_post_init(self, context):
@@ -89,7 +87,7 @@ class VLLMModelConfig(BaseResponsesAPIModelConfig):
         return super().model_post_init(context)
 
 
-def _spinup_vllm_server(config: VLLMModelConfig, server_host: str, server_port: int, router_dp_rank: int) -> None:
+def _start_vllm_server(config: VLLMModelConfig, server_host: str, server_port: int, router_dp_rank: int) -> None:
     import uvloop
     import vllm.engine.arg_utils
     import vllm.entrypoints.openai.api_server
@@ -106,14 +104,17 @@ def _spinup_vllm_server(config: VLLMModelConfig, server_host: str, server_port: 
     argv.append("--distributed-executor-backend")
     argv.append("mp")
     for k, v in (config.server_args or {}).items():
-        if isinstance(v, bool):
+        k2 = k.replace("_", "-")
+        if v is None:
+            pass
+        elif isinstance(v, bool):
             if not v:
-                arg_key = f"--no-{k.replace('_', '-')}"
+                arg_key = f"--no-{k2}"
             else:
-                arg_key = f"--{k.replace('_', '-')}"
+                arg_key = f"--{k2}"
             argv.append(arg_key)
         else:
-            arg_key = f"--{k.replace('_', '-')}"
+            arg_key = f"--{k2}"
             argv.append(arg_key)
             argv.append(f"{v}")
 
@@ -126,24 +127,24 @@ def _spinup_vllm_server(config: VLLMModelConfig, server_host: str, server_port: 
 
 
 @ray.remote
-class VLLMModelSpinupWorker:
+class VLLMServerSpinupWorker:
     def __init__(self, config: VLLMModelConfig, working_dir: Optional[str], router_dp_rank: int):
         self.config = config
         self.working_dir = working_dir
-        self._server_host = "0.0.0.0"
+        self.router_dp_rank = router_dp_rank
+        self._server_host = lookup_current_ray_node_ip()
         self._server_port = find_open_port()
-        self._router_dp_rank = router_dp_rank
 
         if self.working_dir is not None:
             os.chdir(self.working_dir)
 
         server_proc = Process(
-            target=_spinup_vllm_server,
+            target=_start_vllm_server,
             args=(
                 self.config,
                 self._server_host,
                 self._server_port,
-                self._router_dp_rank,
+                self.router_dp_rank,
             ),
             daemon=False,
         )
@@ -151,7 +152,7 @@ class VLLMModelSpinupWorker:
         self._server_proc = server_proc
 
     def _get_ip(self) -> int:
-        return lookup_ray_node_id_to_ip_dict()[lookup_current_ray_node_id()]
+        return self._server_host
 
     def _get_port(self) -> int:
         return self._server_port
@@ -203,19 +204,18 @@ class VLLMModel(SimpleResponsesAPIModel):
             self._server_workers = []
             self._clients = []
 
+            # TODO: support for other parallel sizes.
             server_tp_size = (self.config.server_args or {}).get("tensor_parallel_size", 1)
             server_dp_size = (self.config.server_args or {}).get("data_parallel_size", 1)
 
             assert server_dp_size == 1
 
-            router_dp_size = 1
-            if self.config.enable_router:
-                router_dp_size = max(1, self.config.router_dp_size)
+            router_dp_size = max(1, self.config.router_dp_size)
 
             for router_dp_rank in range(router_dp_size):
                 server_worker = spinup_single_ray_gpu_node_worker(
-                    VLLMModelSpinupWorker,
-                    num_gpus=server_tp_size,
+                    VLLMServerSpinupWorker,
+                    server_tp_size,
                     config=self.config,
                     working_dir=working_dir,
                     router_dp_rank=router_dp_rank,
@@ -241,7 +241,7 @@ class VLLMModel(SimpleResponsesAPIModel):
                         _vllm_server_heartbeat(server_url)
                         break
                     except Exception:
-                        sleep(5)
+                        sleep(3)
                         continue
 
         else:

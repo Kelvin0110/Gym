@@ -94,10 +94,6 @@ class _NeMoGymRayGPUSchedulingHelper:  # pragma: no cover
         return None
 
 
-def lookup_current_ray_node_id() -> str:  # pragma: no cover
-    return ray.get_runtime_context().get_node_id()
-
-
 def lookup_ray_node_id_to_ip_dict() -> Dict[str, str]:  # pragma: no cover
     cfg = get_global_config_dict()
     head = cfg["ray_head_node_address"]
@@ -106,6 +102,14 @@ def lookup_ray_node_id_to_ip_dict() -> Dict[str, str]:  # pragma: no cover
     for state in node_states:
         id_to_ip[state.node_id] = state.node_ip
     return id_to_ip
+
+
+def lookup_current_ray_node_id() -> str:  # pragma: no cover
+    return ray.get_runtime_context().get_node_id()
+
+
+def lookup_current_ray_node_ip() -> str:  # pragma: no cover
+    return lookup_ray_node_id_to_ip_dict()[lookup_current_ray_node_id()]
 
 
 def _lookup_ray_node_with_free_gpus(
