@@ -114,6 +114,7 @@ Home <self>
 about/index.md
 Concepts <about/concepts/index>
 Ecosystem <about/ecosystem>
+Configuration System <about/configuration-system>
 ```
 
 ```{toctree}
