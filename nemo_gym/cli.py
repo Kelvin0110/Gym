@@ -61,7 +61,7 @@ from nemo_gym.server_utils import (
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
     head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
 
-    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]}"
+    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} .venv"
 
     pyproject_toml = False
     try:
@@ -71,16 +71,19 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
         pass
 
     if pyproject_toml:
-        cmd = f"""{uv_venv_cmd} \\
+        install_cmd = f"""uv pip install '-e .' {" ".join(head_server_deps)}"""
+
+        cmd = f"""cd {dir_path} \\
+        && {uv_venv_cmd} \\
         && source .venv/bin/activate \\
-        && uv pip install '-e .' {" ".join(head_server_deps)} \\
+        && {install_cmd} \\
         """
 
     else:
-        install_cmd = "uv pip install -r requirements.txt"
-        install_cmd += " " + " ".join(head_server_deps)
+        install_cmd = f"""uv pip install -r requirements.txt {" ".join(head_server_deps)}"""
 
-        cmd = f"""{uv_venv_cmd} \\
+        cmd = f"""cd {dir_path} \\
+        && {uv_venv_cmd} \\
         && source .venv/bin/activate \\
         && {install_cmd} \\
         """
@@ -100,7 +103,6 @@ def _run_command(command: str, working_dir_path: Path) -> Popen:  # pragma: no c
         command,
         executable="/bin/bash",
         shell=True,
-        cwd=work_dir,
         env=custom_env,
     )
 
