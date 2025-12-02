@@ -14,9 +14,13 @@
 # limitations under the License.
 import asyncio
 import json
+import os
+import platform
 import shlex
+import sys
 import tomllib
 from glob import glob
+from importlib.metadata import version as md_version
 from os import environ, getcwd, makedirs
 from os.path import exists
 from pathlib import Path
@@ -24,8 +28,9 @@ from signal import SIGINT
 from subprocess import Popen
 from threading import Thread
 from time import sleep
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
+import psutil
 import rich
 import uvicorn
 from devtools import pprint
@@ -33,7 +38,7 @@ from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, Field
 from tqdm.auto import tqdm
 
-from nemo_gym import PARENT_DIR
+from nemo_gym import PARENT_DIR, __version__
 from nemo_gym.config_types import BaseNeMoGymCLIConfig
 from nemo_gym.global_config import (
     HEAD_SERVER_DEPS_KEY_NAME,
@@ -56,31 +61,33 @@ from nemo_gym.server_utils import (
 def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
     head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
 
-    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]}"
+    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} .venv"
 
     pyproject_toml = False
+    requirements_txt = False
     try:
         with open(f"{dir_path / 'pyproject.toml'}", "r") as _f:
             pyproject_toml = True
     except OSError:
         pass
+    try:
+        with open(f"{dir_path / 'requirements.txt'}", "r") as _f:
+            requirements_txt = True
+    except OSError:
+        pass
 
     if pyproject_toml:
-        cmd = f"""cd {dir_path} \\
-        && {uv_venv_cmd} > {dir_path}/venv.out.log 2> {dir_path}/venv.err.log \\
-        && source .venv/bin/activate \\
-        && uv pip install '-e .' {" ".join(head_server_deps)} \\
-        """
-
+        install_cmd = f"""uv pip install '-e .' {" ".join(head_server_deps)}"""
+    elif requirements_txt:
+        install_cmd = f"""uv pip install -r requirements.txt {" ".join(head_server_deps)}"""
     else:
-        install_cmd = "uv pip install -r requirements.txt"
-        install_cmd += " " + " ".join(head_server_deps)
+        raise RuntimeError(f"Missing pyproject.toml or requirements.txt for uv venv setup in server dir: {dir_path}")
 
-        cmd = f"""cd {dir_path} \\
-        && {uv_venv_cmd} \\
-        && source .venv/bin/activate \\
-        && {install_cmd} \\
-        """
+    cmd = f"""cd {dir_path} \\
+    && {uv_venv_cmd} > {dir_path}/venv.out.log 2> {dir_path}/venv.err.log \\
+    && source .venv/bin/activate \\
+    && {install_cmd} \\
+    """
 
     print(f"DEBUG: _setup_env_command: cmd = {cmd}", flush=True)
 
@@ -363,7 +370,7 @@ Sleeping {sleep_interval}s..."""
         finally:
             self.shutdown()
 
-    def check_http_server_statuses(self) -> List[ServerStatus]:
+    def check_http_server_statuses(self) -> List[Tuple[str, ServerStatus]]:
         print(
             "Checking for HTTP server statuses (you should see some HTTP requests to `/` that may 404. This is expected.)"
         )
@@ -733,3 +740,71 @@ def display_help():  # pragma: no cover
             continue
 
         print(script)
+
+
+class VersionConfig(BaseNeMoGymCLIConfig):
+    json_format: bool = Field(default=False, alias="json", description="Output in JSON format for programmatic use.")
+
+
+def version():  # pragma: no cover
+    """Display gym version and system information."""
+    global_config_dict = get_global_config_dict()
+    config = VersionConfig.model_validate(global_config_dict)
+
+    json_output = config.json_format
+
+    version_info = {
+        "nemo_gym": __version__,
+        "python": platform.python_version(),
+        "python_path": sys.executable,
+        "installation_path": str(PARENT_DIR),
+    }
+
+    key_deps = [
+        "openai",
+        "ray",
+    ]
+
+    dependencies = {dep: md_version(dep) for dep in key_deps}
+
+    version_info["dependencies"] = dependencies
+
+    # System info
+    version_info["system"] = {
+        "os": f"{platform.system()} {platform.release()}",
+        "platform": platform.platform(),
+        "architecture": platform.machine(),
+        "processor": platform.processor() or "unknown",
+        "cpus": os.cpu_count(),
+    }
+
+    # Memory info
+    mem = psutil.virtual_memory()
+    version_info["system"]["memory_gb"] = round(mem.total / (1024**3), 2)
+
+    # Output
+    if json_output:
+        print(json.dumps(version_info))
+    else:
+        output = f"""\
+NeMo Gym v{version_info["nemo_gym"]}
+Python {version_info["python"]} ({version_info["python_path"]})
+Installation: {version_info["installation_path"]}"""
+
+        if "dependencies" in version_info:
+            deps_lines = "\n".join(f"  {dep}: {ver}" for dep, ver in version_info["dependencies"].items())
+            sys_info = version_info["system"]
+            output += f"""
+
+Key Dependencies:
+{deps_lines}
+
+System:
+  OS: {sys_info["os"]}
+  Platform: {sys_info["platform"]}
+  Architecture: {sys_info["architecture"]}
+  Processor: {sys_info["processor"]}
+  CPUs: {sys_info["cpus"]}
+  Memory: {sys_info["memory_gb"]} GB"""
+
+        print(output)
