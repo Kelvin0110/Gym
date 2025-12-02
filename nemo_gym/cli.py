@@ -100,12 +100,7 @@ def _run_command(command: str, working_dir_path: Path) -> Popen:  # pragma: no c
         custom_env["PYTHONPATH"] = f"{work_dir}:{py_path}"
     else:
         custom_env["PYTHONPATH"] = work_dir
-    return Popen(
-        command,
-        executable="/bin/bash",
-        shell=True,
-        env=custom_env,
-    )
+    return Popen(command, executable="/bin/bash", shell=True, env=custom_env)
 
 
 class RunConfig(BaseNeMoGymCLIConfig):
