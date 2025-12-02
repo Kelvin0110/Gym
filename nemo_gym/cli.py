@@ -64,16 +64,24 @@ def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  
     uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} .venv"
 
     pyproject_toml = False
+    requirements_txt = False
     try:
         with open(f"{dir_path / 'pyproject.toml'}", "r") as _f:
             pyproject_toml = True
     except OSError:
         pass
+    try:
+        with open(f"{dir_path / 'requirements.txt'}", "r") as _f:
+            requirements_txt = True
+    except OSError:
+        pass
 
     if pyproject_toml:
         install_cmd = f"""uv pip install '-e .' {" ".join(head_server_deps)}"""
-    else:
+    elif requirements_txt:
         install_cmd = f"""uv pip install -r requirements.txt {" ".join(head_server_deps)}"""
+    else:
+        raise RuntimeError(f"Missing pyproject.toml or requirements.txt for uv venv setup in server dir: {dir_path}")
 
     cmd = f"""cd {dir_path} \\
     && {uv_venv_cmd} \\
