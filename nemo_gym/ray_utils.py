@@ -64,8 +64,8 @@ class _NeMoGymRayGPUSchedulingHelper:  # pragma: no cover
 
     def __init__(self, *args, **kwargs):
         self.cfg = get_global_config_dict()
-        self.avail_gpu_node_dict = defaultdict(int)
-        self.used_gpu_node_dict = defaultdict(int)
+        self.avail_gpus_dict = defaultdict(int)
+        self.used_gpus_dict = defaultdict(int)
 
         # If value of RAY_GPU_NODES_KEY_NAME is None, then Gym will use all Ray GPU nodes
         # for scheduling GPU actors.
@@ -83,13 +83,13 @@ class _NeMoGymRayGPUSchedulingHelper:  # pragma: no cover
             assert state.node_id is not None
             if allowed_gpu_nodes is not None and state.node_id not in allowed_gpu_nodes:
                 continue
-            self.avail_gpu_node_dict[state.node_id] += state.resources_total.get("GPU", 0)
+            self.avail_gpus_dict[state.node_id] += state.resources_total.get("GPU", 0)
 
     def alloc_gpu_node(self, num_gpus: int) -> Optional[str]:
-        for node_id, avail_num_gpus in self.avail_gpu_node_dict.items():
-            used_num_gpus = self.used_gpu_node_dict[node_id]
+        for node_id, avail_num_gpus in self.avail_gpus_dict.items():
+            used_num_gpus = self.used_gpus_dict[node_id]
             if used_num_gpus + num_gpus <= avail_num_gpus:
-                self.used_gpu_node_dict[node_id] += num_gpus
+                self.used_gpus_dict[node_id] += num_gpus
                 return node_id
         return None
 
