@@ -269,9 +269,6 @@ class GlobalConfigDictParser(BaseModel):
                 f"ray[default]=={ray_version}",
                 # OpenAI version is also sensitive since it changes so often and may introduce subtle incompatibilities.
                 f"openai=={openai_version}",
-                # TODO: hardcoded versions.
-                "grpcio==1.75.1",
-                "protobuf==4.25.8",
             ]
 
             # Constrain python version since ray is sensitive to this.

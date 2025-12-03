@@ -108,14 +108,10 @@ def _run_command(command: str, working_dir_path: Path, name: Optional[str] = Non
     if name is not None:
         out_log_file = open(f"{work_dir}/run-{name}.out.log", "a")
         err_log_file = open(f"{work_dir}/run-{name}.err.log", "a")
-    elif False:
-        out_log_file = open(f"{work_dir}/run.out.log", "a")
-        err_log_file = open(f"{work_dir}/run.err.log", "a")
     return Popen(
         command,
         executable="/bin/bash",
         shell=True,
-        # cwd=work_dir,
         env=custom_env,
         stdout=out_log_file,
         stderr=err_log_file,
@@ -319,14 +315,12 @@ class RunHelper:  # pragma: no cover
             self.poll()
             statuses = self.check_http_server_statuses()
 
-            # num_spun_up = statuses.count("success")
             num_spun_up = 0
             waiting = []
             for name, status in statuses:
                 if status == "success":
                     num_spun_up += 1
                 else:
-                    # print(f"DEBUG: RunHelper.wait_for_spinup: waiting for: {name}", flush=True)
                     waiting.append(name)
             if len(statuses) != num_spun_up:
                 print(
