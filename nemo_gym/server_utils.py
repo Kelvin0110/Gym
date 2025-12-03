@@ -364,9 +364,10 @@ def initialize_ray() -> None:
     else:
         print("Starting Ray cluster...")
 
-    if ray_namespace is not None:
-        print(f"Ray namespace: {ray_namespace}")
-        ray_init_kwargs["namespace"] = ray_namespace
+    if ray_namespace is None:
+        ray_namespace = "nemo_gym"
+    print(f"Ray namespace: {ray_namespace}")
+    ray_init_kwargs["namespace"] = ray_namespace
 
     # ray_init_kwargs["include_dashboard"] = True
     print(f"DEBUG: initialize_ray: init kwargs = {ray_init_kwargs}", flush=True)
