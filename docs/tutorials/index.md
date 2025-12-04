@@ -72,7 +72,7 @@ OpenAI compatible HTTP server pre-requisites for Gym integration into an RL fram
 :::
 
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` OpenAI-compatible HTTP server On-Policy correction
-:link: rl-training-with-nemo-rl
+:link: openai-compatible-http-server-on-policy-correction
 :link-type: doc
 Helpful On-Policy fixes for OpenAI-compatible HTTP server implementations in multi step and multi turn scenarios.
 +++
@@ -80,7 +80,7 @@ Helpful On-Policy fixes for OpenAI-compatible HTTP server implementations in mul
 :::
 
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` Gym integration footprint and form factor
-:link: rl-training-with-nemo-rl
+:link: gym-integration-footprint-and-form-factor
 :link-type: doc
 Implementation details like footprint and form factor for the actual Gym + RL integration.
 +++
@@ -88,7 +88,7 @@ Implementation details like footprint and form factor for the actual Gym + RL in
 :::
 
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` Gym + RL framework integration success criteria
-:link: rl-training-with-nemo-rl
+:link: gym-rl-framework-integration-success-criteria
 :link-type: doc
 What success criteria can be used to validate Gym + RL framework integration correctness.
 +++
