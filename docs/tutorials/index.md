@@ -64,7 +64,7 @@ Implement NeMo Gym integration into a new training framework. This is only for e
 :gutter: 1 1 1 2
 
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` Generation backend and OpenAI-compatible HTTP server
-:link: generation-backend-and-http-server
+:link: generation-backend-and-openai-compatible-http-server
 :link-type: doc
 OpenAI compatible HTTP server pre-requisites for Gym integration into an RL framework.
 +++
