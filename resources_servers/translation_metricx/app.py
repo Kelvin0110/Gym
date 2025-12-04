@@ -183,7 +183,7 @@ class TranslationMetricxResourcesServer(SimpleResourcesServer):
 
         # if False:
         print(f"DEBUG: TranslationMetricxResourcesServer: start model worker...", flush=True)
-        model_workers = [spinup_single_ray_gpu_node_worker(TranslationMetricxModelWorker, num_gpus=8)]
+        model_workers = [spinup_single_ray_gpu_node_worker(TranslationMetricxModelWorker, 1)]
         self._model_workers = model_workers
         # else:
         # self._model_workers = []
