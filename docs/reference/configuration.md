@@ -136,7 +136,7 @@ error_on_almost_servers: true   # Exit on invalid configs (default: true)
 
 ## Command Line Usage
 
-Run servers using `ng_run` with Hydra syntax for configuration.
+Run servers using `ng_run`, NeMo Gym uses [Hydra](https://hydra.cc/) for configuration management."
 
 ### Loading Configs
 
@@ -145,7 +145,7 @@ Run servers using `ng_run` with Hydra syntax for configuration.
 ng_run "+config_paths=[config1.yaml,config2.yaml]"
 
 # Use paths stored in env.yaml
-ng_run '+config_paths=${my_config_paths}'
+ng_run "+config_paths=${my_config_paths}"
 ```
 
 ### Overriding Values

@@ -6,7 +6,7 @@ NeMo Gym uses YAML configuration files to define [Model, Resources, and Agent se
 
 ## How Servers Connect
 
-A training environment typically includes all three server types working together. The Agent server config specifies which Model and Resources servers to use by referencing their server IDs. This wiring is what ties each training environment together — the Agent knows which Model to call and which Resources to use.
+A training environment typically includes all three server types working together. The Agent server config specifies which Model and Resources servers to use by referencing their server IDs. These references connect each training environment together — the Agent knows which Model to call and which Resources to use.
 
 ## Config File Locations
 
@@ -42,7 +42,7 @@ server_id:                    # Your unique name for this server
 
 Different server types have additional required fields (e.g., `domain` for resources servers, `resources_server` and `model_server` for agents). See {doc}`/reference/configuration` for complete field specifications.
 
-In many config files in NeMo Gym, you'll see the same name used for both server ID and implementation:
+Config files in NeMo Gym often use the same name for both server ID and implementation:
 
 ```yaml
 example_simple_weather:        # ← Server ID
