@@ -2,7 +2,7 @@
 
 # Train with VeRL
 
-In [Collecting Rollouts](../get-started/rollout-collection.md), you generated scored interactions between your agent and environment. Now you'll use VeRL (Volcano Engine Reinforcement Learning) to run distributed RL training with flexible backend support.
+In {doc}`Collecting Rollouts </get-started/rollout-collection>`, you generated scored interactions between your agent and environment. Now you'll use VeRL (Volcano Engine Reinforcement Learning) to run distributed RL training with flexible backend support.
 
 :::{card}
 
@@ -33,7 +33,7 @@ In [Collecting Rollouts](../get-started/rollout-collection.md), you generated sc
 
 Make sure you have:
 
-- ✅ Completed [Collecting Rollouts](../get-started/rollout-collection.md)
+- ✅ Completed {doc}`Collecting Rollouts </get-started/rollout-collection>`
 - ✅ VeRL installed (refer to [VeRL documentation](https://github.com/volcengine/verl))
 - ✅ A working resource server with `verify()` function
 - ✅ GPU(s) with sufficient memory for training

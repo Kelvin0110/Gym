@@ -2,7 +2,7 @@
 
 # Train with TRL
 
-In [Collecting Rollouts](../get-started/rollout-collection.md), you generated scored interactions between your agent and environment. Now you'll use those rollouts to actually train a model using Hugging Face's TRL library.
+In {doc}`Collecting Rollouts </get-started/rollout-collection>`, you generated scored interactions between your agent and environment. Now you'll use those rollouts to actually train a model using Hugging Face's TRL library.
 
 :::{card}
 
@@ -33,7 +33,7 @@ In [Collecting Rollouts](../get-started/rollout-collection.md), you generated sc
 
 Make sure you have:
 
-- ✅ Completed [Collecting Rollouts](../get-started/rollout-collection.md)
+- ✅ Completed {doc}`Collecting Rollouts </get-started/rollout-collection>`
 - ✅ Rollouts file at `results/rollouts.jsonl`
 - ✅ TRL installed (`pip install trl`)
 - ✅ GPU with sufficient memory for your base model

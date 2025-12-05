@@ -166,7 +166,7 @@ curl http://localhost:8000/v1/models
 
 **✅ Success**: You should see a JSON response listing available models:
 
-```json
+```text
 {
   "object": "list",
   "data": [

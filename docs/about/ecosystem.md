@@ -74,7 +74,7 @@ These frameworks use generation backends that can expose OpenAI-compatible endpo
 
 If your training framework uses vLLM or SGLang but doesn't expose an OpenAI-compatible endpoint, refer to:
 
-- {doc}`/tutorials/training-framework-integration/index` — Step-by-step integration tutorial
+- {doc}`/tutorials/integrate-training-frameworks/index` — Step-by-step integration tutorial
 - {doc}`concepts/training-integration-architecture` — Architecture and design rationale
 
 For frameworks using other generation backends, significant refactoring may be required. Refer to the architecture documentation for guidance on what Gym requires.

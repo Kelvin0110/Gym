@@ -159,7 +159,7 @@ get-started/rollout-collection.md
 Overview <tutorials/index.md>
 Integrate Training <tutorials/integrate-training-frameworks/index>
 Train Offline <tutorials/offline-training-w-rollouts>
-Create a Resource Server <tutorials/creating-resource-server>
+Create Resource Servers <tutorials/resource-servers/index>
 how-to-faq.md
 ```
 

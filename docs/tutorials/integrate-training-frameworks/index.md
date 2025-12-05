@@ -8,7 +8,7 @@ Connect NeMo Gym to popular training frameworks. Follow these tutorials to go fr
 
 All tutorials in this series assume you have:
 
-- ✅ Completed [Collecting Rollouts](../get-started/rollout-collection.md)
+- ✅ Completed {doc}`Collecting Rollouts </get-started/rollout-collection>`
 - ✅ A rollouts file (`results/rollouts.jsonl`) with scored interactions
 - ✅ Understanding of your training objective (SFT, DPO, or RL)
 
@@ -70,5 +70,6 @@ Want to understand how Gym integrates with training frameworks before diving in?
 TRL <train-with-trl>
 RL <train-with-nemo-rl>
 VeRL <train-with-verl>
+Offline Data <offline-training-w-rollouts>
 ```
 

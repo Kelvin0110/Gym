@@ -258,7 +258,7 @@ For full control, implement the integration yourself:
 3. Process rollouts with token alignment validation
 4. Feed into your training step
 
-Refer to {doc}`/tutorials/training-framework-integration/index` for a step-by-step guide.
+Refer to {doc}`/tutorials/integrate-training-frameworks/index` for a step-by-step guide.
 
 ---
 
@@ -363,5 +363,5 @@ These fields are **critical** for training — without them, the training framew
 
 - {doc}`core-abstractions` — Models, Resources, and Agents
 - {doc}`key-terminology` — RL and Gym vocabulary
-- {doc}`/tutorials/training-framework-integration/index` — Step-by-step integration tutorial
+- {doc}`/tutorials/integrate-training-frameworks/index` — Step-by-step integration tutorial
 

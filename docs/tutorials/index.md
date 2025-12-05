@@ -9,65 +9,102 @@ Build, train, and deploy AI agents with NeMo Gym through hands-on guided experie
 :::
 ---
 
-## Building Custom Components
-
-Create custom resource servers and implement tool-based agent interactions.
-
-::::{grid} 1 1 1 1
-:gutter: 1 1 1 2
-
-:::{grid-item-card} {octicon}`tools;1.5em;sd-mr-1` Creating a Resource Server
-:link: creating-resource-server
-:link-type: doc
-Build custom resource servers with tools, verification logic, and business logic for your AI agents.
-+++
-{bdg-primary}`beginner` {bdg-secondary}`30 min`
-:::
-
-::::
-
----
-
-## Rollout Collection and Training Data
-
-Implement rollout generation and training data preparation for RL, SFT, and DPO.
-
-::::{grid} 1 1 1 1
-:gutter: 1 1 1 2
-
-:::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` Offline Training with Rollouts
-:link: offline-training-w-rollouts
-:link-type: doc
-Transform rollouts into training data for {term}`supervised fine-tuning (SFT) <SFT (Supervised Fine-Tuning)>` and {term}`direct preference optimization (DPO) <DPO (Direct Preference Optimization)>`.
-+++
-{bdg-secondary}`sft` {bdg-secondary}`dpo`
-:::
-
-:::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` RL Training with NeMo RL
-:link: integrate-training-frameworks/train-with-nemo-rl
-:link-type: doc
-Train a model with NeMo RL. Learn how to set up NeMo Gym and NeMo RL training environments, run tests, prepare data, and launch single-node and multi-node training runs.
-+++
-{bdg-secondary}`rl` {bdg-secondary}`training`
-:::
-
-::::
-
----
-
-## Training Framework Integration
+## Integrate a Training Framework
 
 Connect Gym to popular training frameworks for end-to-end model improvement.
 
 ::::{grid} 1 1 2 2
 :gutter: 1 1 1 2
 
-:::{grid-item-card} {octicon}`plug;1.5em;sd-mr-1` Integrate Training Frameworks
-:link: integrate-training-frameworks/index
+:::{grid-item-card} {octicon}`hubot;1.5em;sd-mr-1` Train with TRL
+:link: integrate-training-frameworks/train-with-trl
 :link-type: doc
-End-to-end tutorials for training models with TRL, NeMo RL, and VeRL using Gym-generated rollouts.
+Use Hugging Face's TRL library for SFT, DPO, or GRPO training.
 +++
-{bdg-primary}`series` {bdg-secondary}`trl` {bdg-secondary}`verl`
+{bdg-primary}`recommended` {bdg-secondary}`hugging-face`
+:::
+
+:::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` Train with NeMo RL
+:link: integrate-training-frameworks/train-with-nemo-rl
+:link-type: doc
+Use NVIDIA's NeMo RL for distributed on-policy training with NeMo 2.0 models.
++++
+{bdg-secondary}`nvidia` {bdg-secondary}`multi-node`
+:::
+
+:::{grid-item-card} {octicon}`server;1.5em;sd-mr-1` Train with VeRL
+:link: integrate-training-frameworks/train-with-verl
+:link-type: doc
+Use VeRL's Ray-based distributed training with flexible backend support.
++++
+{bdg-secondary}`ray` {bdg-secondary}`multi-backend`
+:::
+
+:::{grid-item-card} {octicon}`package;1.5em;sd-mr-1` Prepare Offline Training Data
+:link: integrate-training-frameworks/offline-training-w-rollouts
+:link-type: doc
+Transform rollouts into SFT or DPO datasets for offline training.
++++
+{bdg-secondary}`sft` {bdg-secondary}`dpo`
+:::
+
+::::
+
+---
+
+## Create Resource Servers
+
+Build custom resource servers with tools, verification logic, and domain-specific functionality.
+
+::::{grid} 1 1 2 2
+:gutter: 1 1 1 2
+
+:::{grid-item-card} {octicon}`tools;1.5em;sd-mr-1` Your First Resource Server
+:link: creating-resource-server
+:link-type: doc
+Initialize, implement, and test a resource server from scratch.
++++
+{bdg-primary}`beginner` {bdg-secondary}`30 min`
+:::
+
+:::{grid-item-card} {octicon}`zap;1.5em;sd-mr-1` Simple Tool Calling
+:link: resource-servers/simple-tool-calling
+:link-type: doc
+Single-step tool interactions with deterministic verification.
++++
+{bdg-secondary}`pattern`
+:::
+
+:::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Multi-Step Interactions
+:link: resource-servers/multi-step-interactions
+:link-type: doc
+Orchestrate multiple tool calls for complex tasks.
++++
+{bdg-secondary}`pattern`
+:::
+
+:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Stateful Sessions
+:link: resource-servers/stateful-sessions
+:link-type: doc
+Manage session state across interactions.
++++
+{bdg-secondary}`pattern`
+:::
+
+:::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` LLM-as-Judge
+:link: resource-servers/llm-as-judge
+:link-type: doc
+Use LLMs to verify open-ended outputs.
++++
+{bdg-secondary}`pattern`
+:::
+
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Execution
+:link: resource-servers/code-execution
+:link-type: doc
+Execute and verify generated code safely.
++++
+{bdg-secondary}`pattern`
 :::
 
 ::::

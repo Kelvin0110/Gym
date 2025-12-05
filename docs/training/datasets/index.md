@@ -60,7 +60,7 @@ Use `ng_prepare_data` to validate, format, and add agent routing to datasets.
 {bdg-secondary}`ng_prepare_data`
 :::
 
-:::{grid-item-card} {octicon}`cloud-upload;1.5em;sd-mr-1` HuggingFace Integration
+:::{grid-item-card} {octicon}`upload;1.5em;sd-mr-1` HuggingFace Integration
 :link: huggingface-integration
 :link-type: doc
 
