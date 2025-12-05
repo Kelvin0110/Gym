@@ -16,7 +16,7 @@ OpenAI compatible HTTP server pre-requisites for Gym integration into an RL fram
 :::{grid-item-card} {octicon}`workflow;1.5em;sd-mr-1` OpenAI-compatible HTTP server On-Policy correction
 :link: openai-compatible-http-server-on-policy-correction
 :link-type: doc
-Helpful On-Policy fixes for OpenAI-compatible HTTP server implementations in multi step and multi turn scenarios.
+Helpful On-Policy fixes for OpenAI-compatible HTTP server implementations in {term}`multi-step <Multi-step>` and {term}`multi-turn <Multi-turn>` scenarios.
 +++
 {bdg-secondary}`training` {bdg-secondary}`infra`
 :::
