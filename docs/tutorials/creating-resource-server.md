@@ -425,10 +425,10 @@ Now that you have a working resource server:
 ::::{grid} 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Collect Rollouts
-:link: offline-training-w-rollouts
+:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Train Offline with TRL
+:link: integrate-training-frameworks/train-with-trl
 :link-type: doc
-Learn how to collect and process rollouts for training data.
+Transform rollouts into SFT/DPO training data for TRL.
 :::
 
 :::{grid-item-card} {octicon}`rocket;1.5em;sd-mr-1` Train with NeMo RL

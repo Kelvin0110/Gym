@@ -263,15 +263,15 @@ This pattern works for any stateful interaction:
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` Math Verifier
-:link: math-verifier-server
+:::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` Math Verifier Server
+:link: llm-as-judge
 :link-type: doc
 
 Use an LLM to verify open-ended math answers.
 :::
 
-:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Tester
-:link: code-tester-server
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Testing Server
+:link: code-execution
 :link-type: doc
 
 Execute and verify generated code.

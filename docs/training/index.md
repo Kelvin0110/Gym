@@ -94,10 +94,10 @@ Profile collection, tune parallelism, and scale for production.
 {bdg-success}`how-to`
 :::
 
-:::{grid-item-card} {octicon}`file;1.5em;sd-mr-1` Offline Training Data
-:link: /tutorials/offline-training-w-rollouts
+:::{grid-item-card} {octicon}`file;1.5em;sd-mr-1` Offline Training with TRL
+:link: /tutorials/integrate-training-frameworks/train-with-trl
 :link-type: doc
-Transform rollouts into training data for SFT and DPO.
+Transform rollouts into SFT/DPO training data for TRL.
 +++
 {bdg-info}`tutorial`
 {bdg-secondary}`sft`

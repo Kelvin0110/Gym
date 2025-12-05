@@ -252,15 +252,15 @@ This pattern works for any multi-step data gathering:
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Stateful Counter
-:link: counter-game-server
+:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Counter Game Server
+:link: stateful-sessions
 :link-type: doc
 
 Add state that persists across tool calls.
 :::
 
-:::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` Math Verifier
-:link: math-verifier-server
+:::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` Math Verifier Server
+:link: llm-as-judge
 :link-type: doc
 
 Use an LLM to verify open-ended outputs.

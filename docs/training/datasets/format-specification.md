@@ -12,7 +12,7 @@ Schema definitions for SFT, DPO, and RL training data formats.
 
 ### Schema
 
-```json
+```text
 {
   "messages": [
     {"role": "user", "content": "..."},
@@ -132,7 +132,7 @@ RL training uses Gym directly during the training loop. Data is prepared using `
 
 ### Schema (Input)
 
-```json
+```text
 {
   "responses_create_params": {
     "input": [{"role": "user", "content": "..."}],
@@ -168,7 +168,7 @@ Refer to {doc}`prepare-data` for details on preparing RL training data.
 
 When you collect rollouts with `ng_collect_rollouts`, each rollout contains:
 
-```json
+```text
 {
   "responses_create_params": {...},
   "output": [...],

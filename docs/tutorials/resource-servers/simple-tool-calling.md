@@ -256,7 +256,7 @@ Replace the mock data with real API calls and adjust verification logic.
 ## Learn More
 
 - {doc}`/training/verification/index` — Verification patterns and reward design
-- {doc}`data-extraction-server` — When you need multiple tool calls
+- {doc}`multi-step-interactions` — When you need multiple tool calls
 
 ---
 
@@ -265,15 +265,15 @@ Replace the mock data with real API calls and adjust verification logic.
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Multi-Step Extraction
-:link: data-extraction-server
+:::{grid-item-card} {octicon}`iterations;1.5em;sd-mr-1` Data Extraction Server
+:link: multi-step-interactions
 :link-type: doc
 
 Build a server requiring multiple tool calls to complete tasks.
 :::
 
-:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Stateful Counter
-:link: counter-game-server
+:::{grid-item-card} {octicon}`database;1.5em;sd-mr-1` Counter Game Server
+:link: stateful-sessions
 :link-type: doc
 
 Build a server with session state management.

@@ -312,7 +312,7 @@ Use your code rollouts to train better coders.
 :::
 
 :::{grid-item-card} {octicon}`law;1.5em;sd-mr-1` Combine with LLM Judge
-:link: math-verifier-server
+:link: llm-as-judge
 :link-type: doc
 
 Add LLM verification for partial credit.

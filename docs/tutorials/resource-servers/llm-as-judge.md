@@ -273,8 +273,8 @@ if self._rule_based_check(response, expected) is not None:
 ::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Tester
-:link: code-tester-server
+:::{grid-item-card} {octicon}`code;1.5em;sd-mr-1` Code Testing Server
+:link: code-execution
 :link-type: doc
 
 Verify code by executing tests.
