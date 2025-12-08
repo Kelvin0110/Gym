@@ -9,13 +9,20 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
-
+import re
 import tomlkit
 
 
 class SupportedAgentFrameworks(str, Enum):
     swe_agent = "swe_agent"
     openhands = "openhands"
+
+
+SUPPORTED_DATASETS = [
+    "SWE-Gym/SWE-Gym",
+    "princeton-nlp/SWE-bench_Verified",
+    "nv-internal-1",
+]
 
 
 @dataclass
@@ -126,8 +133,17 @@ class RunOpenHandsAgent:
         )
 
         # Execute SWE-agent command
-        search_path = os.path.join(self.output_dir / "trajectories", "**", f"{data_point['instance_id']}.pred")
-        pred_file = await self._execute_container_command(data_point, swe_agent_cmd, search_path, mode="agent")
+        search_path = os.path.join(
+            self.output_dir / "trajectories",
+            "**",
+            f"{data_point['instance_id']}.pred",
+        )
+        pred_file = await self._execute_container_command(
+            data_point,
+            swe_agent_cmd,
+            search_path,
+            mode="agent",
+        )
 
         with open(pred_file, "r") as f:
             trajectory_dict = json.loads(f.read().strip())
@@ -204,27 +220,30 @@ class RunOpenHandsAgent:
             "chown $uid:$uid /tmp/tmux-$uid || true && "
             "chmod 700 /tmp/tmux-$uid && "
             "tmux -S /tmp/tmux-$uid/default start-server || true && "
-            # Add miniforge bin to PATH to get Python, poetry, tmux, etc. (no conda activation needed)
-            "export PATH=/openhands_setup/miniforge3/bin:$PATH && "
-            "echo 'Using miniforge tools from PATH' && "
             # Use pre-built OpenHands
             "cd /openhands_setup/OpenHands && "
+            "export RUNTIME=local && "
+            "export LOG_LEVEL=DEBUG && "
+            "export LOG_TO_FILE=true && "
+            "export VIRTUAL_ENV=/openhands_setup/OpenHands/.venv && "
+            "export PATH=$PATH:/openhands_setup/OpenHands/.venv/bin && "
             # CRITICAL: Configure poetry to only use the OpenHands venv (ignore external venvs)
             "export POETRY_VIRTUALENVS_IN_PROJECT=true && "
             "export POETRY_VIRTUALENVS_CREATE=false && "
             "export POETRY_VIRTUALENVS_PATH=/openhands_setup/OpenHands && "
-            # Directly activate the existing venv (so 'poetry run' uses it)
-            "export VIRTUAL_ENV=/openhands_setup/OpenHands/.venv && "
-            "export PATH=/openhands_setup/OpenHands/.venv/bin:$PATH && "
+            # Reinstall cryptography inside the container (via poetry's venv) using a compatible wheel
+            # Clean any broken installs to avoid missing-file errors, then force a wheel-only reinstall
+            "site_packages_dir=/openhands_setup/OpenHands/.venv/lib/python3.12/site-packages && "
+            'if [ -d "$site_packages_dir" ]; then '
+            '    find "$site_packages_dir" -maxdepth 1 -name "cryptography*" -exec rm -rf {} +; '
+            "fi && "
+            "poetry run python -m pip install --index-url https://pypi.org/simple "
+            "    --trusted-host pypi.org --trusted-host files.pythonhosted.org "
+            "    --only-binary cryptography --no-deps --force-reinstall 'cryptography==42.0.8' && "
             # disable logging to file in the oh repo
             "export LOG_TO_FILE=false && "
             # set up config files
             f"echo {shlex.quote(config_str)} >config.toml && "
-            # set local runtime & force verbose logs
-            "export RUNTIME=local && "
-            "export LOG_LEVEL=INFO && "
-            "export LOG_TO_FILE=false && "
-            # run the agent
             # f" export EVAL_OUTPUT_DIR={eval_dir_in_openhands} && "
             f"./evaluation/benchmarks/swe_bench/scripts/run_infer.sh "
             f"    llm.model "  # name of llm config section in config.toml
@@ -346,7 +365,7 @@ class RunOpenHandsAgent:
         # Phase 2: Fuzzy Search
         if os.path.exists(container_dir):
             # Create glob patterns for all candidates plus the original instance_id
-            search_terms = [instance_id] + candidate_ids
+            search_terms = [instance_id, instance_id.lower()] + candidate_ids
 
             for term in search_terms:
                 pattern = os.path.join(container_dir, f"*{term}*.sif")
@@ -354,7 +373,10 @@ class RunOpenHandsAgent:
                 if matches:
                     return matches[0]
 
-            print(f"No container found with replacements {replacements} in {container_dir}", flush=True)
+            print(
+                f"No container found with replacements {replacements} in {container_dir}",
+                flush=True,
+            )
         else:
             print(f"Container directory {container_dir} does not exist", flush=True)
 
@@ -403,19 +425,34 @@ class RunOpenHandsAgent:
         if mode == "agent" and self.cfg.agent_framework == SupportedAgentFrameworks.openhands:
             # Mount the entire setup directory at both /openhands_setup and its original absolute path
             # This is needed because poetry and other tools have hardcoded absolute paths
-            print(f"Mounting pre-built OpenHands from: {self.openhands_setup_dir}", flush=True)
+            print(
+                f"Mounting pre-built OpenHands from: {self.openhands_setup_dir}",
+                flush=True,
+            )
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst=/openhands_setup")
             mount_args.append(f"--mount type=bind,src={self.openhands_setup_dir},dst={self.openhands_setup_dir}")
             mount_args.append(f"--mount type=bind,src={dataset_path_to_mount},dst=/root/dataset/data.jsonl")
 
         # Add SWE-bench setup directory mount if available (for evaluation)
-        if mode == "eval":
+        if mode == "eval" and data_point["dataset_name"] != "nv-internal-1":
             # Mount the entire setup directory at both /swebench_setup and its original absolute path
             # This is needed because uv venv has hardcoded absolute paths
-            print(f"Mounting pre-built SWE-bench from: {self.swebench_setup_dir}", flush=True)
+            print(
+                f"Mounting pre-built SWE-bench from: {self.swebench_setup_dir}",
+                flush=True,
+            )
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst=/swebench_setup")
             mount_args.append(f"--mount type=bind,src={self.swebench_setup_dir},dst={self.swebench_setup_dir}")
             mount_args.append(f"--mount type=bind,src={dataset_path_to_mount},dst=/root/dataset/data.jsonl")
+
+        if mode == "eval" and data_point["dataset_name"] == "nv-internal-1":
+            run_script_path = self.output_dir / "run_script.sh"
+            parsing_script_path = self.output_dir / "parsing_script.py"
+            model_patch_path = self.output_dir / "patch.diff"
+
+            mount_args.append(f"--mount type=bind,src={run_script_path},dst=/root/run_script.sh")
+            mount_args.append(f"--mount type=bind,src={parsing_script_path},dst=/root/parsing_script.py")
+            mount_args.append(f"--mount type=bind,src={model_patch_path},dst=/root/patch.diff")
 
         mount_str = " ".join(mount_args)
 
@@ -482,6 +519,95 @@ class RunOpenHandsAgent:
                         f"found {len(pred_files) if 'pred_files' in locals() else 'unknown'}."
                     )
 
+    async def _run_swebench_eval(
+        self,
+        pred_mounted_path: str,
+        data_point: dict[str, Any],
+        agent_run_id: str,
+        instance_dataset_path: str,
+    ):
+        assert self.swebench_setup_dir is not None, "SWE-bench setup directory is not set"
+        assert self.dataset_path is not None, "Dataset path is not set"
+
+        swebench_cmd = (
+            # Use pre-built SWE-bench
+            "cd /swebench_setup/SWE-bench && "
+            # Set UV environment variables to use the mounted portable directories
+            f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
+            f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
+            f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
+            f"ls -lrt /root/dataset && "
+            # Run with clean environment to avoid venv contamination
+            # Use the pre-built venv directly with its absolute path
+            f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
+            f"    --predictions_path {pred_mounted_path} "
+            f"    --instance_ids {data_point['instance_id']} "
+            f"    --timeout {self.cfg.swebench_tests_timeout} "
+            f"    --dataset_name /root/dataset/data.jsonl "
+            f"    --split {data_point['split']} "
+            f"    --run_id {agent_run_id} && "
+            f"cp -r logs/run_evaluation/{agent_run_id} /trajectories_mount/ && "
+            f"rm -rf logs/run_evaluation/{agent_run_id}"
+        )
+
+        # Execute SWE-bench evaluation command
+        search_path = os.path.join(
+            self.output_dir,
+            agent_run_id,
+            "**",
+            f"{data_point['instance_id']}/report.json",
+        )
+
+        report_file = await self._execute_container_command(
+            data_point,
+            swebench_cmd,
+            search_path,
+            mode="eval",
+            timeout=self.cfg.swebench_tests_timeout + 120,
+            dataset_mount_path=instance_dataset_path,
+        )
+
+        return report_file
+
+    async def _run_nv_internal_eval(
+        self, data_point: dict[str, Any], model_patch: str, instance_dataset_path: str
+    ) -> str:
+        nv_internal_eval_cmd = await self.prepare_nv_internal_eval(data_point, model_patch)
+        instance_dict = json.loads(data_point["instance_dict"])
+        f2p = json.loads(instance_dict.get("fail_to_pass_select", instance_dict.get("fail_to_pass", "[]")))
+        p2p = json.loads(instance_dict.get("pass_to_pass_select", instance_dict.get("pass_to_pass", "[]")))
+
+        search_path = os.path.join(
+            self.output_dir,
+            "eval_results",
+            "output.json",
+        )
+        report_file = await self._execute_container_command(
+            data_point,
+            nv_internal_eval_cmd,
+            search_path,
+            mode="eval",
+            timeout=self.cfg.swebench_tests_timeout + 120,
+            dataset_mount_path=instance_dataset_path,
+        )
+
+        with open(report_file, "r+") as f:
+            test_results = json.loads(f.read())
+            is_resolved = self.check_tests_passed(test_results, data_point)
+            report_dict = dict(
+                resolved=is_resolved,
+                patch_exists=True,
+                patch_successfully_applied=is_resolved,
+                metadata={
+                    "test_results": test_results,
+                    "f2p": f2p,
+                    "p2p": p2p,
+                },
+            )
+            f.seek(0)
+            f.write(json.dumps({data_point["instance_id"]: report_dict}, indent=4))
+            return report_file
+
     async def process_single_datapoint(self, data_point: dict[str, Any]):
         self.output_dir = Path(self.cfg.output_file).parent
 
@@ -534,47 +660,22 @@ class RunOpenHandsAgent:
 
             else:
                 # Run full evaluation with streaming output
-                start_time = asyncio.get_running_loop().time()
-                assert self.swebench_setup_dir is not None, "SWE-bench setup directory is not set"
-                assert self.dataset_path is not None, "Dataset path is not set"
-                swebench_cmd = (
-                    # Use pre-built SWE-bench
-                    "cd /swebench_setup/SWE-bench && "
-                    # Set UV environment variables to use the mounted portable directories
-                    f'export UV_INSTALL_DIR="{self.swebench_setup_dir}/uv" && '
-                    f'export UV_PYTHON_INSTALL_DIR="{self.swebench_setup_dir}/python" && '
-                    f'export PATH="{self.swebench_setup_dir}/uv/bin:$PATH" && '
-                    f"ls -lrt /root/dataset && "
-                    # Run with clean environment to avoid venv contamination
-                    # Use the pre-built venv directly with its absolute path
-                    f"env -u VIRTUAL_ENV {self.swebench_setup_dir}/SWE-bench/venv/bin/python -m swebench.harness.run_local_evaluation "
-                    f"    --predictions_path {pred_mounted_path} "
-                    f"    --instance_ids {data_point['instance_id']} "
-                    f"    --timeout {self.cfg.swebench_tests_timeout} "
-                    f"    --dataset_name /root/dataset/data.jsonl "
-                    f"    --split {data_point['split']} "
-                    f"    --run_id {agent_run_id} && "
-                    f"cp -r logs/run_evaluation/{agent_run_id} /trajectories_mount/ && "
-                    f"rm -rf logs/run_evaluation/{agent_run_id}"
-                )
-
-                # Execute SWE-bench evaluation command
-                search_path = os.path.join(
-                    self.output_dir,
-                    agent_run_id,
-                    "**",
-                    f"{data_point['instance_id']}/report.json",
-                )
                 # TODO: should we fail on errors here? Seems that json isn't always generated
                 try:
-                    report_file = await self._execute_container_command(
-                        data_point,
-                        swebench_cmd,
-                        search_path,
-                        mode="eval",
-                        timeout=self.cfg.swebench_tests_timeout + 120,
-                        dataset_mount_path=instance_dataset_path,
-                    )
+                    start_time = asyncio.get_running_loop().time()
+                    if data_point["dataset_name"] == "nv-internal-1":
+                        report_file = await self._run_nv_internal_eval(
+                            data_point,
+                            trajectory_dict["model_patch"],
+                            instance_dataset_path,
+                        )
+                    else:
+                        report_file = await self._run_swebench_eval(
+                            pred_mounted_path,
+                            data_point,
+                            agent_run_id,
+                            instance_dataset_path,
+                        )
                     evaluation_time = asyncio.get_running_loop().time() - start_time
                 except ValueError:
                     print(
@@ -606,4 +707,116 @@ class RunOpenHandsAgent:
 
             return output_dict
         finally:
-            self._cleanup_instance_dataset(instance_dataset_path)
+            # self._cleanup_instance_dataset(instance_dataset_path)
+            pass
+
+    async def prepare_nv_internal_eval(self, data_point: dict[str, Any], model_patch: str):
+        instance_dict = json.loads(data_point["instance_dict"])
+        base_dockerfile = instance_dict.get("base_dockerfile", "")
+        instance_dockerfile = instance_dict.get("instance_dockerfile", "")
+
+        env_lines = []
+        for line in (base_dockerfile + "\n" + instance_dockerfile).split("\n"):
+            line = line.strip()
+            if line.startswith("ENV "):
+                # Convert ENV KEY=VALUE or ENV KEY VALUE to export KEY="VALUE"
+                export_line = line.replace("ENV ", "export ", 1)
+                # Handle both Docker ENV formats:
+                # 1. ENV KEY=VALUE (with equals)
+                # 2. ENV KEY VALUE (space-separated)
+                if "=" in export_line:
+                    # Format: export KEY=VALUE -> normalize spaces around =
+                    export_line = re.sub(r"\s*=\s*", "=", export_line)
+                else:
+                    # Format: export KEY VALUE -> convert to export KEY="VALUE"
+                    parts = export_line.split(None, 2)  # Split into at most 3 parts
+                    if len(parts) >= 3:  # export KEY VALUE
+                        key = parts[1]
+                        value = parts[2]
+                        export_line = f'export {key}="{value}"'
+
+                env_lines.append(export_line)
+
+        env_exports = "\n".join(env_lines)
+
+        # Get repo setup command
+        repo_cmd = instance_dict.get("before_repo_set_cmd", "").strip()
+        if repo_cmd:
+            repo_cmd = repo_cmd.split("\n")[-1]
+
+        # Get test files
+        test_files_str = instance_dict.get("selected_test_files_to_run", "[]")
+        if isinstance(test_files_str, str):
+            test_files = ",".join(eval(test_files_str))
+        else:
+            test_files = ",".join(test_files_str)
+
+        run_script = instance_dict["run_script.sh"]
+        parsing_script = instance_dict["parsing_script.py"]
+        run_script_path = self.output_dir / "run_script.sh"
+        parsing_script_path = self.output_dir / "parsing_script.py"
+        model_patch_path = self.output_dir / "patch.diff"
+        with open(model_patch_path, "w") as f:
+            # Add a newline to the end of the patch if it doesn't have one
+            model_patch = model_patch + "\n" if not model_patch.endswith("\n") else model_patch
+            f.write(model_patch)
+        with open(run_script_path, "w") as f:
+            f.write(run_script)
+        with open(parsing_script_path, "w") as f:
+            f.write(parsing_script)
+
+        cmd = f"""#!/bin/bash
+set -e
+
+{env_exports}
+
+# Apply patch
+cd /app
+git reset --hard {instance_dict.get("base_commit", "")}
+git checkout {instance_dict.get("base_commit", "")}
+git apply --ignore-space-change --ignore-whitespace -v /root/patch.diff
+
+# Setup repository
+{repo_cmd}
+
+# Run tests
+bash /root/run_script.sh {test_files} > /root/stdout.log 2> /root/stderr.log || true
+
+# Parse results
+python /root/parsing_script.py /root/stdout.log /root/stderr.log /root/output.json
+
+# Move outputs to the mounted directory
+mkdir -p /trajectories_mount/eval_results
+cp /root/output.json /trajectories_mount/eval_results/output.json
+"""
+
+        return cmd
+
+    def check_tests_passed(self, output: dict[str, Any], instance_dict: dict[str, Any]) -> bool:
+        if not output:
+            return False
+
+        # Get passed test names
+        passed_tests = {test["name"] for test in output.get("tests", []) if test.get("status") == "PASSED"}
+
+        # Get required test sets
+        fail_to_pass_str = instance_dict.get("fail_to_pass_select", instance_dict.get("fail_to_pass", "[]"))
+        pass_to_pass_str = instance_dict.get("pass_to_pass_select", instance_dict.get("pass_to_pass", "[]"))
+
+        if isinstance(fail_to_pass_str, str):
+            fail_to_pass = set(json.loads(fail_to_pass_str))
+        else:
+            fail_to_pass = set(fail_to_pass_str)
+
+        if isinstance(pass_to_pass_str, str):
+            pass_to_pass = set(json.loads(pass_to_pass_str))
+        else:
+            pass_to_pass = set(pass_to_pass_str)
+
+        required_tests = fail_to_pass.union(pass_to_pass)
+
+        # Check if all required tests passed
+        if len(passed_tests) == 0 or len(required_tests) == 0:
+            return False
+
+        return required_tests <= passed_tests
