@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1877,6 +1877,7 @@ docs = [
     { name = "sphinx" },
     { name = "sphinx-autobuild" },
     { name = "sphinx-autodoc2" },
+    { name = "sphinx-click" },
     { name = "sphinx-copybutton" },
     { name = "sphinx-design" },
     { name = "sphinxcontrib-mermaid" },
@@ -1921,6 +1922,7 @@ docs = [
     { name = "sphinx", specifier = ">=8.2.3" },
     { name = "sphinx-autobuild", specifier = ">=2025.8.25" },
     { name = "sphinx-autodoc2", specifier = ">=0.5.0" },
+    { name = "sphinx-click", specifier = ">=6.0.0" },
     { name = "sphinx-copybutton", specifier = ">=0.5.2" },
     { name = "sphinx-design", specifier = ">=0.6.1" },
     { name = "sphinxcontrib-mermaid", specifier = ">=1.0.0" },
@@ -3212,6 +3214,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/17/5f/5350046d1aa1a56b063ae08b9ad871025335c9d55fe2372896ea48711da9/sphinx_autodoc2-0.5.0.tar.gz", hash = "sha256:7d76044aa81d6af74447080182b6868c7eb066874edc835e8ddf810735b6565a", size = 115077, upload-time = "2023-11-27T07:27:51.407Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/19/e6/48d47961bbdae755ba9c17dfc65d89356312c67668dcb36c87cfadfa1964/sphinx_autodoc2-0.5.0-py3-none-any.whl", hash = "sha256:e867013b1512f9d6d7e6f6799f8b537d6884462acd118ef361f3f619a60b5c9e", size = 43385, upload-time = "2023-11-27T07:27:49.929Z" },
+]
+
+[[package]]
+name = "sphinx-click"
+version = "6.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "docutils" },
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9a/ed/a9767cd1b8b7fbdf260a89d5c8c86e20e3536b9878579e5ab7965a291e55/sphinx_click-6.2.0.tar.gz", hash = "sha256:fc78b4154a4e5159462e36de55b8643747da6cda86b3b52a8bb62289e603776c", size = 27035, upload-time = "2025-12-04T19:33:05.437Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/bd/cb244695f67f77b0a36200ce1670fc42a6fe2770847e870daab99cc2b177/sphinx_click-6.2.0-py3-none-any.whl", hash = "sha256:1fb1851cb4f2c286d43cbcd57f55db6ef5a8d208bfc3370f19adde232e5803d7", size = 8939, upload-time = "2025-12-04T19:33:04.037Z" },
 ]
 
 [[package]]

@@ -161,6 +161,7 @@ docs = [
     "sphinx-autobuild>=2025.8.25",    # For live doc serving while editing docs
     "sphinx-autodoc2>=0.5.0",         # For documenting Python API
     "sphinx-copybutton>=0.5.2",       # Adds a copy button for code blocks
+    "sphinx-click>=6.0.0",            # For auto-generating CLI documentation
     "myst-parser>=4.0.1",             # For our markdown docs
     "nvidia-sphinx-theme>=0.0.8",     # Our NVIDIA theme
     "sphinxcontrib-mermaid>=1.0.0",   # For mermaid diagrams
@@ -227,61 +228,9 @@ Download = "https://github.com/NVIDIA-NeMo/NeMo-Gym/releases"
 Homepage = "https://github.com/NVIDIA-NeMo/NeMo-Gym"
 
 [project.scripts]
-# Run/test scripts for servers.
-nemo_gym_run = "nemo_gym.cli:run"
-ng_run = "nemo_gym.cli:run"
-nemo_gym_test = "nemo_gym.cli:test"
-ng_test = "nemo_gym.cli:test"
-nemo_gym_test_all = "nemo_gym.cli:test_all"
-ng_test_all = "nemo_gym.cli:test_all"
-
-# Dataset viewing
-nemo_gym_viewer = "nemo_gym.dataset_viewer:main"
-ng_viewer = "nemo_gym.dataset_viewer:main"
-
-# Development convenience aliases.
-nemo_gym_dev_test = "nemo_gym.cli:dev_test"
-ng_dev_test = "nemo_gym.cli:dev_test"
-nemo_gym_init_resources_server = "nemo_gym.cli:init_resources_server"
-ng_init_resources_server = "nemo_gym.cli:init_resources_server"
-
-# Rollout collection
-nemo_gym_collect_rollouts = "nemo_gym.rollout_collection:collect_rollouts"
-ng_collect_rollouts = "nemo_gym.rollout_collection:collect_rollouts"
-
-# Dataset management
-nemo_gym_upload_dataset_to_gitlab = "nemo_gym.gitlab_utils:upload_jsonl_dataset_cli"
-ng_upload_dataset_to_gitlab = "nemo_gym.gitlab_utils:upload_jsonl_dataset_cli"
-nemo_gym_download_dataset_from_gitlab = "nemo_gym.gitlab_utils:download_jsonl_dataset_cli"
-ng_download_dataset_from_gitlab = "nemo_gym.gitlab_utils:download_jsonl_dataset_cli"
-nemo_gym_prepare_data = "nemo_gym.train_data_utils:prepare_data"
-ng_prepare_data = "nemo_gym.train_data_utils:prepare_data"
-
-# HF dataset upload and download
-nemo_gym_upload_dataset_to_hf = "nemo_gym.dataset_orchestrator:upload_jsonl_dataset_to_hf_cli"
-ng_upload_dataset_to_hf = "nemo_gym.dataset_orchestrator:upload_jsonl_dataset_to_hf_cli"
-nemo_gym_download_dataset_from_hf = "nemo_gym.dataset_orchestrator:download_jsonl_dataset_from_hf_cli"
-ng_download_dataset_from_hf = "nemo_gym.dataset_orchestrator:download_jsonl_dataset_from_hf_cli"
-
-# HF -> Gitlab (upload then delete)
-nemo_gym_gitlab_to_hf_dataset = "nemo_gym.dataset_orchestrator:upload_jsonl_dataset_to_hf_and_delete_gitlab_cli"
-ng_gitlab_to_hf_dataset = "nemo_gym.dataset_orchestrator:upload_jsonl_dataset_to_hf_and_delete_gitlab_cli"
-
-# Manually delete from Gitlab
-nemo_gym_delete_dataset_from_gitlab = "nemo_gym.dataset_orchestrator:delete_jsonl_dataset_from_gitlab_cli"
-ng_delete_dataset_from_gitlab = "nemo_gym.dataset_orchestrator:delete_jsonl_dataset_from_gitlab_cli"
-
-# Configuration utils
-nemo_gym_dump_config = "nemo_gym.cli:dump_config"
-ng_dump_config = "nemo_gym.cli:dump_config"
-
-# Display help
-nemo_gym_help = "nemo_gym.cli:display_help"
-ng_help = "nemo_gym.cli:display_help"
-
-# Display version
-nemo_gym_version = "nemo_gym.cli:version"
-ng_version = "nemo_gym.cli:version"
+# Unified CLI
+ng = "nemo_gym.cli_new:main"
+nemo_gym = "nemo_gym.cli_new:main"
 
 
 [tool.setuptools.packages.find]

@@ -41,6 +41,7 @@ extensions = [
     "sphinx.ext.napoleon",  # For google style docstrings
     "sphinx_copybutton",  # For copy button in code blocks
     "sphinx_design",  # For grid layouts and card components
+    "sphinx_click",  # For auto-generating CLI documentation from Click commands
 ]
 
 templates_path = ["_templates"]
