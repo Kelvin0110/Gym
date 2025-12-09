@@ -1,10 +1,11 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,10 +24,11 @@ from openai.types.responses.response_input_param import (
     ResponseInputItemParam,
     ResponseReasoningItemParam,
 )
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict, Field
 from tqdm.auto import tqdm
 
 from nemo_gym.base_resources_server import BaseVerifyResponse
+from nemo_gym.config_types import BaseNeMoGymCLIConfig
 from nemo_gym.server_utils import get_global_config_dict
 from nemo_gym.train_data_utils import (
     DatasetMetrics,
@@ -203,8 +205,18 @@ def extra_info_to_messages(d: DatasetViewerVerifyResponse) -> List[ChatMessage]:
     return messages
 
 
-class JsonlDatasetViewerConfig(BaseModel):
-    jsonl_fpath: str
+class JsonlDatasetViewerConfig(BaseNeMoGymCLIConfig):
+    """
+    Launch a Gradio interface to view and explore dataset rollouts interactively.
+
+    Examples:
+
+    ```bash
+    ng_viewer +jsonl_fpath=weather_rollouts.jsonl
+    ```
+    """
+
+    jsonl_fpath: str = Field(description="Filepath to a local jsonl file to view.")
 
 
 def get_aggregate_metrics(data: List[DatasetViewerVerifyResponse]) -> Dict[str, Any]:

@@ -1,10 +1,11 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,11 +32,21 @@ import ray
 import requests
 import uvicorn
 import yappi
-from aiohttp import ClientResponse, ClientSession, ClientTimeout, DummyCookieJar, ServerDisconnectedError, TCPConnector
+from aiohttp import (
+    ClientResponse,
+    ClientResponseError,
+    ClientSession,
+    ClientTimeout,
+    DummyCookieJar,
+    ServerDisconnectedError,
+    TCPConnector,
+)
 from aiohttp.client import _RequestOptions
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pydantic import BaseModel, ConfigDict
 from requests.exceptions import ConnectionError
 from starlette.middleware.sessions import SessionMiddleware
@@ -56,11 +67,14 @@ from nemo_gym.global_config import (
 
 
 _GLOBAL_AIOHTTP_CLIENT: Union[None, ClientSession] = None
+_GLOBAL_AIOHTTP_CLIENT_REQUEST_DEBUG: bool = False
 
 
 class GlobalAIOHTTPAsyncClientConfig(BaseModel):
     global_aiohttp_connector_limit: int = 100 * 1024
     global_aiohttp_connector_limit_per_host: int = 1024
+
+    global_aiohttp_client_request_debug: bool = False
 
 
 def get_global_aiohttp_client(
@@ -98,6 +112,9 @@ def set_global_aiohttp_client(cfg: GlobalAIOHTTPAsyncClientConfig) -> ClientSess
     global _GLOBAL_AIOHTTP_CLIENT
     _GLOBAL_AIOHTTP_CLIENT = client_session
 
+    global _GLOBAL_AIOHTTP_CLIENT_REQUEST_DEBUG
+    _GLOBAL_AIOHTTP_CLIENT_REQUEST_DEBUG = cfg.global_aiohttp_client_request_debug
+
     return _GLOBAL_AIOHTTP_CLIENT
 
 
@@ -133,6 +150,9 @@ async def request(
         except ServerDisconnectedError:
             await asyncio.sleep(0.5)
         except Exception as e:
+            if _GLOBAL_AIOHTTP_CLIENT_REQUEST_DEBUG:
+                print_exc()
+
             # Don't increment internal since we know we are ok. If we are not, the head server will shut everything down anyways.
             if not _internal:
                 print(
@@ -153,7 +173,13 @@ async def raise_for_status(response: ClientResponse) -> None:  # pragma: no cove
         content = await response.content.read()
         print(f"""Request info: {response.request_info}
 Response content: {content}""")
-        response.raise_for_status()
+
+        try:
+            response.raise_for_status()
+        except ClientResponseError as e:
+            # Set the response content here so we have access to it down the line.
+            e.response_content = content
+            raise e
 
 
 DEFAULT_HEAD_SERVER_PORT = 11000
@@ -311,19 +337,33 @@ class UvicornLoggingConfig(BaseModel):
 
 
 def initialize_ray() -> None:
+    """
+    Initialize ray cluster in a process.
+    We store the Ray address in the global config dict so that child processes can connect to it.
+    This avoids the need to start a new Ray cluster in each child process.
+    Note: This function will modify the global config dict - update `ray_head_node_address`
+    """
+
     if ray.is_initialized():
         print("Ray already initialized")
         return
 
     global_config_dict = get_global_config_dict()
     ray_head_node_address = global_config_dict.get("ray_head_node_address")
+    ray_init_kwargs = dict(ignore_reinit_error=True)
 
-    if ray_head_node_address is not None:
+    if ray_head_node_address:
         print(f"Connecting to Ray cluster at specified address: {ray_head_node_address}")
-        ray.init(address=ray_head_node_address, ignore_reinit_error=True)
+        ray_init_kwargs["address"] = ray_head_node_address
     else:
         print("Starting Ray cluster...")
-        ray.init(ignore_reinit_error=True)
+
+    ray.init(**ray_init_kwargs)
+
+    if not ray_head_node_address:
+        with open_dict(global_config_dict):
+            global_config_dict["ray_head_node_address"] = ray.get_runtime_context().gcs_address
+        print(f"Started Ray cluster at {global_config_dict['ray_head_node_address']}")
 
 
 class SimpleServer(BaseServer):
@@ -464,6 +504,15 @@ class SimpleServer(BaseServer):
         server.set_ulimit()
         server.setup_exception_middleware(app)
 
+        @app.exception_handler(RequestValidationError)
+        async def validation_exception_handler(request: Request, exc):
+            print(
+                f"""Hit validation exception! Errors: {json.dumps(exc.errors(), indent=4)}
+Full body: {json.dumps(exc.body, indent=4)}
+"""
+            )
+            return await request_validation_exception_handler(request, exc)
+
         profiling_config = ProfilingMiddlewareConfig.model_validate(global_config_dict)
         if profiling_config.profiling_enabled:
             server.setup_profiling(app, profiling_config)
@@ -487,6 +536,8 @@ class SimpleServer(BaseServer):
             app,
             host=server.config.host,
             port=server.config.port,
+            # We add a very small graceful shutdown timeout so when we shutdown we cancel all inflight requests and there are no lingering requests (requests are cancelled)
+            timeout_graceful_shutdown=0.5,
         )
 
 

@@ -1,10 +1,11 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Set, Tuple, Union
 
+import rich
 from omegaconf import DictConfig, OmegaConf
 from pydantic import (
     BaseModel,
@@ -23,6 +25,76 @@ from pydantic import (
     ValidationError,
     model_validator,
 )
+from pydantic_core import PydanticUndefined
+from rich.markdown import Markdown
+from rich.text import Text
+
+
+########################################
+# Base CLI configs
+########################################
+
+
+class BaseNeMoGymCLIConfig(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def pre_process(cls, data):
+        if not (data.get("h") or data.get("help")):
+            return data
+
+        rich.print(f"""Displaying help for [bold]{cls.__name__}[/bold]
+""")
+        # We use __doc__ directly here since inspect.getdoc will inherit the doc from parent classes.
+        class_doc = cls.__doc__
+        if class_doc:
+            rich.print(f"""[bold]Description[/bold]
+-----------
+{class_doc.strip()}
+""")
+            # Render docstring as Markdown
+            md = Markdown(class_doc.strip())
+            rich.print(md)
+
+        fields = cls.model_fields.items()
+        if fields:
+            rich.print("""[bold]Parameters[/bold]
+----------""")
+
+            prefixes: List[Text] = []
+            suffixes: List[Text] = []
+            for field_name, field in fields:
+                description_str = field.description if field.description else ""
+
+                # Not sure if there is a better way to get this annotation_str, e.g. using typing.get_args or typing.get_origin
+                annotation_str = (
+                    field.annotation.__name__ if isinstance(field.annotation, type) else str(field.annotation)
+                )
+                annotation_str = annotation_str.replace("typing.", "")
+
+                # Add default value information if available
+                if field.default is not PydanticUndefined and field.default is not None:
+                    default_str = f" [default: {field.default}]"
+                    description_str = description_str + default_str if description_str else default_str.strip()
+                elif field.default_factory is not None:
+                    default_str = " [default: <factory>]"
+                    description_str = description_str + default_str if description_str else default_str.strip()
+                elif field.default is PydanticUndefined and field.is_required():
+                    default_str = " [required]"
+                    description_str = description_str + default_str if description_str else default_str.strip()
+
+                prefixes.append(Text.from_markup(f"- [blue]{field_name}[/blue] [yellow]({annotation_str})[/yellow]"))
+                suffixes.append(description_str)
+
+            max_prefix_length = max(map(len, prefixes))
+            ljust_length = max_prefix_length + 3
+            for prefix, suffix in zip(prefixes, suffixes):
+                prefix.align("left", ljust_length)
+                rich.print(prefix + suffix)
+        else:
+            print("There are no arguments to this CLI command!")
+
+        # Exit after help is printed.
+        exit()
 
 
 ########################################
@@ -63,10 +135,23 @@ def is_server_ref(config_dict: DictConfig) -> Optional[ServerRef]:
 ########################################
 
 
-class UploadJsonlDatasetGitlabConfig(BaseModel):
-    dataset_name: str
-    version: str  # Must be x.x.x
-    input_jsonl_fpath: str
+class UploadJsonlDatasetGitlabConfig(BaseNeMoGymCLIConfig):
+    """
+    Upload a local jsonl dataset artifact to Gitlab.
+
+    Examples:
+
+    ```bash
+    ng_upload_dataset_to_gitlab \
+        +dataset_name=example_multi_step \
+        +version=0.0.1 \
+        +input_jsonl_fpath=data/train.jsonl
+    ```
+    """
+
+    dataset_name: str = Field(description="The dataset name.")
+    version: str = Field(description="The version of this dataset. Must be in the format `x.x.x`.")
+    input_jsonl_fpath: str = Field(description="Path to the jsonl file to upload.")
 
 
 class JsonlDatasetGitlabIdentifer(BaseModel):
@@ -75,8 +160,140 @@ class JsonlDatasetGitlabIdentifer(BaseModel):
     artifact_fpath: str
 
 
-class DownloadJsonlDatasetGitlabConfig(JsonlDatasetGitlabIdentifer):
-    output_fpath: str
+class DownloadJsonlDatasetGitlabConfig(JsonlDatasetGitlabIdentifer, BaseNeMoGymCLIConfig):
+    """
+    Download a JSONL dataset from GitLab Model Registry.
+
+    Examples:
+
+    ```bash
+    ng_download_dataset_from_gitlab \
+        +dataset_name=example_multi_step \
+        +version=0.0.1 \
+        +artifact_fpath=train.jsonl \
+        +output_fpath=data/train.jsonl
+    ```
+    """
+
+    dataset_name: str = Field(description="The dataset name.")
+    version: str = Field(description="The version of this dataset. Must be in the format `x.x.x`.")
+    artifact_fpath: str = Field(description="The filepath to the artifact to download.")
+    output_fpath: str = Field(description="Where to save the downloaded dataset.")
+
+
+class DeleteJsonlDatasetGitlabConfig(BaseNeMoGymCLIConfig):
+    """
+    Delete a dataset from GitLab Model Registry (prompts for confirmation).
+
+    Examples:
+
+    ```bash
+    ng_delete_dataset_from_gitlab +dataset_name=old_dataset
+    ```
+    """
+
+    dataset_name: str = Field(description="Name of the dataset to delete from GitLab.")
+
+
+class BaseUploadJsonlDatasetHuggingFaceConfig(BaseNeMoGymCLIConfig):
+    """
+    Upload a JSONL dataset to HuggingFace Hub with automatic naming based on domain and resource server.
+
+    Examples:
+
+    ```bash
+    resource_config_path="resources_servers/example_multi_step/configs/example_multi_step.yaml"
+    ng_upload_dataset_to_hf \
+        +dataset_name=my_dataset \
+        +input_jsonl_fpath=data/train.jsonl \
+        +resource_config_path=${resource_config_path}
+    ```
+    """
+
+    hf_token: str = Field(description="HuggingFace API token for authentication.")
+    hf_organization: str = Field(description="HuggingFace organization name where dataset will be uploaded.")
+    hf_collection_name: str = Field(description="HuggingFace collection name for organizing datasets.")
+    hf_collection_slug: str = Field(description="Alphanumeric collection slug found at the end of collection URI.")
+    dataset_name: str = Field(
+        description="Name of the dataset (will be combined with domain and resource server name)."
+    )
+    input_jsonl_fpath: str = Field(description="Path to the local jsonl file to upload.")
+    resource_config_path: str = Field(
+        description="Path to resource server config file (used to extract domain for naming convention)."
+    )
+    hf_dataset_prefix: str = Field(
+        default="NeMo-Gym", description="Prefix prepended to dataset name (default: 'NeMo-Gym')."
+    )
+
+
+class UploadJsonlDatasetHuggingFaceConfig(BaseUploadJsonlDatasetHuggingFaceConfig):
+    """
+    Upload a JSONL dataset to HuggingFace Hub and automatically delete from GitLab after successful upload.
+
+    This command always deletes the dataset from GitLab after uploading to HuggingFace.
+    Use `ng_upload_dataset_to_hf` if you want optional deletion control.
+
+    Examples:
+
+    ```bash
+    resource_config_path="resources_servers/example_multi_step/configs/example_multi_step.yaml"
+    ng_gitlab_to_hf_dataset \
+        +dataset_name=my_dataset \
+        +input_jsonl_fpath=data/train.jsonl \
+        +resource_config_path=${resource_config_path}
+    ```
+    """
+
+    forbidden_fields: ClassVar[Set[str]] = {"delete_from_gitlab"}
+
+    @model_validator(mode="before")
+    def check_forbidden_fields(cls, data):
+        if isinstance(data, dict) or hasattr(data, "keys"):
+            forbidden = cls.forbidden_fields.intersection(set(data.keys()))
+            if forbidden:
+                raise ValueError(f"Forbidden fields present: {forbidden}")
+        return data
+
+
+class UploadJsonlDatasetHuggingFaceMaybeDeleteConfig(BaseUploadJsonlDatasetHuggingFaceConfig):
+    """
+    Upload a JSONL dataset to HuggingFace Hub with optional GitLab deletion after successful upload.
+
+    Examples:
+
+    ```bash
+    resource_config_path="resources_servers/example_multi_step/configs/example_multi_step.yaml"
+    ng_upload_dataset_to_hf \
+        +dataset_name=my_dataset \
+        +input_jsonl_fpath=data/train.jsonl \
+        +resource_config_path=${resource_config_path} \
+        +delete_from_gitlab=true
+    ```
+    """
+
+    delete_from_gitlab: Optional[bool] = Field(
+        default=False, description="Delete the dataset from GitLab after successful upload to HuggingFace."
+    )
+
+
+class DownloadJsonlDatasetHuggingFaceConfig(BaseNeMoGymCLIConfig):
+    """
+    Download a JSONL dataset from HuggingFace Hub to local filesystem.
+
+    Examples:
+
+    ```bash
+    ng_download_dataset_from_hf \
+        +repo_id=NVIDIA/NeMo-Gym-Math-example_multi_step-v1 \
+        +artifact_fpath=train.jsonl \
+        +output_fpath=data/train.jsonl
+    ```
+    """
+
+    output_fpath: str = Field(description="Local file path where the downloaded dataset will be saved.")
+    hf_token: str = Field(description="HuggingFace API token for authentication.")
+    artifact_fpath: str = Field(description="Name of the artifact file to download from the repository.")
+    repo_id: str = Field(description="HuggingFace repository ID in format 'organization/dataset-name'.")
 
 
 DatasetType = Union[Literal["train"], Literal["validation"], Literal["example"]]
@@ -96,6 +313,7 @@ class DatasetConfig(BaseModel):
             Literal["Creative Commons Attribution 4.0 International"],
             Literal["Creative Commons Attribution-ShareAlike 4.0 International"],
             Literal["TBD"],
+            Literal["MIT"],
         ]
     ] = None
 
@@ -122,6 +340,7 @@ class Domain(str, Enum):
     LONG_CONTEXT = "long_context"
     SAFETY = "safety"
     GAMES = "games"
+    E2E = "e2e"
     OTHER = "other"
 
 
@@ -133,17 +352,6 @@ class BaseServerConfig(BaseModel):
 class BaseRunServerConfig(BaseServerConfig):
     entrypoint: str
     domain: Optional[Domain] = None  # Only required for resource servers
-
-    @model_validator(mode="after")
-    def validate_domain(self) -> "BaseRunServerTypeConfig":
-        name = getattr(self, "name", None)
-        if name and self.name.endswith("_resources_server"):
-            assert self.domain is not None, "A domain is required for resource servers."
-        else:
-            if hasattr(self, "domain"):
-                del self.domain
-
-        return self
 
 
 class BaseRunServerInstanceConfig(BaseRunServerConfig):
@@ -211,6 +419,17 @@ class BaseServerInstanceConfig(BaseServerTypeConfig):
     name: str
     server_type_config_dict: DictConfig = Field(exclude=True)
 
+    @model_validator(mode="after")
+    def validate_domain_for_resource_server(self) -> "BaseServerInstanceConfig":
+        config = self.get_inner_run_server_config()
+        if self.SERVER_TYPE == "resources_servers":
+            assert config.domain is not None, "A domain is required for resource servers."
+        else:
+            # Remove domain field from Model and Agent servers.
+            if hasattr(config, "domain"):
+                del config.domain
+        return self
+
     def get_server_ref(self) -> ServerRef:
         return is_server_ref({"type": self.SERVER_TYPE, "name": self.name})
 
@@ -246,9 +465,12 @@ ServerInstanceConfig = Union[
 ServerInstanceConfigTypeAdapter = TypeAdapter(ServerInstanceConfig)
 
 
-def maybe_get_server_instance_config(name: str, server_type_config_dict: Any) -> Optional[ServerInstanceConfig]:
+def maybe_get_server_instance_config(
+    name: str, server_type_config_dict: Any
+) -> Tuple[Optional[ServerInstanceConfig], Optional[ValidationError]]:
+    """Returns ServerInstanceConfig if a valid server, otherwise None with error details"""
     if not isinstance(server_type_config_dict, DictConfig):
-        return None
+        return None, None
 
     maybe_server_instance_config_dict = {
         "name": name,
@@ -256,9 +478,36 @@ def maybe_get_server_instance_config(name: str, server_type_config_dict: Any) ->
         **OmegaConf.to_container(server_type_config_dict),
     }
     try:
-        return ServerInstanceConfigTypeAdapter.validate_python(maybe_server_instance_config_dict)
-    except ValidationError:
-        return None
+        config = ServerInstanceConfigTypeAdapter.validate_python(maybe_server_instance_config_dict)
+        return config, None
+    except ValidationError as e:
+        return None, e
+
+
+def is_almost_server(server_type_config_dict: Any) -> bool:
+    """Detects if a config looks like a server but might fail validation."""
+    from nemo_gym.global_config import ENTRYPOINT_KEY_NAME
+
+    if not isinstance(server_type_config_dict, DictConfig):
+        return False
+
+    # Check for server type.
+    server_type_keys = ["responses_api_models", "resources_servers", "responses_api_agents"]
+    has_server_type = any(key in server_type_config_dict for key in server_type_keys)
+
+    if not has_server_type:
+        return False
+
+    # Check for entrypoint presence.
+    for server_type_key in server_type_keys:
+        if server_type_key in server_type_config_dict:
+            inner_dict = server_type_config_dict[server_type_key]
+            if isinstance(inner_dict, DictConfig):
+                for config in inner_dict.values():
+                    if isinstance(config, DictConfig) and ENTRYPOINT_KEY_NAME in config:
+                        return True
+
+    return False
 
 
 ########################################

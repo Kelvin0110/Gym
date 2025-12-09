@@ -1,10 +1,11 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -200,6 +201,12 @@ class TestServerUtils:
 
         ray_init_mock = self._mock_ray_init(monkeypatch)
 
+        ray_runtime_context_mock = MagicMock()
+        ray_runtime_context_mock.gcs_address = "ray://mock-address:10001"
+        ray_get_runtime_context_mock = MagicMock()
+        ray_get_runtime_context_mock.return_value = ray_runtime_context_mock
+        monkeypatch.setattr(nemo_gym.server_utils.ray, "get_runtime_context", ray_get_runtime_context_mock)
+
         # Mock global config dict without ray_head_node_address
         global_config_dict = DictConfig({"k": "v"})
         get_global_config_dict_mock = MagicMock()
@@ -211,3 +218,4 @@ class TestServerUtils:
         ray_is_initialized_mock.assert_called_once()
         get_global_config_dict_mock.assert_called_once()
         ray_init_mock.assert_called_once_with(ignore_reinit_error=True)
+        ray_get_runtime_context_mock.assert_called_once()
