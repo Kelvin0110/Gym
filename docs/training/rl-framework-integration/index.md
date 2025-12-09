@@ -1,3 +1,5 @@
+(training-framework-integration)=
+
 # Training framework integration
 
 Implement NeMo Gym integration into a new training framework. This is only for expert users that cannot use existing training framework integrations with Gym and need to implement their own.

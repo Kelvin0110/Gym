@@ -160,8 +160,17 @@ tutorials/index.md
 tutorials/creating-resource-server
 tutorials/offline-training-w-rollouts
 tutorials/rl-training-with-nemo-rl
-tutorials/training-framework-integration/index.md
 how-to-faq.md
+```
+
+
+```{toctree}
+:caption: Training
+:hidden:
+:maxdepth: 1
+
+training/index
+training/rl-framework-integration/index.md
 ```
 
 
