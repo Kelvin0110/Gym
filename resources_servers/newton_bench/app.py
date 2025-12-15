@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel, Field
 
 from nemo_gym.base_resources_server import (
@@ -31,12 +31,38 @@ from nemo_gym.base_resources_server import (
 )
 from nemo_gym.server_utils import SESSION_ID_KEY
 
-NEWTON_BENCH_PATH = Path(__file__).parent.parent.parent / "NewtonBench"
+import importlib
+import inspect
+import logging
+import yaml
+
+from resources_servers.newton_bench.schemas import MODULE_REQUEST_CLASSES_MAPPING
+
+REPO_ROOT = Path(__file__).parent.parent.parent
+NEWTON_BENCH_PATH = REPO_ROOT / "NewtonBench"
 if str(NEWTON_BENCH_PATH) not in sys.path:
     sys.path.insert(0, str(NEWTON_BENCH_PATH))
 
-from modules.m0_gravity import core as gravity_core
-from modules.m0_gravity.prompts import PARAM_DESCRIPTION
+_loaded_modules: dict = {}
+
+def _load_module(module_name: str):
+    if not module_name:
+        raise ImportError("No module_name provided to _load_module")
+    if module_name in _loaded_modules:
+        return _loaded_modules[module_name]
+    try:
+        core = importlib.import_module(f"modules.{module_name}.core")
+    except Exception as e:
+        raise ImportError(f"Unable to import core for NewtonBench module '{module_name}': {e}") from e
+    param_description = None
+    try:
+        prompts_mod = importlib.import_module(f"modules.{module_name}.prompts")
+        param_description = getattr(prompts_mod, "PARAM_DESCRIPTION", None)
+    except Exception:
+        # It's okay if prompts or PARAM_DESCRIPTION are missing for some modules
+        param_description = None
+    _loaded_modules[module_name] = {"core": core, "param_description": param_description}
+    return _loaded_modules[module_name]
 
 
 class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
@@ -74,7 +100,10 @@ class NewtonBenchSeedSessionRequest(BaseSeedSessionRequest):
     system: str
     noise_level: float
     law_version: str
+    module_name: Optional[str] = None
 
+class NewtonBenchSeedSessionResponse(BaseSeedSessionResponse):
+    result: Optional[dict] = None
 
 class NewtonBenchVerifyRequest(BaseVerifyRequest):
     pass
@@ -97,21 +126,115 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
     session_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     def setup_webserver(self) -> FastAPI:
+        try:
+            _cfg_path = Path(__file__).parent / "configs" / "newton_bench.yaml"
+            with open(_cfg_path, "r", encoding="utf-8") as fh:
+                _cfg = yaml.safe_load(fh)
+            nb_cfg = _cfg.get("newton_bench", {}).get("resources_servers", {}).get("newton_bench", {})
+            for key in ("module_name", "difficulty", "system", "noise_level", "law_version", "domain"):
+                if key in nb_cfg:
+                    try:
+                        setattr(self.config, key, nb_cfg[key])
+                    except Exception:
+                        logging.debug("Failed to set config.%s from YAML", key)
+        except Exception as e:
+            logging.warning("Failed to load NewtonBench YAML into config: %s", e)
+
         app = super().setup_webserver()
+
         app.post("/run_experiment")(self.run_experiment)
+
+        modules_dir = NEWTON_BENCH_PATH / "modules"
+        try:
+            if modules_dir.exists() and modules_dir.is_dir():
+                for child in sorted(modules_dir.iterdir()):
+                    if not child.is_dir():
+                        continue
+                    module_name = child.name
+                    if module_name == "common":
+                        continue
+
+                    def make_handler(module_name: str):
+                        model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
+                        if model_cls is None:
+                            raise RuntimeError(f"Missing request class for NewtonBench module '{module_name}'")
+
+                        async def handler(request: Request, body: Any):
+                            # Body is typed as Any here to avoid runtime/static typing issues
+                            # with variable annotations; we set handler.__signature__ below
+                            session_id = request.session.get(SESSION_ID_KEY)
+                            metadata = self.session_metadata.get(session_id, {})
+
+                            # TODO: should we remove fallback to config
+                            difficulty = metadata.get("difficulty", self.config.difficulty)
+                            system = metadata.get("system", self.config.system)
+                            noise_level = metadata.get("noise_level", self.config.noise_level)
+                            law_version = metadata.get("law_version", self.config.law_version)
+
+                            try:
+                                body_dict = body.model_dump()
+                            except Exception:
+                                body_dict = dict(body)
+
+                            effective_kwargs = dict(body_dict or {})
+                            effective_kwargs.setdefault("difficulty", difficulty)
+                            effective_kwargs.setdefault("system", system)
+                            effective_kwargs.setdefault("noise_level", noise_level)
+                            effective_kwargs.setdefault("law_version", law_version)
+
+                            try:
+                                _mod = _load_module(module_name)
+                                core = _mod["core"]
+                            except ImportError as ie:
+                                raise HTTPException(status_code=500, detail=str(ie))
+
+                            try:
+                                # Use NewtonBench experiment runner
+                                result = core.run_experiment_for_module(**effective_kwargs)
+                                return RunExperimentResponse(result=result)
+
+                            except Exception as e:
+                                return RunExperimentResponse(result={"error": str(e)})
+
+                        handler.__name__ = f"run_{module_name}"
+
+                        try:
+                            params = [
+                                inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),
+                                inspect.Parameter("body", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model_cls),
+                            ]
+                            handler.__signature__ = inspect.Signature(parameters=params)
+                        except Exception:
+                            logging.debug("Failed to set dynamic signature for handler %s", handler.__name__)
+
+                        return handler
+
+                    route_path = f"/run_experiment/{module_name}"
+                    app.add_api_route(route_path, make_handler(module_name), methods=["POST"])
+        except Exception:
+            logging.exception("Failed to dynamically register module endpoints")
+
         return app
 
     async def seed_session(
         self, request: Request, body: NewtonBenchSeedSessionRequest
-    ) -> BaseSeedSessionResponse:
+    ) -> NewtonBenchSeedSessionResponse:
         session_id = request.session[SESSION_ID_KEY]
+        module_name = getattr(body, "module_name", None)
+        if module_name is None:
+            module_name = getattr(self.config, "module_name", None)
+
+        if module_name not in MODULE_REQUEST_CLASSES_MAPPING:
+            return NewtonBenchSeedSessionResponse(result={"error": f"Invalid module_name '{module_name}'."})
+
         self.session_metadata[session_id] = {
+            "module_name": module_name,
             "difficulty": body.difficulty,
             "system": body.system,
             "noise_level": body.noise_level,
             "law_version": body.law_version,
         }
-        return BaseSeedSessionResponse()
+        return NewtonBenchSeedSessionResponse()
 
     async def run_experiment(self, request: Request, body: RunExperimentRequest) -> RunExperimentResponse:
         try:
@@ -132,8 +255,19 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             if body.time_step is not None:
                 kwargs["time_step"] = body.time_step
 
+            # Determine which NewtonBench module to use for this session
+            module_name = metadata.get("module_name", self.config.module_name)
+            if not module_name:
+                return RunExperimentResponse(result={"error": "Missing module_name in configuration."})
+
+            try:
+                _mod = _load_module(module_name)
+                core = _mod["core"]
+            except ImportError as ie:
+                return RunExperimentResponse(result={"error": str(ie)})
+
             # Use NewtonBench experiment runner
-            result = gravity_core.run_experiment_for_module(
+            result = core.run_experiment_for_module(
                 mass1=body.mass1,
                 mass2=body.mass2,
                 distance=body.distance,
@@ -173,9 +307,26 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
         # Use NewtonBench eval func
         try:
-            eval_result = gravity_core.evaluate_law(
+            module_name = metadata.get("module_name", self.config.module_name)
+            if not module_name:
+                return NewtonBenchVerifyResponse(
+                    **body.model_dump(),
+                    difficulty=difficulty,
+                    system=system,
+                    noise_level=noise_level,
+                    law_version=law_version,
+                    reward=0.0,
+                    extracted_law=extracted_law,
+                    evaluation_error="Missing module_name in configuration.",
+                )
+
+            _mod = _load_module(module_name)
+            core = _mod["core"]
+            param_description = _mod.get("param_description", None)
+    
+            eval_result = core.evaluate_law(
                 llm_function_str=extracted_law,
-                param_description=PARAM_DESCRIPTION,
+                param_description=param_description,
                 difficulty=difficulty,
                 law_version=law_version,
             )
@@ -222,9 +373,16 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                     if content.type == "output_text":
                         text_content += content.text
 
-                match = re.search(r"<final_law>(.*?)</final_law>", text_content, re.DOTALL)
-                if match:
-                    return match.group(1).strip()
+                start_tag = "<final_law>"
+                end_tag = "</final_law>"
+                start_index = text_content.rfind(start_tag)
+                if start_index == -1:
+                    continue
+                end_index = text_content.find(end_tag, start_index)
+                if end_index == -1:
+                    continue
+
+                return text_content[start_index + len(start_tag):end_index].strip()
 
         return None
 
