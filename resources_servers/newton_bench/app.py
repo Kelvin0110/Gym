@@ -74,17 +74,6 @@ class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
     domain: str = "math"
 
 
-class RunExperimentRequest(BaseModel):
-    mass1: float
-    mass2: float
-    distance: float
-    
-    # for simple_system and complex_system
-    initial_velocity: Optional[float] = None
-    duration: Optional[float] = None
-    time_step: Optional[float] = None
-
-
 class RunExperimentResponse(BaseModel):
     result: Union[float, dict]  # float for vanilla_equation, dict for systems
 
@@ -141,8 +130,6 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             logging.warning("Failed to load NewtonBench YAML into config: %s", e)
 
         app = super().setup_webserver()
-
-        app.post("/run_experiment")(self.run_experiment)
 
         modules_dir = NEWTON_BENCH_PATH / "modules"
         try:
@@ -235,53 +222,6 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             "law_version": body.law_version,
         }
         return NewtonBenchSeedSessionResponse()
-
-    async def run_experiment(self, request: Request, body: RunExperimentRequest) -> RunExperimentResponse:
-        try:
-            session_id = request.session[SESSION_ID_KEY]
-            metadata = self.session_metadata.get(session_id, {})
-
-            # TODO: should we remove fallback to config
-            difficulty = metadata.get("difficulty", self.config.difficulty)
-            system = metadata.get("system", self.config.system)
-            noise_level = metadata.get("noise_level", self.config.noise_level)
-            law_version = metadata.get("law_version", self.config.law_version)
-
-            kwargs = {}
-            if body.initial_velocity is not None:
-                kwargs["initial_velocity"] = body.initial_velocity
-            if body.duration is not None:
-                kwargs["duration"] = body.duration
-            if body.time_step is not None:
-                kwargs["time_step"] = body.time_step
-
-            # Determine which NewtonBench module to use for this session
-            module_name = metadata.get("module_name", self.config.module_name)
-            if not module_name:
-                return RunExperimentResponse(result={"error": "Missing module_name in configuration."})
-
-            try:
-                _mod = _load_module(module_name)
-                core = _mod["core"]
-            except ImportError as ie:
-                return RunExperimentResponse(result={"error": str(ie)})
-
-            # Use NewtonBench experiment runner
-            result = core.run_experiment_for_module(
-                mass1=body.mass1,
-                mass2=body.mass2,
-                distance=body.distance,
-                noise_level=noise_level,
-                difficulty=difficulty,
-                system=system,
-                law_version=law_version,
-                **kwargs,
-            )
-
-            return RunExperimentResponse(result=result)
-
-        except Exception as e:
-            return RunExperimentResponse(result={"error": str(e)})
 
     async def verify(self, request: Request, body: NewtonBenchVerifyRequest) -> NewtonBenchVerifyResponse:
         session_id = request.session[SESSION_ID_KEY]
