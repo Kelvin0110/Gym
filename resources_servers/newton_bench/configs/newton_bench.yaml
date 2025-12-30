@@ -4,11 +4,6 @@ newton_bench:
       entrypoint: app.py
       host: 127.0.0.1
       port: 8000
-      module_name: m0_gravity
-      difficulty: easy  #easy, medium, hard
-      system: vanilla_equation  #vanilla_equation, simple_system, complex_system
-      noise_level: 0.0
-      law_version: v0  #v0, v1, v2 (should be specified in the dataset)
       domain: math
 
 newton_bench_simple_agent:

@@ -34,7 +34,6 @@ from nemo_gym.server_utils import SESSION_ID_KEY
 import importlib
 import inspect
 import logging
-import yaml
 
 from resources_servers.newton_bench.schemas import MODULE_REQUEST_CLASSES_MAPPING
 
@@ -66,12 +65,7 @@ def _load_module(module_name: str):
 
 
 class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
-    module_name: str = "m0_gravity"  # only gravity is supported now
-    difficulty: str = "easy"  #easy, medium, hard
-    system: str = "vanilla_equation"  # vanilla_equation, simple_system, complex_system
-    noise_level: float = 0.0
-    law_version: Optional[str] = "v0"  # v0, v1, v2, or None for random
-    domain: str = "math"
+    pass
 
 
 class RunExperimentResponse(BaseModel):
@@ -85,14 +79,16 @@ class NewtonBenchRunRequest(BaseRunRequest):
 
 
 class NewtonBenchSeedSessionRequest(BaseSeedSessionRequest):
+    module_name: str
     difficulty: str
     system: str
-    noise_level: float
     law_version: str
-    module_name: Optional[str] = None
+    noise_level: float
+
 
 class NewtonBenchSeedSessionResponse(BaseSeedSessionResponse):
     result: Optional[dict] = None
+
 
 class NewtonBenchVerifyRequest(BaseVerifyRequest):
     pass
@@ -115,20 +111,6 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
     session_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     def setup_webserver(self) -> FastAPI:
-        try:
-            _cfg_path = Path(__file__).parent / "configs" / "newton_bench.yaml"
-            with open(_cfg_path, "r", encoding="utf-8") as fh:
-                _cfg = yaml.safe_load(fh)
-            nb_cfg = _cfg.get("newton_bench", {}).get("resources_servers", {}).get("newton_bench", {})
-            for key in ("module_name", "difficulty", "system", "noise_level", "law_version", "domain"):
-                if key in nb_cfg:
-                    try:
-                        setattr(self.config, key, nb_cfg[key])
-                    except Exception:
-                        logging.debug("Failed to set config.%s from YAML", key)
-        except Exception as e:
-            logging.warning("Failed to load NewtonBench YAML into config: %s", e)
-
         app = super().setup_webserver()
 
         modules_dir = NEWTON_BENCH_PATH / "modules"
@@ -141,63 +123,8 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                     if module_name == "common":
                         continue
 
-                    def make_handler(module_name: str):
-                        model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
-                        if model_cls is None:
-                            raise RuntimeError(f"Missing request class for NewtonBench module '{module_name}'")
-
-                        async def handler(request: Request, body: Any):
-                            # Body is typed as Any here to avoid runtime/static typing issues
-                            # with variable annotations; we set handler.__signature__ below
-                            session_id = request.session.get(SESSION_ID_KEY)
-                            metadata = self.session_metadata.get(session_id, {})
-
-                            # TODO: should we remove fallback to config
-                            difficulty = metadata.get("difficulty", self.config.difficulty)
-                            system = metadata.get("system", self.config.system)
-                            noise_level = metadata.get("noise_level", self.config.noise_level)
-                            law_version = metadata.get("law_version", self.config.law_version)
-
-                            try:
-                                body_dict = body.model_dump()
-                            except Exception:
-                                body_dict = dict(body)
-
-                            effective_kwargs = dict(body_dict or {})
-                            effective_kwargs.setdefault("difficulty", difficulty)
-                            effective_kwargs.setdefault("system", system)
-                            effective_kwargs.setdefault("noise_level", noise_level)
-                            effective_kwargs.setdefault("law_version", law_version)
-
-                            try:
-                                _mod = _load_module(module_name)
-                                core = _mod["core"]
-                            except ImportError as ie:
-                                raise HTTPException(status_code=500, detail=str(ie))
-
-                            try:
-                                # Use NewtonBench experiment runner
-                                result = core.run_experiment_for_module(**effective_kwargs)
-                                return RunExperimentResponse(result=result)
-
-                            except Exception as e:
-                                return RunExperimentResponse(result={"error": str(e)})
-
-                        handler.__name__ = f"run_{module_name}"
-
-                        try:
-                            params = [
-                                inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),
-                                inspect.Parameter("body", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model_cls),
-                            ]
-                            handler.__signature__ = inspect.Signature(parameters=params)
-                        except Exception:
-                            logging.debug("Failed to set dynamic signature for handler %s", handler.__name__)
-
-                        return handler
-
                     route_path = f"/run_experiment_{module_name}"
-                    app.add_api_route(route_path, make_handler(module_name), methods=["POST"])
+                    app.add_api_route(route_path, self._create_module_handler(module_name), methods=["POST"])
         except Exception:
             logging.exception("Failed to dynamically register module endpoints")
 
@@ -207,12 +134,10 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         self, request: Request, body: NewtonBenchSeedSessionRequest
     ) -> NewtonBenchSeedSessionResponse:
         session_id = request.session[SESSION_ID_KEY]
-        module_name = getattr(body, "module_name", None)
-        if module_name is None:
-            module_name = getattr(self.config, "module_name", None)
+        module_name = body.module_name
 
         if module_name not in MODULE_REQUEST_CLASSES_MAPPING:
-            return NewtonBenchSeedSessionResponse(result={"error": f"Invalid module_name '{module_name}'."})
+            raise HTTPException(status_code=400, detail=f"Invalid module_name '{module_name}'.")
 
         self.session_metadata[session_id] = {
             "module_name": module_name,
@@ -225,7 +150,14 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
     async def verify(self, request: Request, body: NewtonBenchVerifyRequest) -> NewtonBenchVerifyResponse:
         session_id = request.session[SESSION_ID_KEY]
-        metadata = self.session_metadata.get(session_id, {})
+        metadata = self.session_metadata.get(session_id)
+        if not metadata:
+            return NewtonBenchVerifyResponse(
+                **body.model_dump(),
+                reward=0.0,
+                evaluation_error="Session not initialized. Please call seed_session first.",
+            )
+
         difficulty = metadata.get("difficulty")
         system = metadata.get("system")
         noise_level = metadata.get("noise_level")
@@ -247,7 +179,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
         # Use NewtonBench eval func
         try:
-            module_name = metadata.get("module_name", self.config.module_name)
+            module_name = metadata.get("module_name")
             if not module_name:
                 return NewtonBenchVerifyResponse(
                     **body.model_dump(),
@@ -275,7 +207,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             is_symbolically_correct = eval_result.get("symbolic_equivalent", False)
             
             rmsle = eval_result.get("rmsle", float('inf'))
-            is_numerically_correct = rmsle < 0.01
+            is_numerically_correct = rmsle < 1e-5
 
             reward = 1.0 if (is_symbolically_correct or is_numerically_correct) else 0.0
 
@@ -325,6 +257,67 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 return text_content[start_index + len(start_tag):end_index].strip()
 
         return None
+
+    def _create_module_handler(self, module_name: str):
+        model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
+        if model_cls is None:
+            raise RuntimeError(f"Missing request class for NewtonBench module '{module_name}'")
+
+        async def handler(request: Request, body: Any):
+            session_id = request.session.get(SESSION_ID_KEY)
+            metadata = self.session_metadata.get(session_id)
+            if not metadata:
+                raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
+
+            session_module_name = metadata.get("module_name")
+            if session_module_name != module_name:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Session configured for '{session_module_name}', but received run_experiment call for '{module_name}'."
+                )
+
+            difficulty = metadata.get("difficulty")
+            system = metadata.get("system")
+            noise_level = metadata.get("noise_level")
+            law_version = metadata.get("law_version")
+
+            try:
+                body_dict = body.model_dump()
+            except Exception:
+                body_dict = dict(body)
+
+            effective_kwargs = dict(body_dict or {})
+            effective_kwargs.setdefault("difficulty", difficulty)
+            effective_kwargs.setdefault("system", system)
+            effective_kwargs.setdefault("noise_level", noise_level)
+            effective_kwargs.setdefault("law_version", law_version)
+
+            try:
+                _mod = _load_module(module_name)
+                core = _mod["core"]
+            except ImportError as ie:
+                raise HTTPException(status_code=500, detail=str(ie))
+
+            try:
+                # Use NewtonBench experiment runner
+                result = core.run_experiment_for_module(**effective_kwargs)
+                return RunExperimentResponse(result=result)
+
+            except Exception as e:
+                return RunExperimentResponse(result={"error": str(e)})
+
+        handler.__name__ = f"run_experiment_{module_name}"
+
+        try:
+            params = [
+                inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request),
+                inspect.Parameter("body", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model_cls),
+            ]
+            handler.__signature__ = inspect.Signature(parameters=params)
+        except Exception:
+            logging.debug("Failed to set dynamic signature for handler %s", handler.__name__)
+
+        return handler
 
 if __name__ == "__main__":
     NewtonBenchResourcesServer.run_webserver()
