@@ -196,7 +196,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
                         return handler
 
-                    route_path = f"/run_experiment/{module_name}"
+                    route_path = f"/run_experiment_{module_name}"
                     app.add_api_route(route_path, make_handler(module_name), methods=["POST"])
         except Exception:
             logging.exception("Failed to dynamically register module endpoints")

@@ -15,141 +15,48 @@
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
-NEWTON_BENCH_PATH = Path(__file__).parent.parent.parent / "NewtonBench"
-sys.path.insert(0, str(NEWTON_BENCH_PATH))
-
-from modules.m0_gravity import prompts as gravity_prompts
-from modules.m0_gravity.m0_types import ExperimentSystem
-
-
-def convert_xml_to_openai(prompt: str, is_code_assisted: bool) -> str:
-    prompt = re.sub(
-        r'use the <run_experiment> tag',
-        'call the **run_experiment function**',
-        prompt,
-        flags=re.IGNORECASE
-    )
-
-    xml_format_pattern = r'\*Your Request:\*\s*<run_experiment>.*?</run_experiment>\s*\*System Response:\*.*?<experiment_output>.*?</experiment_output>'
-    function_format = '''**How experiments work:**
-To run experiments, call the `run_experiment` function. Each function call runs ONE experiment.
-To run multiple experiments, make multiple function calls (the system supports parallel calls).
-
-**Example:**
-- First call: run_experiment(mass1=1.0, mass2=1.0, distance=1.0)
-- Second call: run_experiment(mass1=2.0, mass2=1.0, distance=1.0)
-- etc.
-
-**Response:**
-Each function call returns the measurement result for that experiment.'''
-
-    prompt = re.sub(xml_format_pattern, function_format, prompt, flags=re.DOTALL)
-
-    prompt = re.sub(r'Provide a JSON array specifying the parameters for one or arbitrarily many experimental sets\.?',
-                   'Run experiments by calling the function with the appropriate parameters.',
-                   prompt, flags=re.IGNORECASE)
-
-    prompt = re.sub(r'<experiment_output>.*?</experiment_output>', '', prompt, flags=re.DOTALL)
-
-    if not is_code_assisted:
-        python_section_pattern = r'\*\*IMPORTANT:.*?through <python> tags\.\*\*.*?(?=\*\*Workflow:|\*\*Final Submission:)'
-        prompt = re.sub(python_section_pattern, '', prompt, flags=re.DOTALL)
-
-        python_example_pattern = r'\*\*Examples:\*\*.*?(?=\*\*Workflow:|\*\*Final Submission:)'
-        prompt = re.sub(python_example_pattern, '', prompt, flags=re.DOTALL)
-
-        prompt = re.sub(r'\d+\.\s+\*\*Use <python> tags\*\*.*?\n', '', prompt)
-        prompt = re.sub(r'.*?<python>.*?\n', '', prompt)
-        prompt = re.sub(r'.*?<python_output>.*?\n', '', prompt)
-
-    prompt = re.sub(r'\n\n\n+', '\n\n', prompt)
-
-    return prompt.strip()
-
-
-def generate_tool_definitions(system: str, is_code_assisted: bool = True):
-    base_params = {
-        "mass1": {
-            "type": "number",
-            "description": "Mass of the first object (positive real number)",
-        },
-        "mass2": {
-            "type": "number",
-            "description": "Mass of the second object (positive real number)",
-        },
-        "distance": {
-            "type": "number",
-            "description": "Distance between the two objects (positive real number)",
-        },
-    }
-
-    if system in [ExperimentSystem.SIMPLE_SYSTEM, ExperimentSystem.COMPLEX_SYSTEM]:
-        base_params.update(
-            {
-                "initial_velocity": {
-                    "type": "number",
-                    "description": "Initial velocity (optional)",
-                },
-                "duration": {"type": "number", "description": "Duration to track (optional)"},
-                "time_step": {
-                    "type": "number",
-                    "description": "Time between measurements (optional)",
-                },
-            }
-        )
-
-    tools = [
-        {
-            "type": "function",
-            "name": "run_experiment",
-            "description": "Run a physics experiment to measure gravitational force or motion.",
-            "parameters": {
-                "type": "object",
-                "properties": base_params,
-                "required": ["mass1", "mass2", "distance"],
-            },
-            "strict": True,
-        },
-    ]
-
-    if is_code_assisted:
-        tools.append({
-            "type": "function",
-            "name": "execute_python",
-            "description": "Execute Python code for data analysis. You have access to numpy, scipy, and pandas.",
-            "parameters": {
-                "type": "object",
-                "properties": {"code": {"type": "string", "description": "Python code to execute"}},
-                "required": ["code"],
-            },
-            "strict": True,
-        })
-
-    return tools
+from resources_servers.newton_bench.schemas import MODULE_REQUEST_CLASSES_MAPPING, get_tool_schema
+from resources_servers.newton_bench.prompt_utils import get_physics_prompt
 
 
 def generate_record(
     record_id: int,
+    module_name: str,
     difficulty: str,
     system: str,
     noise_level: float,
     law_version: str,
     is_code_assisted: bool = True
 ):
-    task_prompt = gravity_prompts.get_task_prompt(
-        system=system, is_code_assisted=is_code_assisted, noise_level=noise_level
+    task_prompt = get_physics_prompt(
+        module_name=module_name,
+        system=system,
+        is_code_assisted=is_code_assisted,
+        noise_level=noise_level
     )
 
-    task_prompt = convert_xml_to_openai(task_prompt, is_code_assisted)
+    tools = [get_tool_schema(module_name)]
 
-    tools = generate_tool_definitions(system, is_code_assisted=is_code_assisted)
+    if is_code_assisted:
+        tools.append({
+            "type": "function",
+            "name": "execute_python",
+            "description": "Execute Python code for mathematical reasoning, hypothesis testing, and data analysis. You have access to numpy, scipy, and pandas.",
+            "parameters": {
+                "type": "object",
+                "properties": {"code": {"type": "string", "description": "Python code to execute"}},
+                "required": ["code"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        })
 
     record = {
         "id": record_id,
+        "module_name": module_name,
         "difficulty": difficulty,
         "system": system,
         "noise_level": noise_level,
@@ -159,7 +66,7 @@ def generate_record(
                 {"role": "system", "content": task_prompt},
                 {
                     "role": "user",
-                    "content": "Begin your scientific discovery process. Design experiments, analyze data, and discover the underlying law.",
+                    "content": f"Begin your scientific discovery process for the {module_name}. Design experiments, analyze data, and discover the underlying law.",
                 },
             ],
             "tools": tools,
@@ -178,10 +85,21 @@ def main():
         default=False,
         help="Include Python code execution support (default: False)",
     )
+    parser.add_argument(
+        "--modules",
+        type=str,
+        help="Comma-separated list of modules to generate (default: all)",
+    )
     args = parser.parse_args()
 
     is_code_assisted = args.code_assisted
-    print(f"Generating datasets with code_assisted={is_code_assisted}")
+    
+    if args.modules:
+        target_modules = [m.strip() for m in args.modules.split(",")]
+    else:
+        target_modules = list(MODULE_REQUEST_CLASSES_MAPPING.keys())
+
+    print(f"Generating datasets with code_assisted={is_code_assisted} and target modules={target_modules}")
 
     base_example_configs = [
         {"difficulty": "easy", "system": "vanilla_equation", "noise_level": 0.0},
@@ -196,23 +114,26 @@ def main():
     for base_config in base_example_configs:
         for law_version in ["v0", "v1", "v2"]:
             example_configs.append({
+                "module_name": "m0_gravity",
                 **base_config,
                 "law_version": law_version,
                 "is_code_assisted": is_code_assisted
             })
 
     train_configs = []
-    for difficulty in ["easy", "medium", "hard"]:
-        for system in ["vanilla_equation", "simple_system", "complex_system"]:
-            for noise_level in [0.0, 0.0001, 0.001, 0.01]:
-                for law_version in ["v0", "v1", "v2"]:
-                    train_configs.append({
-                        "difficulty": difficulty,
-                        "system": system,
-                        "noise_level": noise_level,
-                        "law_version": law_version,
-                        "is_code_assisted": is_code_assisted
-                    })
+    for module_name in target_modules:
+        for difficulty in ["easy", "medium", "hard"]:
+            for system in ["vanilla_equation", "simple_system", "complex_system"]:
+                for noise_level in [0.0, 0.0001, 0.001, 0.01]:
+                    for law_version in ["v0", "v1", "v2"]:
+                        train_configs.append({
+                            "module_name": module_name,
+                            "difficulty": difficulty,
+                            "system": system,
+                            "noise_level": noise_level,
+                            "law_version": law_version,
+                            "is_code_assisted": is_code_assisted
+                        })
 
     output_dir = Path(__file__).parent / "data"
     output_dir.mkdir(exist_ok=True)
