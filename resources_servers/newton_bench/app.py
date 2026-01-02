@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import ast
+import io
+import multiprocessing
 import re
+import signal
 import sys
+import time
+import traceback
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
+import numpy as np
+import pandas as pd
+import scipy
 from fastapi import FastAPI, Request, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from nemo_gym.base_resources_server import (
     BaseResourcesServerConfig,
@@ -44,6 +55,176 @@ if str(NEWTON_BENCH_PATH) not in sys.path:
 
 _loaded_modules: dict = {}
 
+
+def _validate_python_code(code: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate Python code for safety and correctness.
+    
+    Args:
+        code: Python code to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    try:
+        # Parse the code to check syntax
+        ast.parse(code)
+        
+        # Check for dangerous imports or operations
+        dangerous_patterns = [
+            r'import\s+os',
+            r'import\s+sys',
+            r'import\s+subprocess',
+            r'__import__',
+            r'eval\(',
+            r'exec\(',
+            r'open\(',
+            r'file\(',
+            r'input\(',
+            r'raw_input\(',
+            r'compile\(',
+            r'globals\(',
+            r'locals\('
+        ]
+        
+        for pattern in dangerous_patterns:
+            if re.search(pattern, code, re.IGNORECASE):
+                return False, f"Code contains potentially dangerous operation: {pattern}"
+        
+        return True, None
+        
+    except SyntaxError as e:
+        return False, f"Syntax error: {e}"
+    except Exception as e:
+        return False, f"Validation error: {e}"
+
+
+def _get_last_expr_value(code: str, globals_dict: dict, locals_dict: dict):
+    """
+    Try to evaluate the last line of the submitted code and return its
+    string representation. If the last line is not a bare expression
+    (or evaluation fails), return None.
+    """
+    lines = code.strip().split("\n")
+    if not lines:
+        return None
+
+    last_line = lines[-1].strip()
+
+    # Ignore lines that are obviously not bare expressions
+    if last_line.startswith(("print", "import", "from", "def", "class", "if", "for", "while", "try", "with")):
+        return None
+
+    try:
+        return str(eval(last_line, globals_dict, locals_dict))
+    except Exception:
+        return None
+
+
+def _run_code_in_existing_env(code, globals_d, locals_d, timeout_s):
+    """Re-uses the same globals/locals dictionary between calls."""
+
+    stdout_capture, stderr_capture = io.StringIO(), io.StringIO()
+
+    def _handle_timeout(signum, frame):
+        raise TimeoutError("code timed-out")
+
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(timeout_s)
+    try:
+        with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+            exec(code, globals_d, locals_d)
+            result = _get_last_expr_value(code, globals_d, locals_d)
+    finally:
+        signal.alarm(0)
+    return stdout_capture.getvalue(), stderr_capture.getvalue(), result
+
+
+def _session_worker(child_conn, max_execution_time: int, module_name: Optional[str] = None):
+    """Runs forever in its own process, keeping globals between calls."""
+    exec_globals = {
+        "__builtins__": {
+            "print": print,
+            "len": len,
+            "str": str,
+            "int": int,
+            "float": float,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "abs": abs,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "__import__": __import__,
+        },
+        "np": np,
+        "numpy": np,
+        "scipy": scipy,
+        "pd": pd,
+        "pandas": pd,
+    }
+    
+    # Load NewtonBench module if available
+    if module_name:
+        try:
+            _mod = _load_module(module_name)
+            core = _mod["core"]
+            # Make module accessible via 'module' and by module_name
+            exec_globals["module"] = core
+            exec_globals[module_name] = core
+        except Exception:
+            # Module loading is optional - continue without it
+            pass
+    
+    exec_locals = {}
+    while True:
+        msg = child_conn.recv()
+        if msg["cmd"] == "exec":
+            code = msg["code"]
+            try:
+                out, err, res = _run_code_in_existing_env(code, exec_globals, exec_locals, max_execution_time)
+                child_conn.send({"ok": True, "out": out, "err": err, "res": res})
+            except Exception as e:
+                child_conn.send({"ok": False, "error": str(e)})
+        elif msg["cmd"] == "close":
+            break
+
+
+class _SessionHandle:
+    """Light wrapper around one long-lived worker process."""
+
+    def __init__(self, max_execution_time: int, module_name: Optional[str] = None):
+        parent_conn, child_conn = multiprocessing.Pipe()
+        self._conn = parent_conn
+        self._proc = multiprocessing.Process(
+            target=_session_worker,
+            args=(child_conn, max_execution_time, module_name),
+            daemon=True,
+        )
+        self._proc.start()
+        self.last_used = time.time()
+
+    def exec(self, code: str):
+        self._conn.send({"cmd": "exec", "code": code})
+        reply = self._conn.recv()
+        self.last_used = time.time()
+        if reply["ok"]:
+            return reply["out"], reply["err"], reply["res"]
+        raise RuntimeError(reply["error"])
+
+    def close(self):
+        try:
+            self._conn.send({"cmd": "close"})
+        except (BrokenPipeError, EOFError):
+            pass
+        self._proc.join(timeout=1)
+
+
 def _load_module(module_name: str):
     if not module_name:
         raise ImportError("No module_name provided to _load_module")
@@ -65,11 +246,23 @@ def _load_module(module_name: str):
 
 
 class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
-    pass
+    max_execution_time: int = 10
 
 
 class RunExperimentResponse(BaseModel):
     result: Union[float, dict]  # float for vanilla_equation, dict for systems
+
+
+class ExecutePythonRequest(BaseModel):
+    code: str
+
+
+class ExecutePythonResponse(BaseModel):
+    success: bool
+    stdout: str
+    stderr: str
+    error_message: Optional[str] = None
+    result: Optional[str] = None
 
 
 class NewtonBenchRunRequest(BaseRunRequest):
@@ -109,6 +302,7 @@ class NewtonBenchVerifyResponse(BaseVerifyResponse):
 class NewtonBenchResourcesServer(SimpleResourcesServer):
     config: NewtonBenchResourcesServerConfig
     session_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    _sessions: Dict[str, _SessionHandle] = PrivateAttr(default_factory=dict)
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -127,6 +321,9 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                     app.add_api_route(route_path, self._create_module_handler(module_name), methods=["POST"])
         except Exception:
             logging.exception("Failed to dynamically register module endpoints")
+
+        app.post("/execute_python")(self.execute_python)
+        app.post("/end_session")(self.end_session)
 
         return app
 
@@ -318,6 +515,61 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             logging.debug("Failed to set dynamic signature for handler %s", handler.__name__)
 
         return handler
+
+    async def execute_python(self, request: Request, body: ExecutePythonRequest) -> ExecutePythonResponse:
+        """Execute Python code in a session-based environment with NewtonBench module access."""
+        loop = asyncio.get_running_loop()
+        try:
+            sid = request.session[SESSION_ID_KEY]
+            
+            # Validate code before execution
+            is_valid, error_message = _validate_python_code(body.code)
+            if not is_valid:
+                return ExecutePythonResponse(
+                    success=False,
+                    stdout="",
+                    stderr="",
+                    error_message=error_message,
+                )
+            
+            # Get session metadata to determine module_name
+            metadata = self.session_metadata.get(sid)
+            module_name = metadata.get("module_name") if metadata else None
+            
+            # Create or get session handle
+            if sid not in self._sessions:
+                self._sessions[sid] = _SessionHandle(
+                    self.config.max_execution_time,
+                    module_name=module_name
+                )
+            handle = self._sessions[sid]
+
+            stdout, stderr, result = await loop.run_in_executor(
+                None,
+                handle.exec,
+                body.code,
+            )
+            return ExecutePythonResponse(
+                success=True,
+                stdout=stdout,
+                stderr=stderr,
+                result=result,
+            )
+        except Exception as e:
+            return ExecutePythonResponse(
+                success=False,
+                stdout="",
+                stderr="",
+                error_message=str(e),
+            )
+
+    async def end_session(self, request: Request) -> ExecutePythonResponse:
+        """Clean up session handle for Python execution."""
+        sid = request.session[SESSION_ID_KEY]
+        if sid in self._sessions:
+            self._sessions[sid].close()
+            del self._sessions[sid]
+        return ExecutePythonResponse(success=True, stdout="", stderr="")
 
 if __name__ == "__main__":
     NewtonBenchResourcesServer.run_webserver()
