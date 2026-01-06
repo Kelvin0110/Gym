@@ -354,11 +354,9 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 pass
             
             for sid in list(self._sessions.keys()):
-                try:
-                    self._sessions[sid].close()
-                except Exception:
-                    pass
-                del self._sessions[sid]
+                handle = self._sessions.pop(sid, None)
+                if handle:
+                    handle.close()
 
         app.router.lifespan_context = lifespan
 
@@ -590,7 +588,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 )
 
             if sid in self._sessions and self._sessions[sid].is_closed:
-                del self._sessions[sid]
+                self._sessions.pop(sid, None)
 
             if sid not in self._sessions:
                 self._sessions[sid] = _SessionHandle(
@@ -612,7 +610,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 )
             except Exception as e:
                 if sid in self._sessions and self._sessions[sid].is_closed:
-                    del self._sessions[sid]
+                    self._sessions.pop(sid, None)
                 raise e
                 
         except Exception as e:
@@ -640,26 +638,22 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             last_activity = self.session_metadata[sid].get("last_used", 0)
 
             if now - last_activity > self.config.session_ttl:
-                if sid in self._sessions:
-                    try:
-                        self._sessions[sid].close()
-                    except Exception:
-                        pass
-                    del self._sessions[sid]
-                
-                del self.session_metadata[sid]
+                handle = self._sessions.pop(sid, None)
+                if handle:
+                    handle.close()
+
+                self.session_metadata.pop(sid, None)
 
     async def end_session(self, request: Request, body: NewtonBenchEndSessionRequest) -> NewtonBenchEndSessionResponse:
         """Clean up session handle for Python execution and metadata."""
         sid = request.session[SESSION_ID_KEY]
-        if sid not in self.session_metadata:
-            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
 
-        if sid in self._sessions:
-            self._sessions[sid].close()
-            del self._sessions[sid]
-        
-        del self.session_metadata[sid]
+        handle = self._sessions.pop(sid, None)
+        if handle:
+            handle.close()
+
+        self.session_metadata.pop(sid, None)
+
         return NewtonBenchEndSessionResponse()
 
 if __name__ == "__main__":
