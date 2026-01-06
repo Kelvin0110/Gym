@@ -18,8 +18,8 @@ import json
 import sys
 from pathlib import Path
 
-from resources_servers.newton_bench.schemas import MODULE_REQUEST_CLASSES_MAPPING, get_tool_schema
-from resources_servers.newton_bench.prompt_utils import get_physics_prompt
+from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING, get_tool_schema
+from resources_servers.newton_bench.newton_bench_utils.prompt_utils import get_physics_prompt
 
 
 def generate_record(

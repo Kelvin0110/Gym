@@ -17,7 +17,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+REPO_ROOT = Path(__file__).parent.parent.parent.parent
 NEWTON_BENCH_PATH = REPO_ROOT / "NewtonBench"
 if str(NEWTON_BENCH_PATH) not in sys.path:
     sys.path.insert(0, str(NEWTON_BENCH_PATH))

@@ -13,22 +13,12 @@
 # limitations under the License.
 
 import asyncio
-import ast
-import io
-import multiprocessing
-import re
-import signal
 import sys
 import time
-import traceback
-from contextlib import asynccontextmanager, redirect_stderr, redirect_stdout
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
-import numpy as np
-import pandas as pd
-import scipy
-import math
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -47,7 +37,11 @@ import importlib
 import inspect
 import logging
 
-from resources_servers.newton_bench.schemas import MODULE_REQUEST_CLASSES_MAPPING
+from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING
+from resources_servers.newton_bench.newton_bench_utils.sandbox import (
+    validate_python_code,
+    SessionHandle,
+)
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 NEWTON_BENCH_PATH = REPO_ROOT / "NewtonBench"
@@ -55,204 +49,6 @@ if str(NEWTON_BENCH_PATH) not in sys.path:
     sys.path.insert(0, str(NEWTON_BENCH_PATH))
 
 _loaded_modules: dict = {}
-
-
-def _validate_python_code(code: str) -> Tuple[bool, Optional[str]]:
-    """
-    Validate Python code for safety and correctness.
-    
-    Args:
-        code: Python code to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    try:
-        ast.parse(code)
-        
-        dangerous_patterns = [
-            r'import\s+os',
-            r'import\s+sys',
-            r'import\s+subprocess',
-            r'__import__',
-            r'eval\(',
-            r'exec\(',
-            r'open\(',
-            r'file\(',
-            r'input\(',
-            r'raw_input\(',
-            r'compile\(',
-            r'globals\(',
-            r'locals\('
-        ]
-        
-        for pattern in dangerous_patterns:
-            if re.search(pattern, code, re.IGNORECASE):
-                return False, f"Code contains potentially dangerous operation: {pattern}"
-        
-        return True, None
-        
-    except SyntaxError as e:
-        return False, f"Syntax error: {e}"
-    except Exception as e:
-        return False, f"Validation error: {e}"
-
-
-def _get_last_expr_value(code: str, globals_dict: dict, locals_dict: dict):
-    """
-    Try to evaluate the last line of the submitted code and return its
-    string representation. If the last line is not a bare expression
-    (or evaluation fails), return None.
-    """
-    lines = code.strip().split("\n")
-    if not lines:
-        return None
-
-    last_line = lines[-1].strip()
-
-    if last_line.startswith(("print", "import", "from", "def", "class", "if", "for", "while", "try", "with")):
-        return None
-
-    try:
-        return str(eval(last_line, globals_dict, locals_dict))
-    except Exception:
-        return None
-
-
-def _run_code_in_existing_env(code, globals_d, locals_d, timeout_s):
-    """Re-uses the same globals/locals dictionary between calls."""
-
-    stdout_capture, stderr_capture = io.StringIO(), io.StringIO()
-
-    def _handle_timeout(signum, frame):
-        raise TimeoutError("code timed-out")
-
-    signal.signal(signal.SIGALRM, _handle_timeout)
-    signal.alarm(timeout_s)
-    try:
-        with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-            exec(code, globals_d, locals_d)
-            result = _get_last_expr_value(code, globals_d, locals_d)
-    finally:
-        signal.alarm(0)
-    return stdout_capture.getvalue(), stderr_capture.getvalue(), result
-
-
-def _session_worker(child_conn, max_execution_time: int):
-    """Runs forever in its own process, keeping globals between calls."""
-    
-    safe_builtins_list = [
-        "abs", "all", "any", "ascii", "bin", "bool", "callable", "chr", "complex", 
-        "dict", "divmod", "enumerate", "filter", "float", "format", "frozenset", 
-        "hash", "hex", "int", "isinstance", "issubclass", "iter", "len", "list", 
-        "map", "max", "min", "next", "object", "oct", "ord", "pow", "print", "range", 
-        "repr", "reversed", "round", "set", "slice", "sorted", "str", "sum", "tuple", 
-        "type", "zip", "Exception", "ArithmeticError", "AssertionError", "AttributeError",
-        "BufferError", "EOFError", "ImportError", "IndexError", "KeyError",
-        "MemoryError", "NameError", "NotImplementedError", "OSError",
-        "OverflowError", "ReferenceError", "RuntimeError", "StopIteration",
-        "SyntaxError", "SystemError", "TypeError", "ValueError", "ZeroDivisionError",
-        "__import__"
-    ]
-    
-    exec_globals = {
-        "__builtins__": {name: __builtins__.get(name) if isinstance(__builtins__, dict) else getattr(__builtins__, name) 
-                         for name in safe_builtins_list if (isinstance(__builtins__, dict) and name in __builtins__) or hasattr(__builtins__, name)},
-        "np": np,
-        "numpy": np,
-        "scipy": scipy,
-        "pd": pd,
-        "pandas": pd,
-        "math": math,
-    }
-    
-    exec_locals = {}
-    while True:
-        msg = child_conn.recv()
-        if msg["cmd"] == "exec":
-            code = msg["code"]
-            try:
-                out, err, res = _run_code_in_existing_env(code, exec_globals, exec_locals, max_execution_time)
-                child_conn.send({"ok": True, "out": out, "err": err, "res": res})
-            except Exception as e:
-                child_conn.send({"ok": False, "error": str(e), "traceback": traceback.format_exc()})
-        elif msg["cmd"] == "close":
-            break
-
-
-class _SessionHandle:
-    """Light wrapper around one long-lived worker process."""
-
-    def __init__(self, max_execution_time: int):
-        parent_conn, child_conn = multiprocessing.Pipe()
-        self._conn = parent_conn
-        self._max_execution_time = max_execution_time
-        self._proc = multiprocessing.Process(
-            target=_session_worker,
-            args=(child_conn, max_execution_time),
-            daemon=True,
-        )
-        self._proc.start()
-        self.is_closed = False
-
-    def exec(self, code: str):
-        try:
-            self._conn.send({"cmd": "exec", "code": code})
-        except (BrokenPipeError, EOFError, ConnectionError):
-            self.close()
-            raise 
-
-        if self._conn.poll(self._max_execution_time + 5):
-            try:
-                reply = self._conn.recv()
-            except (BrokenPipeError, EOFError, ConnectionError):
-                self.close()
-                raise
-
-            if reply["ok"]:
-                return reply["out"], reply["err"], reply["res"]
-            
-            error_msg = reply["error"]
-            if "traceback" in reply:
-                error_msg += f"\nTraceback:\n{reply['traceback']}"
-            raise RuntimeError(error_msg)
-            
-        self.close()
-        raise TimeoutError("Execution timed out (worker unresponsive)")
-
-    def close(self):
-        if self.is_closed:
-            return
-        self.is_closed = True
-        
-        try:
-            self._conn.send({"cmd": "close"})
-        except Exception:
-            logging.debug("Failed to send close command to worker")
-        
-        try:
-            self._conn.close()
-        except Exception:
-            logging.exception("Error while closing session pipe")
-        
-        self._proc.join(timeout=1)
-        if self._proc.is_alive():
-            logging.warning(f"Session process {self._proc.pid} still alive after close; escalating to terminate.")
-            try:
-                self._proc.terminate()
-                self._proc.join(timeout=1)
-                if self._proc.is_alive():
-                    logging.error(f"Session process {self._proc.pid} resisted terminate; resorting to kill.")
-                    self._proc.kill()
-                    self._proc.join()
-            except Exception:
-                logging.exception(f"Error while force-terminating process {self._proc.pid}")
-        
-        try:
-            self._proc.close()
-        except Exception:
-            logging.exception("Error during final Process object cleanup")
-
 
 def _load_module(module_name: str):
     if not module_name:
@@ -327,13 +123,15 @@ class NewtonBenchVerifyResponse(BaseVerifyResponse):
 class NewtonBenchEndSessionRequest(BaseModel):
     pass
 
+
 class NewtonBenchEndSessionResponse(BaseModel):
     pass
+
 
 class NewtonBenchResourcesServer(SimpleResourcesServer):
     config: NewtonBenchResourcesServerConfig
     session_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    _sessions: Dict[str, _SessionHandle] = PrivateAttr(default_factory=dict)
+    _sessions: Dict[str, SessionHandle] = PrivateAttr(default_factory=dict)
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
@@ -399,6 +197,59 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         }
         return BaseSeedSessionResponse()
     
+    async def execute_python(self, request: Request, body: ExecutePythonRequest) -> ExecutePythonResponse:
+        """Execute Python code in a session-based environment."""
+        sid = request.session[SESSION_ID_KEY]
+        metadata = self.session_metadata.get(sid)
+        if not metadata:
+            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
+
+        metadata["last_used"] = time.time()
+        loop = asyncio.get_running_loop()
+        try:
+            is_valid, error_message = validate_python_code(body.code)
+            if not is_valid:
+                return ExecutePythonResponse(
+                    success=False,
+                    stdout="",
+                    stderr="",
+                    error_message=error_message,
+                )
+
+            if sid in self._sessions and self._sessions[sid].is_closed:
+                self._sessions.pop(sid, None)
+
+            if sid not in self._sessions:
+                self._sessions[sid] = SessionHandle(
+                    self.config.max_execution_time
+                )
+            handle = self._sessions[sid]
+
+            try:
+                stdout, stderr, result = await loop.run_in_executor(
+                    None,
+                    handle.exec,
+                    body.code,
+                )
+                return ExecutePythonResponse(
+                    success=True,
+                    stdout=stdout,
+                    stderr=stderr,
+                    result=result,
+                )
+            except Exception as e:
+                if sid in self._sessions and self._sessions[sid].is_closed:
+                    self._sessions.pop(sid, None)
+                raise e
+                
+        except Exception as e:
+            return ExecutePythonResponse(
+                success=False,
+                stdout="",
+                stderr="",
+                error_message=str(e),
+            )
+
     async def verify(self, request: Request, body: NewtonBenchVerifyRequest) -> NewtonBenchVerifyResponse:
         session_id = request.session[SESSION_ID_KEY]
         metadata = self.session_metadata.get(session_id)
@@ -485,27 +336,18 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 evaluation_error=f"Evaluation failed: {str(e)}",
             )
 
-    def _extract_law_from_response(self, response: Any) -> Optional[str]:
-        for output in reversed(response.output):
-            if output.type == "message" and output.role == "assistant":
-                text_content = ""
-                for content in output.content:
-                    if content.type == "output_text":
-                        text_content += content.text
+    async def end_session(self, request: Request, body: NewtonBenchEndSessionRequest) -> NewtonBenchEndSessionResponse:
+        """Clean up session handle for Python execution and metadata."""
+        sid = request.session[SESSION_ID_KEY]
 
-                start_tag = "<final_law>"
-                end_tag = "</final_law>"
-                start_index = text_content.rfind(start_tag)
-                if start_index == -1:
-                    continue
-                end_index = text_content.find(end_tag, start_index)
-                if end_index == -1:
-                    continue
+        handle = self._sessions.pop(sid, None)
+        if handle:
+            handle.close()
 
-                return text_content[start_index + len(start_tag):end_index].strip()
+        self.session_metadata.pop(sid, None)
 
-        return None
-
+        return NewtonBenchEndSessionResponse()
+    
     def _create_module_handler(self, module_name: str):
         model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
         if model_cls is None:
@@ -568,59 +410,6 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
         return handler
 
-    async def execute_python(self, request: Request, body: ExecutePythonRequest) -> ExecutePythonResponse:
-        """Execute Python code in a session-based environment."""
-        sid = request.session[SESSION_ID_KEY]
-        metadata = self.session_metadata.get(sid)
-        if not metadata:
-            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
-
-        metadata["last_used"] = time.time()
-        loop = asyncio.get_running_loop()
-        try:
-            is_valid, error_message = _validate_python_code(body.code)
-            if not is_valid:
-                return ExecutePythonResponse(
-                    success=False,
-                    stdout="",
-                    stderr="",
-                    error_message=error_message,
-                )
-
-            if sid in self._sessions and self._sessions[sid].is_closed:
-                self._sessions.pop(sid, None)
-
-            if sid not in self._sessions:
-                self._sessions[sid] = _SessionHandle(
-                    self.config.max_execution_time
-                )
-            handle = self._sessions[sid]
-
-            try:
-                stdout, stderr, result = await loop.run_in_executor(
-                    None,
-                    handle.exec,
-                    body.code,
-                )
-                return ExecutePythonResponse(
-                    success=True,
-                    stdout=stdout,
-                    stderr=stderr,
-                    result=result,
-                )
-            except Exception as e:
-                if sid in self._sessions and self._sessions[sid].is_closed:
-                    self._sessions.pop(sid, None)
-                raise e
-                
-        except Exception as e:
-            return ExecutePythonResponse(
-                success=False,
-                stdout="",
-                stderr="",
-                error_message=str(e),
-            )
-
     async def _background_cleanup_task(self):
         """Periodically check and remove expired sessions."""
         while True:
@@ -644,17 +433,26 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
                 self.session_metadata.pop(sid, None)
 
-    async def end_session(self, request: Request, body: NewtonBenchEndSessionRequest) -> NewtonBenchEndSessionResponse:
-        """Clean up session handle for Python execution and metadata."""
-        sid = request.session[SESSION_ID_KEY]
+    def _extract_law_from_response(self, response: Any) -> Optional[str]:
+        for output in reversed(response.output):
+            if output.type == "message" and output.role == "assistant":
+                text_content = ""
+                for content in output.content:
+                    if content.type == "output_text":
+                        text_content += content.text
 
-        handle = self._sessions.pop(sid, None)
-        if handle:
-            handle.close()
+                start_tag = "<final_law>"
+                end_tag = "</final_law>"
+                start_index = text_content.rfind(start_tag)
+                if start_index == -1:
+                    continue
+                end_index = text_content.find(end_tag, start_index)
+                if end_index == -1:
+                    continue
 
-        self.session_metadata.pop(sid, None)
-
-        return NewtonBenchEndSessionResponse()
+                return text_content[start_index + len(start_tag):end_index].strip()
+            
+        return None
 
 if __name__ == "__main__":
     NewtonBenchResourcesServer.run_webserver()
