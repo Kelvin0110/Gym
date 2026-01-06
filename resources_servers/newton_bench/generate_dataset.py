@@ -44,7 +44,7 @@ def generate_record(
         tools.append({
             "type": "function",
             "name": "execute_python",
-            "description": "Execute Python code for mathematical reasoning, hypothesis testing, and data analysis. You have access to numpy, scipy, and pandas.",
+            "description": "Execute Python code for mathematical reasoning, hypothesis testing, and data analysis. Pre-imported libraries: numpy (as np), pandas (as pd), scipy, and math.",
             "parameters": {
                 "type": "object",
                 "properties": {"code": {"type": "string", "description": "Python code to execute"}},

@@ -21,13 +21,14 @@ import signal
 import sys
 import time
 import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import asynccontextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import scipy
+import math
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -67,10 +68,8 @@ def _validate_python_code(code: str) -> Tuple[bool, Optional[str]]:
         Tuple of (is_valid, error_message)
     """
     try:
-        # Parse the code to check syntax
         ast.parse(code)
         
-        # Check for dangerous imports or operations
         dangerous_patterns = [
             r'import\s+os',
             r'import\s+sys',
@@ -111,7 +110,6 @@ def _get_last_expr_value(code: str, globals_dict: dict, locals_dict: dict):
 
     last_line = lines[-1].strip()
 
-    # Ignore lines that are obviously not bare expressions
     if last_line.startswith(("print", "import", "from", "def", "class", "if", "for", "while", "try", "with")):
         return None
 
@@ -140,46 +138,33 @@ def _run_code_in_existing_env(code, globals_d, locals_d, timeout_s):
     return stdout_capture.getvalue(), stderr_capture.getvalue(), result
 
 
-def _session_worker(child_conn, max_execution_time: int, module_name: Optional[str] = None):
+def _session_worker(child_conn, max_execution_time: int):
     """Runs forever in its own process, keeping globals between calls."""
+    
+    safe_builtins_list = [
+        "abs", "all", "any", "ascii", "bin", "bool", "callable", "chr", "complex", 
+        "dict", "divmod", "enumerate", "filter", "float", "format", "frozenset", 
+        "hash", "hex", "int", "isinstance", "issubclass", "iter", "len", "list", 
+        "map", "max", "min", "next", "object", "oct", "ord", "pow", "print", "range", 
+        "repr", "reversed", "round", "set", "slice", "sorted", "str", "sum", "tuple", 
+        "type", "zip", "Exception", "ArithmeticError", "AssertionError", "AttributeError",
+        "BufferError", "EOFError", "ImportError", "IndexError", "KeyError",
+        "MemoryError", "NameError", "NotImplementedError", "OSError",
+        "OverflowError", "ReferenceError", "RuntimeError", "StopIteration",
+        "SyntaxError", "SystemError", "TypeError", "ValueError", "ZeroDivisionError",
+        "__import__"
+    ]
+    
     exec_globals = {
-        "__builtins__": {
-            "print": print,
-            "len": len,
-            "str": str,
-            "int": int,
-            "float": float,
-            "list": list,
-            "dict": dict,
-            "tuple": tuple,
-            "set": set,
-            "min": min,
-            "max": max,
-            "sum": sum,
-            "abs": abs,
-            "range": range,
-            "enumerate": enumerate,
-            "zip": zip,
-            "__import__": __import__,
-        },
+        "__builtins__": {name: __builtins__.get(name) if isinstance(__builtins__, dict) else getattr(__builtins__, name) 
+                         for name in safe_builtins_list if (isinstance(__builtins__, dict) and name in __builtins__) or hasattr(__builtins__, name)},
         "np": np,
         "numpy": np,
         "scipy": scipy,
         "pd": pd,
         "pandas": pd,
+        "math": math,
     }
-    
-    # Load NewtonBench module if available
-    if module_name:
-        try:
-            _mod = _load_module(module_name)
-            core = _mod["core"]
-            # Make module accessible via 'module' and by module_name
-            exec_globals["module"] = core
-            exec_globals[module_name] = core
-        except Exception:
-            # Module loading is optional - continue without it
-            pass
     
     exec_locals = {}
     while True:
@@ -190,7 +175,7 @@ def _session_worker(child_conn, max_execution_time: int, module_name: Optional[s
                 out, err, res = _run_code_in_existing_env(code, exec_globals, exec_locals, max_execution_time)
                 child_conn.send({"ok": True, "out": out, "err": err, "res": res})
             except Exception as e:
-                child_conn.send({"ok": False, "error": str(e)})
+                child_conn.send({"ok": False, "error": str(e), "traceback": traceback.format_exc()})
         elif msg["cmd"] == "close":
             break
 
@@ -198,31 +183,75 @@ def _session_worker(child_conn, max_execution_time: int, module_name: Optional[s
 class _SessionHandle:
     """Light wrapper around one long-lived worker process."""
 
-    def __init__(self, max_execution_time: int, module_name: Optional[str] = None):
+    def __init__(self, max_execution_time: int):
         parent_conn, child_conn = multiprocessing.Pipe()
         self._conn = parent_conn
+        self._max_execution_time = max_execution_time
         self._proc = multiprocessing.Process(
             target=_session_worker,
-            args=(child_conn, max_execution_time, module_name),
+            args=(child_conn, max_execution_time),
             daemon=True,
         )
         self._proc.start()
-        self.last_used = time.time()
+        self.is_closed = False
 
     def exec(self, code: str):
-        self._conn.send({"cmd": "exec", "code": code})
-        reply = self._conn.recv()
-        self.last_used = time.time()
-        if reply["ok"]:
-            return reply["out"], reply["err"], reply["res"]
-        raise RuntimeError(reply["error"])
+        try:
+            self._conn.send({"cmd": "exec", "code": code})
+        except (BrokenPipeError, EOFError, ConnectionError):
+            self.close()
+            raise 
+
+        if self._conn.poll(self._max_execution_time + 5):
+            try:
+                reply = self._conn.recv()
+            except (BrokenPipeError, EOFError, ConnectionError):
+                self.close()
+                raise
+
+            if reply["ok"]:
+                return reply["out"], reply["err"], reply["res"]
+            
+            error_msg = reply["error"]
+            if "traceback" in reply:
+                error_msg += f"\nTraceback:\n{reply['traceback']}"
+            raise RuntimeError(error_msg)
+            
+        self.close()
+        raise TimeoutError("Execution timed out (worker unresponsive)")
 
     def close(self):
+        if self.is_closed:
+            return
+        self.is_closed = True
+        
         try:
             self._conn.send({"cmd": "close"})
-        except (BrokenPipeError, EOFError):
-            pass
+        except Exception:
+            logging.debug("Failed to send close command to worker")
+        
+        try:
+            self._conn.close()
+        except Exception:
+            logging.exception("Error while closing session pipe")
+        
         self._proc.join(timeout=1)
+        if self._proc.is_alive():
+            logging.warning(f"Session process {self._proc.pid} still alive after close; escalating to terminate.")
+            try:
+                self._proc.terminate()
+                self._proc.join(timeout=1)
+                if self._proc.is_alive():
+                    logging.error(f"Session process {self._proc.pid} resisted terminate; resorting to kill.")
+                    self._proc.kill()
+                    self._proc.join()
+            except Exception:
+                logging.exception(f"Error while force-terminating process {self._proc.pid}")
+        
+        try:
+            self._proc.close()
+        except Exception:
+            logging.exception("Error during final Process object cleanup")
 
 
 def _load_module(module_name: str):
@@ -239,14 +268,14 @@ def _load_module(module_name: str):
         prompts_mod = importlib.import_module(f"modules.{module_name}.prompts")
         param_description = getattr(prompts_mod, "PARAM_DESCRIPTION", None)
     except Exception:
-        # It's okay if prompts or PARAM_DESCRIPTION are missing for some modules
         param_description = None
     _loaded_modules[module_name] = {"core": core, "param_description": param_description}
     return _loaded_modules[module_name]
 
 
 class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
-    max_execution_time: int = 10
+    max_execution_time: int = 60    # 1 minute
+    session_ttl: int = 1800         # 30 minutes
 
 
 class RunExperimentResponse(BaseModel):
@@ -279,10 +308,6 @@ class NewtonBenchSeedSessionRequest(BaseSeedSessionRequest):
     noise_level: float
 
 
-class NewtonBenchSeedSessionResponse(BaseSeedSessionResponse):
-    result: Optional[dict] = None
-
-
 class NewtonBenchVerifyRequest(BaseVerifyRequest):
     pass
 
@@ -299,6 +324,12 @@ class NewtonBenchVerifyResponse(BaseVerifyResponse):
     evaluation_error: Optional[str] = None
 
 
+class NewtonBenchEndSessionRequest(BaseModel):
+    pass
+
+class NewtonBenchEndSessionResponse(BaseModel):
+    pass
+
 class NewtonBenchResourcesServer(SimpleResourcesServer):
     config: NewtonBenchResourcesServerConfig
     session_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
@@ -306,6 +337,30 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
     def setup_webserver(self) -> FastAPI:
         app = super().setup_webserver()
+
+        parent_lifespan = app.router.lifespan_context
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            cleanup_task = asyncio.create_task(self._background_cleanup_task())
+            
+            async with parent_lifespan(app):
+                yield
+            
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
+            
+            for sid in list(self._sessions.keys()):
+                try:
+                    self._sessions[sid].close()
+                except Exception:
+                    pass
+                del self._sessions[sid]
+
+        app.router.lifespan_context = lifespan
 
         modules_dir = NEWTON_BENCH_PATH / "modules"
         try:
@@ -329,7 +384,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
     async def seed_session(
         self, request: Request, body: NewtonBenchSeedSessionRequest
-    ) -> NewtonBenchSeedSessionResponse:
+    ) -> BaseSeedSessionResponse:
         session_id = request.session[SESSION_ID_KEY]
         module_name = body.module_name
 
@@ -342,19 +397,17 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             "system": body.system,
             "noise_level": body.noise_level,
             "law_version": body.law_version,
+            "last_used": time.time(),
         }
-        return NewtonBenchSeedSessionResponse()
-
+        return BaseSeedSessionResponse()
+    
     async def verify(self, request: Request, body: NewtonBenchVerifyRequest) -> NewtonBenchVerifyResponse:
         session_id = request.session[SESSION_ID_KEY]
         metadata = self.session_metadata.get(session_id)
         if not metadata:
-            return NewtonBenchVerifyResponse(
-                **body.model_dump(),
-                reward=0.0,
-                evaluation_error="Session not initialized. Please call seed_session first.",
-            )
+            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
 
+        metadata["last_used"] = time.time()
         difficulty = metadata.get("difficulty")
         system = metadata.get("system")
         noise_level = metadata.get("noise_level")
@@ -473,6 +526,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                     detail=f"Session configured for '{session_module_name}', but received run_experiment call for '{module_name}'."
                 )
 
+            metadata["last_used"] = time.time()
             difficulty = metadata.get("difficulty")
             system = metadata.get("system")
             noise_level = metadata.get("noise_level")
@@ -517,12 +571,15 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         return handler
 
     async def execute_python(self, request: Request, body: ExecutePythonRequest) -> ExecutePythonResponse:
-        """Execute Python code in a session-based environment with NewtonBench module access."""
+        """Execute Python code in a session-based environment."""
+        sid = request.session[SESSION_ID_KEY]
+        metadata = self.session_metadata.get(sid)
+        if not metadata:
+            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
+
+        metadata["last_used"] = time.time()
         loop = asyncio.get_running_loop()
         try:
-            sid = request.session[SESSION_ID_KEY]
-            
-            # Validate code before execution
             is_valid, error_message = _validate_python_code(body.code)
             if not is_valid:
                 return ExecutePythonResponse(
@@ -531,30 +588,33 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                     stderr="",
                     error_message=error_message,
                 )
-            
-            # Get session metadata to determine module_name
-            metadata = self.session_metadata.get(sid)
-            module_name = metadata.get("module_name") if metadata else None
-            
-            # Create or get session handle
+
+            if sid in self._sessions and self._sessions[sid].is_closed:
+                del self._sessions[sid]
+
             if sid not in self._sessions:
                 self._sessions[sid] = _SessionHandle(
-                    self.config.max_execution_time,
-                    module_name=module_name
+                    self.config.max_execution_time
                 )
             handle = self._sessions[sid]
 
-            stdout, stderr, result = await loop.run_in_executor(
-                None,
-                handle.exec,
-                body.code,
-            )
-            return ExecutePythonResponse(
-                success=True,
-                stdout=stdout,
-                stderr=stderr,
-                result=result,
-            )
+            try:
+                stdout, stderr, result = await loop.run_in_executor(
+                    None,
+                    handle.exec,
+                    body.code,
+                )
+                return ExecutePythonResponse(
+                    success=True,
+                    stdout=stdout,
+                    stderr=stderr,
+                    result=result,
+                )
+            except Exception as e:
+                if sid in self._sessions and self._sessions[sid].is_closed:
+                    del self._sessions[sid]
+                raise e
+                
         except Exception as e:
             return ExecutePythonResponse(
                 success=False,
@@ -563,13 +623,44 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 error_message=str(e),
             )
 
-    async def end_session(self, request: Request) -> ExecutePythonResponse:
-        """Clean up session handle for Python execution."""
+    async def _background_cleanup_task(self):
+        """Periodically check and remove expired sessions."""
+        while True:
+            try:
+                self._cleanup_sessions()
+            except Exception:
+                logging.exception("Error in background cleanup task")
+            await asyncio.sleep(600)  # Check every 10 minutes
+
+    def _cleanup_sessions(self):
+        """Remove sessions that have been inactive for longer than session_ttl."""
+        now = time.time()
+        
+        for sid in list(self.session_metadata.keys()):
+            last_activity = self.session_metadata[sid].get("last_used", 0)
+
+            if now - last_activity > self.config.session_ttl:
+                if sid in self._sessions:
+                    try:
+                        self._sessions[sid].close()
+                    except Exception:
+                        pass
+                    del self._sessions[sid]
+                
+                del self.session_metadata[sid]
+
+    async def end_session(self, request: Request, body: NewtonBenchEndSessionRequest) -> NewtonBenchEndSessionResponse:
+        """Clean up session handle for Python execution and metadata."""
         sid = request.session[SESSION_ID_KEY]
+        if sid not in self.session_metadata:
+            raise HTTPException(status_code=400, detail="Session not initialized. Please call seed_session first.")
+
         if sid in self._sessions:
             self._sessions[sid].close()
             del self._sessions[sid]
-        return ExecutePythonResponse(success=True, stdout="", stderr="")
+        
+        del self.session_metadata[sid]
+        return NewtonBenchEndSessionResponse()
 
 if __name__ == "__main__":
     NewtonBenchResourcesServer.run_webserver()
