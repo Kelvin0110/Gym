@@ -213,7 +213,13 @@ def _session_worker(child_conn, max_execution_time: int):
     
     exec_locals = {}
     while True:
-        msg = child_conn.recv()
+        try:
+            msg = child_conn.recv()
+        except EOFError:
+            # Parent closed the connection without sending "close" command.
+            # Exit gracefully instead of crashing with a traceback.
+            break
+
         if msg["cmd"] == "exec":
             code = msg["code"]
             try:
