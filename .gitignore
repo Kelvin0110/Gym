@@ -243,3 +243,6 @@ env.yaml
 
 # Backup files
 *.backup
+
+# NewtonBench
+NewtonBench/
