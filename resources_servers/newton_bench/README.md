@@ -1,6 +1,6 @@
 # NewtonBench Resource Server
 
-NeMo Gym environment for [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench), to train and test LLM agents to discover scientific laws through interactive experimentation. The benchmark includes **324 scientific law discovery tasks** across **12 physics domains** (gravitation, Coulomb's law, magnetic force, Fourier's law, Snell's law, radioactive decay, underdamped harmonic motion, Malus's law, sound speed, Hooke's law, Bose–Einstein distribution, heat transfer).
+NeMo Gym environment for [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench), to train and test LLM agents to discover scientific laws through interactive experimentation. The benchmark includes **324 scientific law discovery tasks** across **12 physics domains** (Gravitation, Electrostatics, Magnetostatics, Thermal Conduction, Geometrical Optics, Nuclear Physics, Oscillations, Physical Optics, Acoustics, Elasticity, Statistical Mechanics, Calorimetry).
 
 ## Prerequisites
 
