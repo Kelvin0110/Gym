@@ -1,7 +1,16 @@
 # NewtonBench Resource Server
 
-NeMo Gym environment for [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench), to train and test LLM agents to discover scientific laws through interactive experimentation.
+NeMo Gym environment for [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench), to train and test LLM agents to discover scientific laws through interactive experimentation. The benchmark includes **324 scientific law discovery tasks** across **12 physics domains** (gravitation, Coulomb's law, magnetic force, Fourier's law, Snell's law, radioactive decay, underdamped harmonic motion, Malus's law, sound speed, Hooke's law, Bose–Einstein distribution, heat transfer).
 
+## Prerequisites
+
+Clone the [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench) repository into the NeMo Gym repository root so that experiment modules can be loaded when running tools (e.g. `run_experiment_*`).
+
+```bash
+git clone https://github.com/HKUST-KnowComp/NewtonBench.git
+```
+
+Run the command above from the NeMo Gym repository root so that the `NewtonBench` directory exists at the root (e.g. `Gym/NewtonBench/`).
 
 configure `env.yaml` to point to your vLLM server (or openai):
 ```yaml
