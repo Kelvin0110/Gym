@@ -1,7 +1,0 @@
-newton_bench:
-  resources_servers:
-    newton_bench:
-      entrypoint: app.py
-      host: 127.0.0.1
-      port: 8000
-      domain: math
