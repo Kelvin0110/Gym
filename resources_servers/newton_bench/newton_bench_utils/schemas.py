@@ -72,7 +72,7 @@ class M4SnellLawRequest(BaseModel):
 
 class M5RadioactiveDecayRequest(BaseModel):
     N0: Optional[float] = Field(None, description="Initial number of atoms. (positive real number) (optional)")
-    lambda_decay: Optional[float] = Field(None, description="Lambda constant (a physical constant). (positive real number) (optional)")
+    lambda_constant: Optional[float] = Field(None, description="Lambda constant (a physical constant). (positive real number) (optional)")
     t: float = Field(..., description="Time elapsed. (positive real number)")
 
     # for simple_system and complex_system

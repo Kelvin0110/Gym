@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
+import asyncio
 from fastapi import Request
 from pytest import fixture, mark, raises
+import math
 
 import asyncio
 import time
@@ -32,12 +34,14 @@ from resources_servers.newton_bench.app import (
     NewtonBenchResourcesServer,
     NewtonBenchResourcesServerConfig,
     NewtonBenchSeedSessionRequest,
-    NewtonBenchRunRequest,
+    NewtonBenchEndSessionRequest,
+    NewtonBenchEndSessionResponse,
     NewtonBenchVerifyRequest,
     NewtonBenchVerifyResponse,
     RunExperimentResponse,
     ExecutePythonRequest,
     ExecutePythonResponse,
+    BaseSeedSessionResponse,
 )
 
 
@@ -85,9 +89,6 @@ class TestApp:
             ],
         })
 
-    def test_sanity(self, server: NewtonBenchResourcesServer) -> None:
-        assert server is not None
-
     @mark.asyncio
     async def test_seed_session_success(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
         seed_request = NewtonBenchSeedSessionRequest(
@@ -99,9 +100,8 @@ class TestApp:
         )
         
         response = await server.seed_session(mock_request, seed_request)
-        assert response is not None
+        assert isinstance(response, BaseSeedSessionResponse)
         
-        # Verify session state was stored
         session_id = mock_request.session[SESSION_ID_KEY]
         assert session_id in server.session_metadata
         metadata = server.session_metadata[session_id]
@@ -110,45 +110,49 @@ class TestApp:
 
     @mark.asyncio
     async def test_run_experiment_success(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
-        # 1. Seed the session first
+        """Test that the dynamic handler correctly merges session metadata when it calls the core module."""
         seed_request = NewtonBenchSeedSessionRequest(
             module_name="m0_gravity",
-            difficulty="easy",
-            system="vanilla_equation",
-            noise_level=0.0,
-            law_version="v0"
+            difficulty="hard",
+            system="complex_system",
+            noise_level=0.5,
+            law_version="v1"
         )
         await server.seed_session(mock_request, seed_request)
 
-        # 2. Create the handler for m0_gravity
-        handler = server._create_module_handler("m0_gravity")
+        mock_core = MagicMock()
+        mock_core.run_experiment_for_module.return_value = {"mocked_key": "mocked_value"}
         
-        # 3. Prepare run request
-        # Note: The actual request body class depends on the module, but for testing we can pass a dict-like object
-        # or the actual Pydantic model if we import it. Here we use a simple dict which the handler supports.
-        run_body = {
-            "mass1": 10.0,
-            "mass2": 20.0,
-            "distance": 5.0,
-            "initial_velocity": 0.0,
-            "duration": 10.0,
-            "time_step": 0.1
-        }
+        with patch("resources_servers.newton_bench.app._load_module") as mock_load:
+            mock_load.return_value = {"core": mock_core, "param_description": None}
         
-        # 4. Call the handler
-        # We need to mock the return value of the core module to avoid running actual physics code if desired,
-        # but running the actual code is also fine for integration testing.
-        # For unit testing, let's assume we want to verify the flow.
-        
-        response = await handler(mock_request, run_body)
-        
-        assert isinstance(response, RunExperimentResponse)
-        # Since we are using the real physics module (unless mocked), we expect a float result for vanilla_equation
-        assert isinstance(response.result, (float, int))
+            handler = server._create_module_handler("m0_gravity")
+            run_body = {
+                "mass1": 10.0,
+                "mass2": 20.0,
+                "distance": 5.0
+            }
+            
+            response = await handler(mock_request, run_body)
+            
+            assert isinstance(response, RunExperimentResponse)
+            assert response.result == {"mocked_key": "mocked_value"}
+            
+            mock_core.run_experiment_for_module.assert_called_once()
+            called_kwargs = mock_core.run_experiment_for_module.call_args.kwargs
+            
+            # Check user-provided values
+            assert called_kwargs["mass1"] == 10.0
+            assert called_kwargs["mass2"] == 20.0
+            assert called_kwargs["distance"] == 5.0
+            # Check session-injected metadata
+            assert called_kwargs["difficulty"] == "hard"
+            assert called_kwargs["system"] == "complex_system"
+            assert called_kwargs["noise_level"] == 0.5
+            assert called_kwargs["law_version"] == "v1"
 
     @mark.asyncio
     async def test_run_experiment_wrong_module(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
-        # 1. Seed session for GRAVITY
         seed_request = NewtonBenchSeedSessionRequest(
             module_name="m0_gravity",
             difficulty="easy",
@@ -158,10 +162,8 @@ class TestApp:
         )
         await server.seed_session(mock_request, seed_request)
 
-        # 2. Try to call COULOMB handler
         handler = server._create_module_handler("m1_coulomb_force")
         
-        # 3. Expect 400 error
         with raises(HTTPException) as exc_info:
             await handler(mock_request, {})
 
@@ -170,17 +172,89 @@ class TestApp:
 
     @mark.asyncio
     async def test_run_experiment_uninitialized_session(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
-        # 1. Do NOT seed session
-        
-        # 2. Create handler
         handler = server._create_module_handler("m0_gravity")
-        
-        # 3. Expect 400 error
         with raises(HTTPException) as exc_info:
             await handler(mock_request, {})
 
         assert exc_info.value.status_code == 400
         assert "Session not initialized" in exc_info.value.detail
+
+    @mark.asyncio
+    async def test_run_experiment_missing_parameters(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
+        """Test that missing required physical parameters are handled by returning an error result."""
+        await server.seed_session(mock_request, NewtonBenchSeedSessionRequest(
+            module_name="m0_gravity", difficulty="easy", system="vanilla_equation",
+            noise_level=0.0, law_version="v0"
+        ))
+        
+        handler = server._create_module_handler("m0_gravity")
+        invalid_body = {"mass1": 10.0, "distance": 5.0} # mass2 missing
+        
+        response = await handler(mock_request, invalid_body)
+        
+        assert isinstance(response, RunExperimentResponse)
+        assert isinstance(response.result, dict)
+        assert "error" in response.result
+        assert "mass2" in response.result["error"]
+
+    @mark.asyncio
+    async def test_end_session_idempotent(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
+        seed_request = NewtonBenchSeedSessionRequest(
+            module_name="m0_gravity",
+            difficulty="easy",
+            system="vanilla_equation",
+            noise_level=0.0,
+            law_version="v0"
+        )
+        await server.seed_session(mock_request, seed_request)
+
+        from resources_servers.newton_bench.app import ExecutePythonRequest
+
+        exec_request = ExecutePythonRequest(code="a = 1\na")
+        exec_resp = await server.execute_python(mock_request, exec_request)
+        assert exec_resp.success is True
+
+        end_req = NewtonBenchEndSessionRequest()
+        res1 = await server.end_session(mock_request, end_req)
+        assert isinstance(res1, NewtonBenchEndSessionResponse)
+
+        res2 = await server.end_session(mock_request, end_req)
+        assert isinstance(res2, NewtonBenchEndSessionResponse)
+
+        from fastapi import HTTPException
+        with raises(HTTPException):
+            await server.execute_python(mock_request, exec_request)
+
+    @mark.asyncio
+    async def test_concurrent_end_session_race(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
+        """Simulate concurrent client teardown + janitor race and ensure no exceptions and clean state."""
+        seed_request = NewtonBenchSeedSessionRequest(
+            module_name="m0_gravity",
+            difficulty="easy",
+            system="vanilla_equation",
+            noise_level=0.0,
+            law_version="v0"
+        )
+        await server.seed_session(mock_request, seed_request)
+
+        from resources_servers.newton_bench.app import ExecutePythonRequest
+        exec_request = ExecutePythonRequest(code="x = 42\nx")
+        exec_resp = await server.execute_python(mock_request, exec_request)
+        assert exec_resp.success is True
+
+        end_req = NewtonBenchEndSessionRequest()
+
+        async def call_end():
+            await server.end_session(mock_request, end_req)
+
+        tasks = [asyncio.create_task(call_end()) for _ in range(20)]
+        tasks.append(asyncio.create_task(asyncio.to_thread(server._cleanup_sessions)))
+
+        await asyncio.gather(*tasks)
+
+        sid = mock_request.session[SESSION_ID_KEY]
+        assert sid not in server.session_metadata
+        assert sid not in server._sessions
 
     @mark.asyncio
     async def test_seed_session_invalid_module_name(
@@ -223,7 +297,7 @@ class TestApp:
             mock_mod["core"].evaluate_law.return_value = {
                 "symbolic_equivalent": True,
                 "rmsle": 0.1,
-                "exact_accuracy": 0.95,
+                "exact_accuracy": 1.0,
             }
             mock_load.return_value = mock_mod
             response = await server.verify(mock_request, verify_request)
@@ -252,7 +326,7 @@ class TestApp:
             mock_mod["core"].evaluate_law.return_value = {
                 "symbolic_equivalent": False,
                 "rmsle": 1e-6,
-                "exact_accuracy": 0.99,
+                "exact_accuracy": 0.0,
             }
             mock_load.return_value = mock_mod
             response = await server.verify(mock_request, verify_request)
@@ -590,7 +664,7 @@ class TestApp:
         
         assert isinstance(response2, ExecutePythonResponse)
         assert response2.success is True
-        assert response2.result == "84"  # 42 * 2
+        assert response2.result == "84"
 
     @mark.asyncio
     async def test_execute_python_with_print(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
@@ -637,7 +711,7 @@ class TestApp:
         
         assert isinstance(response, ExecutePythonResponse)
         assert response.success is True
-        assert response.result is None  # Last line is assignment, not expression
+        assert response.result is None
 
     @mark.asyncio
     async def test_execute_python_syntax_error(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
@@ -715,9 +789,6 @@ class TestApp:
         response = await server.execute_python(mock_request, request_body)
         
         assert isinstance(response, ExecutePythonResponse)
-        # Runtime errors during execution raise exceptions which are caught
-        # The exception is caught by the worker process and propagated back
-        # This results in success=False with error_message set
         assert response.success is False
         assert response.error_message is not None
         assert "ZeroDivisionError" in response.error_message or "division by zero" in response.error_message.lower()
@@ -735,17 +806,12 @@ class TestApp:
         
         assert isinstance(response, ExecutePythonResponse)
         assert response.success is True
-        # Verify stderr field exists (even if empty)
         assert hasattr(response, 'stderr')
         assert isinstance(response.stderr, str)
-        # Note: We can't test stderr content easily without sys.stderr access,
-        # which is blocked for security. The stderr field is captured automatically
-        # by redirect_stderr in the execution environment.
 
     @mark.asyncio
     async def test_execute_python_with_seed_session(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
         """Test execute_python after seed_session to verify module access works."""
-        # Seed session with a module
         seed_request = NewtonBenchSeedSessionRequest(
             module_name="m0_gravity",
             difficulty="easy",
@@ -755,7 +821,6 @@ class TestApp:
         )
         await server.seed_session(mock_request, seed_request)
         
-        # Execute Python code (even without using the module, it should work)
         request_body = ExecutePythonRequest(code="x = 100\ny = 200\nx + y")
         response = await server.execute_python(mock_request, request_body)
         
@@ -788,23 +853,19 @@ class TestApp:
         await server.seed_session(request1, seed)
         await server.seed_session(request2, seed)
 
-        # Set x=10 in session 1
         body1 = ExecutePythonRequest(code="x = 10")
         response1 = await server.execute_python(request1, body1)
         assert response1.success is True
         
-        # Set x=20 in session 2
         body2 = ExecutePythonRequest(code="x = 20")
         response2 = await server.execute_python(request2, body2)
         assert response2.success is True
         
-        # Verify x in session 1 is still 10
         body1_check = ExecutePythonRequest(code="x")
         response1_check = await server.execute_python(request1, body1_check)
         assert response1_check.success is True
         assert response1_check.result == "10"
         
-        # Verify x in session 2 is 20
         body2_check = ExecutePythonRequest(code="x")
         response2_check = await server.execute_python(request2, body2_check)
         assert response2_check.success is True
@@ -859,7 +920,7 @@ result
         assert response.success is True
         assert response.result is not None
         result_value = float(response.result)
-        assert result_value > 0  # Should be a positive number
+        assert math.isclose(result_value, 5.82842712474619)
 
     @mark.asyncio
     async def test_execute_python_function_definition(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
@@ -868,15 +929,138 @@ result
             module_name="m0_gravity", difficulty="easy", system="vanilla_equation",
             noise_level=0.0, law_version="v0"
         ))
-        # Define a function
+
         body1 = ExecutePythonRequest(code="def add(a, b):\n    return a + b")
         response1 = await server.execute_python(mock_request, body1)
         assert response1.success is True
         
-        # Use the function
         body2 = ExecutePythonRequest(code="add(15, 25)")
         response2 = await server.execute_python(mock_request, body2)
         
         assert isinstance(response2, ExecutePythonResponse)
         assert response2.success is True
         assert response2.result == "40"
+
+    @mark.asyncio
+    async def test_execute_python_timeout(self, server: NewtonBenchResourcesServer, mock_request: Request) -> None:
+        """Test that long-running code is terminated by the timeout."""
+        await server.seed_session(mock_request, NewtonBenchSeedSessionRequest(
+            module_name="m0_gravity", difficulty="easy", system="vanilla_equation",
+            noise_level=0.0, law_version="v0"
+        ))
+        
+        server.config.max_execution_time = 2
+        request_body = ExecutePythonRequest(code="while True: pass")
+        response = await server.execute_python(mock_request, request_body)
+        
+        assert response.success is False
+        assert response.error_message is not None
+        assert "timeout" in response.error_message.lower()
+
+    @mark.asyncio
+    @mark.parametrize("module_name, input_data", [
+        ("m0_gravity", {"mass1": 10.0, "mass2": 10.0, "distance": 1.0}),
+        ("m1_coulomb_force", {"q1": 1.0, "q2": 1.0, "distance": 1.0}),
+        ("m2_magnetic_force", {"current1": 1.0, "current2": 1.0, "distance": 1.0}),
+        ("m3_fourier_law", {"k": 1.0, "A": 1.0, "delta_T": 10.0, "d": 1.0}),
+        ("m4_snell_law", {"refractive_index_1": 1.1, "refractive_index_2": 1.2, "incidence_angle": 30.0}), 
+        ("m5_radioactive_decay", {"N0": 100.0, "lambda_constant": 0.01, "t": 10.0}), 
+        ("m6_underdamped_harmonic", {"k_constant": 1.0, "mass": 1.0, "b_constant": 0.1}),
+        ("m7_malus_law", {"I_0": 1.0, "theta": 0.5}),
+        ("m8_sound_speed", {"adiabatic_index": 1.4, "temperature": 300.0, "molar_mass": 0.029}),
+        ("m9_hooke_law", {"x": 0.5}),
+        ("m10_be_distribution", {"omega": 1e8, "temperature": 30.0}),
+        ("m11_heat_transfer", {"m": 1.0, "c": 4186.0, "delta_T": 10.0}),
+    ])
+    async def test_run_experiment_all_modules_vanilla(
+        self, server: NewtonBenchResourcesServer, mock_request: Request, module_name: str, input_data: dict
+    ) -> None:
+        """Test connectivity for all 12 modules in 'vanilla_equation' mode."""
+        seed_request = NewtonBenchSeedSessionRequest(
+            module_name=module_name,
+            difficulty="easy",
+            system="vanilla_equation",
+            noise_level=0.0,
+            law_version="v0"
+        )
+        await server.seed_session(mock_request, seed_request)
+        handler = server._create_module_handler(module_name)
+         
+        try:
+            response = await handler(mock_request, input_data)
+        except Exception as e:
+            raise e
+
+        assert isinstance(response, RunExperimentResponse)
+        assert isinstance(response.result, (float, int))
+        assert response.result > 0
+
+    @mark.asyncio
+    @mark.parametrize("system_mode, extra_inputs", [
+        ("vanilla_equation", {}),
+        ("simple_system", {"initial_velocity": 0.0, "duration": 1.0, "time_step": 0.1}),
+        ("complex_system", {"initial_velocity": 1.0, "duration": 1.0, "time_step": 0.1}),
+    ])
+    async def test_run_experiment_all_systems(
+        self, server: NewtonBenchResourcesServer, mock_request: Request, system_mode: str, extra_inputs: dict
+    ) -> None:
+        """Test running experiment with all 3 system modes (vanilla_equation, simple_system, complex_system)."""
+        module_name = "m0_gravity"
+        
+        seed_request = NewtonBenchSeedSessionRequest(
+            module_name=module_name,
+            difficulty="easy",
+            system=system_mode,
+            noise_level=0.0,
+            law_version="v0"
+        )
+        await server.seed_session(mock_request, seed_request)
+
+        handler = server._create_module_handler(module_name)
+
+        base_input = {"mass1": 10.0, "mass2": 10.0, "distance": 2.0}
+        input_data = {**base_input, **extra_inputs}
+        
+        response = await handler(mock_request, input_data)
+        assert isinstance(response, RunExperimentResponse)
+        if system_mode == "vanilla_equation":
+            assert isinstance(response.result, (float, int))
+            assert response.result > 0
+        else:
+            assert isinstance(response.result, dict)
+            assert "time" in response.result
+            assert "position" in response.result
+            assert "velocity" in response.result
+            assert len(response.result["time"]) > 0
+            assert len(response.result["position"]) == len(response.result["time"]) and len(response.result["velocity"]) == len(response.result["time"])
+
+    @mark.asyncio
+    async def test_run_experiment_concurrent_sessions(
+        self, server: NewtonBenchResourcesServer
+    ) -> None:
+        """Test concurrent independent sessions with different modules (m0 and m1)."""
+        req_a = MagicMock(spec=Request)
+        req_a.session = {SESSION_ID_KEY: "session_A"}
+        await server.seed_session(req_a, NewtonBenchSeedSessionRequest(
+            module_name="m0_gravity", difficulty="easy", system="vanilla_equation", noise_level=0.0, law_version="v0"
+        ))
+
+        req_b = MagicMock(spec=Request)
+        req_b.session = {SESSION_ID_KEY: "session_B"}
+        await server.seed_session(req_b, NewtonBenchSeedSessionRequest(
+            module_name="m1_coulomb_force", difficulty="easy", system="vanilla_equation", noise_level=0.0, law_version="v0"
+        ))
+
+        handler_m0 = server._create_module_handler("m0_gravity")
+        res_a = await handler_m0(req_a, {"mass1": 10.0, "mass2": 10.0, "distance": 2.0})
+        assert isinstance(res_a, RunExperimentResponse)
+        assert isinstance(res_a.result, (float, int))
+
+        handler_m1 = server._create_module_handler("m1_coulomb_force")
+        res_b = await handler_m1(req_b, {"q1": 1.0, "q2": -1.0, "distance": 1.0})
+        assert isinstance(res_b, RunExperimentResponse)
+        assert isinstance(res_b.result, (float, int))
+
+        with raises(HTTPException) as exc:
+            await handler_m0(req_b, {"mass1": 10.0, "mass2": 10.0, "distance": 2.0})
+        assert "Session configured for 'm1_coulomb_force'" in exc.value.detail
