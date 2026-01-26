@@ -77,6 +77,55 @@ def generate_record(
     return record
 
 
+def write_dataset(configs, output_path):
+    """Writes a list of configurations to a JSONL dataset file."""
+    print(f"Generating dataset: {output_path}")
+    with open(output_path, "w") as f:
+        for idx, config in enumerate(configs):
+            record = generate_record(idx, **config)
+            f.write(json.dumps(record) + "\n")
+    print(f"Generated {len(configs)} records")
+
+
+def generate_example_configs(is_code_assisted):
+    """Generates configuration list for example records."""
+    base_example_configs = [
+        {"difficulty": "easy", "system": "vanilla_equation", "noise_level": 0.0},
+        {"difficulty": "medium", "system": "vanilla_equation", "noise_level": 0.0},
+        {"difficulty": "hard", "system": "vanilla_equation", "noise_level": 0.0},
+        {"difficulty": "easy", "system": "simple_system", "noise_level": 0.0},
+        {"difficulty": "easy", "system": "complex_system", "noise_level": 0.0},
+    ]
+    configs = []
+    for base_config in base_example_configs:
+        configs.append({
+            "module_name": "m0_gravity",
+            **base_config,
+            "law_version": "v0",
+            "is_code_assisted": is_code_assisted
+        })
+    return configs
+
+
+def generate_train_configs(target_modules, diff_list, sys_list, noise_list, is_code_assisted):
+    """Generates configuration list for training records by crossing parameters."""
+    configs = []
+    for module_name in target_modules:
+        for difficulty in diff_list:
+            for system in sys_list:
+                for noise_level in noise_list:
+                    for law_version in ["v0", "v1", "v2"]:
+                        configs.append({
+                            "module_name": module_name,
+                            "difficulty": difficulty,
+                            "system": system,
+                            "noise_level": noise_level,
+                            "law_version": law_version,
+                            "is_code_assisted": is_code_assisted
+                        })
+    return configs
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -86,9 +135,42 @@ def main():
         help="Include Python code execution support (default: False)",
     )
     parser.add_argument(
+        "-m",
         "--modules",
         type=str,
         help="Comma-separated list of modules to generate (default: all)",
+    )
+    parser.add_argument(
+        "-d",
+        "--difficulties",
+        type=str,
+        default="easy,medium,hard",
+        help="Comma-separated difficulties (default: easy,medium,hard)",
+    )
+    parser.add_argument(
+        "-s",
+        "--systems",
+        type=str,
+        default="vanilla_equation,simple_system,complex_system",
+        help="Comma-separated systems (default: vanilla_equation,simple_system,complex_system)",
+    )
+    parser.add_argument(
+        "-n",
+        "--noise-levels",
+        type=str,
+        default="0.0,0.0001,0.001,0.01,0.1",
+        help="Comma-separated noise levels (default: 0.0,0.0001,0.001,0.01,0.1)",
+    )
+    parser.add_argument(
+        "--output-name",
+        type=str,
+        help="Specify the output filename (overrides default naming logic)",
+    )
+    parser.add_argument(
+        "--example",
+        action="store_true",
+        default=False,
+        help="Generate example.jsonl instead of train.jsonl",
     )
     args = parser.parse_args()
 
@@ -99,64 +181,25 @@ def main():
     else:
         target_modules = list(MODULE_REQUEST_CLASSES_MAPPING.keys())
 
-    print(f"Generating datasets with code_assisted={is_code_assisted} and target modules={target_modules}")
-
-    base_example_configs = [
-        {"difficulty": "easy", "system": "vanilla_equation", "noise_level": 0.0},
-        {"difficulty": "easy", "system": "vanilla_equation", "noise_level": 0.0001},
-        {"difficulty": "medium", "system": "vanilla_equation", "noise_level": 0.0},
-        {"difficulty": "hard", "system": "vanilla_equation", "noise_level": 0.001},
-        {"difficulty": "easy", "system": "simple_system", "noise_level": 0.0},
-        {"difficulty": "easy", "system": "complex_system", "noise_level": 0.0},
-    ]
-
-    example_configs = []
-    for base_config in base_example_configs:
-        for law_version in ["v0", "v1", "v2"]:
-            example_configs.append({
-                "module_name": "m0_gravity",
-                **base_config,
-                "law_version": law_version,
-                "is_code_assisted": is_code_assisted
-            })
-
-    train_configs = []
-    for module_name in target_modules:
-        for difficulty in ["easy", "medium", "hard"]:
-            for system in ["vanilla_equation", "simple_system", "complex_system"]:
-                for noise_level in [0.0, 0.0001, 0.001, 0.01]:
-                    for law_version in ["v0", "v1", "v2"]:
-                        train_configs.append({
-                            "module_name": module_name,
-                            "difficulty": difficulty,
-                            "system": system,
-                            "noise_level": noise_level,
-                            "law_version": law_version,
-                            "is_code_assisted": is_code_assisted
-                        })
+    diff_list = [d.strip() for d in args.difficulties.split(",")]
+    sys_list = [s.strip() for s in args.systems.split(",")]
+    noise_list = [float(n.strip()) for n in args.noise_levels.split(",")]
 
     output_dir = Path(__file__).parent / "data"
     output_dir.mkdir(exist_ok=True)
 
-    example_path = output_dir / "example.jsonl"
-    print(f"Generating example dataset: {example_path}")
-    with open(example_path, "w") as f:
-        for idx, config in enumerate(example_configs):
-            record = generate_record(idx, **config)
-            f.write(json.dumps(record) + "\n")
-    print(f"Generated {len(example_configs)} example records")
-
-    train_path = output_dir / "train.jsonl"
-    print(f"Generating train dataset: {train_path}")
-    with open(train_path, "w") as f:
-        for idx, config in enumerate(train_configs):
-            record = generate_record(idx, **config)
-            f.write(json.dumps(record) + "\n")
-    print(f"Generated {len(train_configs)} train records")
+    if args.example:
+        print(f"Generating example dataset with code_assisted={is_code_assisted}")
+        configs = generate_example_configs(is_code_assisted)
+        out_path = output_dir / (args.output_name if args.output_name else "example.jsonl")
+        write_dataset(configs, out_path)
+    else:
+        print(f"Generating train dataset with code_assisted={is_code_assisted} and target modules={target_modules}")
+        configs = generate_train_configs(target_modules, diff_list, sys_list, noise_list, is_code_assisted)
+        out_path = output_dir / (args.output_name if args.output_name else "train.jsonl")
+        write_dataset(configs, out_path)
 
     print("\nDataset generation complete!")
-    print(f"  Example: {example_path}")
-    print(f"  Train: {train_path}")
 
 
 if __name__ == "__main__":
