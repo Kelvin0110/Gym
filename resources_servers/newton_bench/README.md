@@ -43,12 +43,42 @@ python resources_servers/newton_bench/generate_dataset.py --code-assisted
 ## Rollout Collection
 
 ### Configure env.yaml
-Configure `env.yaml` to point to your vLLM server (or openai):
+Configure `env.yaml` to point to your vLLM server (or OpenAI-compatible endpoint).
+
+**Example: local vLLM server for Qwen3-VL-8B-Thinking**
+
 ```yaml
 policy_base_url: http://localhost:10240/v1
 policy_api_key: EMPTY
-policy_model_name: Qwen/Qwen3-30B-A3B
+policy_model_name: Qwen/Qwen3-VL-8B-Thinking
 ```
+
+### Example: start a vLLM server for Qwen3-VL-8B-Thinking
+
+Run the following from the NeMo Gym repo root in a separate virtual environment configured with `vllm`:
+
+```bash
+uv venv --python 3.12 --seed
+source .venv/bin/activate
+uv pip install hf_transfer datasets vllm --torch-backend=auto
+
+HF_HOME=.cache/ \
+HF_HUB_ENABLE_HF_TRANSFER=1 \
+    hf download Qwen/Qwen3-VL-8B-Thinking
+
+HF_HOME=.cache/ \
+HOME=. \
+vllm serve \
+    Qwen/Qwen3-VL-8B-Thinking \
+    --dtype auto \
+    --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.9 \
+    --enable-auto-tool-choice --tool-call-parser hermes \
+    --host 0.0.0.0 \
+    --port 10240
+```
+
+> Note: Do **not** pass any `--reasoning-parser` flag to vLLM. NeMo Gym's `vllm_model` handles extraction of reasoning traces (e.g., `<think>...</think>`) itself.
 
 ### Launch servers
 ```bash
@@ -70,6 +100,101 @@ ng_collect_rollouts \
 source resources_servers/newton_bench/.venv/bin/activate 
 pytest resources_servers/newton_bench/tests/test_app.py
 ```
+
+## Qwen/Qwen3-VL-8B-Thinking Evaluation Summary
+
+The file `resources_servers/newton_bench/data/songcpu6_train_v0_noise0.jsonl` contains 432 rollouts collected with the **Qwen/Qwen3-VL-8B-Thinking** model on Newton Bench (108 prompts from `train_v0_noise0.jsonl`, each repeated 4 times, with `+num_samples_in_parallel=16`).
+
+### Reward distribution
+
+All statistics below are computed directly from `songcpu6_train_v0_noise0.jsonl`:
+
+- **Reward summary**
+  - Mean reward: ≈ **0.0675**
+  - Median reward: **0.0**
+  - Min reward: ≈ **-0.8786**
+  - Max reward: **1.0**
+
+- **Reward buckets (width 0.2 from -1.0 to 1.0; counts of rollouts in each range)**:
+  - [-1.0, -0.8): **16**
+  - [-0.8, -0.6): **16**
+  - [-0.6, -0.4): **60**
+  - [-0.4, -0.2): **39**
+  - [-0.2, 0.0): **136**
+  - [0.0, 0.2): **150**
+  - [0.2, 0.4): **46**
+  - [0.4, 0.6): **2**
+  - [0.6, 0.8): **1**
+  - [0.8, 1.0]: **78**
+
+### Overall tool-call usage
+
+For each rollout, the number of tool calls is:
+
+- `tool_calls_per_rollout = count(response.output[*].type == "function_call")`
+
+Aggregate stats:
+
+- Average tool calls per rollout: ≈ **22.95**
+- Min tool calls: **0**
+- Max tool calls: **1770**
+- Unique tool-call counts observed: **47**
+
+Most common exact tool-call counts (tool_calls → number of rollouts):
+
+- **5** → 86 rollouts  
+- **10** → 77 rollouts  
+- **6** → 58 rollouts  
+- **7** → 34 rollouts  
+- **8** → 32 rollouts  
+- **0** → 23 rollouts  
+- **9** → 21 rollouts  
+- **4** → 19 rollouts  
+- **20** → 8 rollouts  
+- **11–13,15** → 5–6 rollouts each (small samples)
+
+### Mean reward by exact tool-call count
+
+(Only showing counts with at least 5 rollouts for stability.)
+
+| Tool Calls | Rollouts (n) | Mean Reward |
+|-----------:|-------------:|------------:|
+| 0         | 23           | ≈ **-0.1112** |
+| 4         | 19           | ≈ **0.0624**  |
+| 5         | 86           | ≈ **0.0465**  |
+| 6         | 58           | ≈ **0.0664**  |
+| 7         | 34           | ≈ **0.1020**  |
+| 8         | 32           | ≈ **0.0079**  |
+| 9         | 21           | ≈ **0.3957**  |
+| 10        | 77           | ≈ **0.0864**  |
+| 11        | 6            | ≈ **0.0869**  |
+| 12        | 6            | ≈ **0.0971**  |
+| 13        | 6            | ≈ **0.7187**  |
+| 15        | 5            | ≈ **0.0448**  |
+| 20        | 8            | ≈ **0.0125**  |
+
+Tool-call counts not shown here (e.g., 1, 2, 3, 14, 16, 18, 19) either have fewer than 5 rollouts or zero rollouts (for 2 and 19), so they are omitted to avoid over-interpreting extremely small samples.
+
+### Mean reward by tool-call count bins
+
+Grouping tool-call counts into coarse bins:
+
+| Tool Call Range | Rollouts (n) | Mean Reward |
+|----------------:|-------------:|------------:|
+| 0              | 23           | ≈ **-0.1112** |
+| 1–10           | 329          | ≈ **0.0824**  |
+| 11–50          | 60           | ≈ **0.1308**  |
+| 51–200         | 15           | ≈ **-0.1959** |
+| 201–10,000     | 5            | ≈ **-0.0600** |
+
+### Correlation and key observations
+
+- **Correlation (tool_calls, reward)**: Pearson correlation ≈ **-0.0211**.
+- **Key observations**:
+  - Rewards are centered near zero with a long tail: median 0.0, mean ~0.0675, and many rollouts in negative ranges, indicating frequent partial or failed law discoveries.
+  - Symbolic correctness is modest (~19.7% of rollouts have `symbolic_equivalent == true`), and RMSLE values show a wide spread, suggesting the model often misses both exact symbolic form and precise numeric behavior.
+  - Tool usage is heavy on average (~23 calls per rollout), but very high tool-call counts (≥ 51) are associated with **lower** average rewards, indicating unproductive experimentation loops.
+  - Moderate tool usage (roughly 1–50 calls) tends to correlate with slightly better rewards, but the overall correlation is weak; simply increasing the number of tool calls is not a reliable path to higher reward under this setup.
 
 ## Licensing information
 - **Code:** Apache 2.0
