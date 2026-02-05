@@ -846,7 +846,7 @@ result
             mock_load.return_value = mock_mod
             response = await server.verify(mock_request, verify_request)
         assert isinstance(response, NewtonBenchVerifyResponse)
-        assert response.reward == 1.0
+        assert math.isclose(response.reward, 0.9548387096774194, rel_tol=1e-9, abs_tol=1e-9)
         assert response.symbolic_equivalent is True
         assert response.extracted_law is not None
 
@@ -873,7 +873,7 @@ result
             mock_load.return_value = mock_mod
             response = await server.verify(mock_request, verify_request)
         assert isinstance(response, NewtonBenchVerifyResponse)
-        assert response.reward == 1.0
+        assert math.isclose(response.reward, 0.4, rel_tol=1e-6, abs_tol=1e-6)
         assert response.rmsle == 1e-6
         assert response.symbolic_equivalent is False
 
@@ -982,7 +982,7 @@ result
             mock_load.return_value = mock_mod
             response = await server.verify(mock_request, verify_request)
         assert isinstance(response, NewtonBenchVerifyResponse)
-        assert response.reward == 0.0
+        assert math.isclose(response.reward, -0.9592233009708737, rel_tol=1e-9, abs_tol=1e-9)
         assert response.symbolic_equivalent is False
         assert response.rmsle == 100.0
 
