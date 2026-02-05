@@ -277,22 +277,22 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         noise_level = metadata.get("noise_level")
         law_version = metadata.get("law_version")
 
-        extracted_law = self._extract_law_from_response(body.response)
-
-        if extracted_law is None:
-            return NewtonBenchVerifyResponse(
-                **body.model_dump(),
-                difficulty=difficulty,
-                system=system,
-                noise_level=noise_level,
-                law_version=law_version,
-                reward=0.0,
-                extracted_law=None,
-                evaluation_error="No law found in response. Expected <final_law>...</final_law> tags.",
-            )
-
-        # Use NewtonBench eval func
         try:
+            extracted_law = self._extract_law_from_response(body.response)
+
+            if extracted_law is None:
+                return NewtonBenchVerifyResponse(
+                    **body.model_dump(),
+                    difficulty=difficulty,
+                    system=system,
+                    noise_level=noise_level,
+                    law_version=law_version,
+                    reward=0.0,
+                    extracted_law=None,
+                    evaluation_error="No law found in response. Expected <final_law>...</final_law> tags.",
+                )
+
+            # Use NewtonBench eval func
             module_name = metadata.get("module_name")
             if not module_name:
                 return NewtonBenchVerifyResponse(
@@ -379,18 +379,21 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 extracted_law=extracted_law,
                 evaluation_error=f"Evaluation failed: {str(e)}",
             )
+        finally:
+            self._close_session(session_id)
 
     async def end_session(self, request: Request, body: NewtonBenchEndSessionRequest) -> NewtonBenchEndSessionResponse:
         """Clean up session handle for Python execution and metadata."""
         sid = request.session[SESSION_ID_KEY]
+        self._close_session(sid)
+        return NewtonBenchEndSessionResponse()
 
+    def _close_session(self, sid: str):
+        """Internal helper to clean up session handle and metadata."""
         handle = self._sessions.pop(sid, None)
         if handle:
             handle.close()
-
         self.session_metadata.pop(sid, None)
-
-        return NewtonBenchEndSessionResponse()
     
     def _create_module_handler(self, module_name: str):
         model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
@@ -472,11 +475,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             last_activity = self.session_metadata[sid].get("last_used", 0)
 
             if now - last_activity > self.config.session_ttl:
-                handle = self._sessions.pop(sid, None)
-                if handle:
-                    handle.close()
-
-                self.session_metadata.pop(sid, None)
+                self._close_session(sid)
 
     def _extract_law_from_response(self, response: Any) -> Optional[str]:
         for output in reversed(response.output):
