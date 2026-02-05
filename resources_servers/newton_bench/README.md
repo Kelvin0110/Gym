@@ -103,11 +103,11 @@ pytest resources_servers/newton_bench/tests/test_app.py
 
 ## Qwen/Qwen3-VL-8B-Thinking Evaluation Summary
 
-The file `resources_servers/newton_bench/data/songcpu6_train_v0_noise0.jsonl` contains 432 rollouts collected with the **Qwen/Qwen3-VL-8B-Thinking** model on Newton Bench (108 prompts from `train_v0_noise0.jsonl`, each repeated 4 times, with `+num_samples_in_parallel=16`).
+A total of 432 rollouts were collected using the **Qwen/Qwen3-VL-8B-Thinking** model as the evaluator on Newton Bench. The dataset consists of 108 prompts based on version v0 of scientific laws, spanning all levels of equation difficulty and model complexity, with each prompt repeated four times.
 
 ### Reward distribution
 
-All statistics below are computed directly from `songcpu6_train_v0_noise0.jsonl`:
+All statistics below are computed as follows:
 
 - **Reward summary**
   - Mean reward: ≈ **0.0675**
@@ -120,7 +120,7 @@ All statistics below are computed directly from `songcpu6_train_v0_noise0.jsonl`
   - [-0.8, -0.6): **16**
   - [-0.6, -0.4): **60**
   - [-0.4, -0.2): **39**
-  - [-0.2, 0.0): **136**
+  - [-0.2, 0.0): **24**
   - [0.0, 0.2): **150**
   - [0.2, 0.4): **46**
   - [0.4, 0.6): **2**
@@ -135,10 +135,10 @@ For each rollout, the number of tool calls is:
 
 Aggregate stats:
 
-- Average tool calls per rollout: ≈ **22.95**
+- Mean tool calls per rollout: ≈ **22.95**
+- Median tool calls: **7.0**
 - Min tool calls: **0**
 - Max tool calls: **1770**
-- Unique tool-call counts observed: **47**
 
 Most common exact tool-call counts (tool_calls → number of rollouts):
 
@@ -185,16 +185,16 @@ Grouping tool-call counts into coarse bins:
 | 1–10           | 329          | ≈ **0.0824**  |
 | 11–50          | 60           | ≈ **0.1308**  |
 | 51–200         | 15           | ≈ **-0.1959** |
-| 201–10,000     | 5            | ≈ **-0.0600** |
+| 201–2000       | 5            | ≈ **-0.0600** |
 
 ### Correlation and key observations
 
 - **Correlation (tool_calls, reward)**: Pearson correlation ≈ **-0.0211**.
-- **Key observations**:
-  - Rewards are centered near zero with a long tail: median 0.0, mean ~0.0675, and many rollouts in negative ranges, indicating frequent partial or failed law discoveries.
-  - Symbolic correctness is modest (~19.7% of rollouts have `symbolic_equivalent == true`), and RMSLE values show a wide spread, suggesting the model often misses both exact symbolic form and precise numeric behavior.
-  - Tool usage is heavy on average (~23 calls per rollout), but very high tool-call counts (≥ 51) are associated with **lower** average rewards, indicating unproductive experimentation loops.
-  - Moderate tool usage (roughly 1–50 calls) tends to correlate with slightly better rewards, but the overall correlation is weak; simply increasing the number of tool calls is not a reliable path to higher reward under this setup.
+- **Key observations**:  
+  - **Symbolic Accuracy:** Symbolic correctness is modest (~19.7% of rollouts have `symbolic_equivalent == true`), and RMSLE values show a wide spread, suggesting the model often misses both exact symbolic form and precise numeric behavior.
+  - **Reward Distribution:** Rewards are centered near zero with a long tail (median 0.0, mean ~0.0675), and many rollouts are in negative ranges, indicating frequent partial or failed law discoveries.
+  - **Tool Usage Sweet Spot:** Positive rewards are observed with moderate tool usage (approximately 1–50 calls), with performance peaking in the 11–50 call range. This suggests that a sufficiently large number of tool calls is necessary for the agent to gather comprehensive data and derive scientific laws.
+  - **Diminishing Returns:** However, performance drops sharply after 50 calls. This indicates that once the agent has already collected enough data, additional tool calls no longer provide useful information and instead hinder performance. Therefore, simply increasing the number of tool calls is not a reliable path to higher rewards in this setup, highlighting that scientific discovery in this environment depends on reasoning and hypothesis selection, rather than sheer data volume.
 
 ## Licensing information
 - **Code:** Apache 2.0
