@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import math
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -50,6 +51,20 @@ if str(NEWTON_BENCH_PATH) not in sys.path:
 
 _loaded_modules: dict = {}
 
+
+def _json_safe_result(x: Any) -> Any:
+    """Replace nan/inf with None so response is JSON-serializable."""
+    if x is None:
+        return None
+    if isinstance(x, float):
+        return None if (math.isnan(x) or math.isinf(x)) else x
+    if isinstance(x, dict):
+        return {k: _json_safe_result(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return type(x)(_json_safe_result(v) for v in x)
+    return x
+
+
 def _load_module(module_name: str):
     if not module_name:
         raise ImportError("No module_name provided to _load_module")
@@ -75,7 +90,7 @@ class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
 
 
 class RunExperimentResponse(BaseModel):
-    result: Union[float, dict]  # float for vanilla_equation, dict for systems
+    result: Optional[Union[float, dict]]  # float for vanilla_equation, dict for systems; None if nan
 
 
 class ExecutePythonRequest(BaseModel):
@@ -303,12 +318,41 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             )
 
             # Symbolic equivalence uses LLM judge
-            is_symbolically_correct = eval_result.get("symbolic_equivalent", False)
-            
-            rmsle = eval_result.get("rmsle", float('inf'))
-            is_numerically_correct = rmsle < 1e-5
+            symbolic_equivalent_raw = eval_result.get("symbolic_equivalent")
+            is_symbolically_correct = symbolic_equivalent_raw is True
+            symbolic_missing = symbolic_equivalent_raw is None
 
-            reward = 1.0 if (is_symbolically_correct or is_numerically_correct) else 0.0
+            rmsle_raw = eval_result.get("rmsle")
+            rmsle_is_missing = (
+                rmsle_raw is None
+                or (isinstance(rmsle_raw, float) and (math.isnan(rmsle_raw) or math.isinf(rmsle_raw)))
+            )
+            rmsle = rmsle_raw if not rmsle_is_missing else None
+
+            # Reward: weight 0.3 symbolic, 0.7 RMSLE. Edge cases when RMSLE is missing.
+            if rmsle_is_missing:
+                if symbolic_missing:
+                    reward = 0.0
+                elif is_symbolically_correct:
+                    reward = 1.0
+                else:
+                    reward = -0.3
+            else:
+                # reward = 0.3 * R_symbolic + 0.7 * R_RMSLE
+                # R_symbolic: +1 if equivalent, -1 otherwise
+                R_symbolic = 1.0 if is_symbolically_correct else -1.0
+                # R_RMSLE = 1 - 2*x/(x+3), x = RMSLE; range (-1, 1]
+                x = float(rmsle)
+                R_rmsle = 1.0 - (2.0 * x / (x + 3.0))
+                reward = 0.3 * R_symbolic + 0.7 * R_rmsle
+
+            # JSON does not allow nan; coerce to None or a finite float for response
+            def _json_safe_float(x: Optional[float], default: Optional[float] = None) -> Optional[float]:
+                if x is None:
+                    return default
+                if isinstance(x, float) and (math.isnan(x) or math.isinf(x)):
+                    return default
+                return x
 
             return NewtonBenchVerifyResponse(
                 **body.model_dump(),
@@ -316,10 +360,10 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 system=system,
                 noise_level=noise_level,
                 law_version=law_version,
-                reward=reward,
+                reward=reward if math.isfinite(reward) else 0.0,
                 extracted_law=extracted_law,
-                rmsle=eval_result.get("rmsle"),
-                exact_accuracy=eval_result.get("exact_accuracy"),
+                rmsle=_json_safe_float(eval_result.get("rmsle")),
+                exact_accuracy=_json_safe_float(eval_result.get("exact_accuracy")),
                 symbolic_equivalent=eval_result.get("symbolic_equivalent"),
                 evaluation_error=eval_result.get("error"),
             )
@@ -392,7 +436,8 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             try:
                 # Use NewtonBench experiment runner
                 result = core.run_experiment_for_module(**effective_kwargs)
-                return RunExperimentResponse(result=result)
+                # JSON does not allow nan; replace nan/inf with None recursively
+                return RunExperimentResponse(result=_json_safe_result(result))
 
             except Exception as e:
                 return RunExperimentResponse(result={"error": str(e)})
