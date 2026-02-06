@@ -18,6 +18,10 @@
         "Average": 76.2,
         "Min": 72.0,
         "Max": 81.0,
+        "Standard deviation": 3.42
+    },
+    "Number of turns": {
+        "Total # non-null values": 5,
         "Average": 1.0,
         "Min": 1.0,
         "Max": 1.0,
