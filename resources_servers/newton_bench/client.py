@@ -32,13 +32,20 @@ Usage:
 """
 
 import asyncio
-from typing import Dict, Any
+from typing import Dict
 
 from nemo_gym.server_utils import ServerClient
 
 
-async def seed_session(client: ServerClient, cookies: Dict[str, str], module_name="m0_gravity", difficulty="easy",
-                 system="vanilla_equation", noise_level=0.0, law_version="v0"):
+async def seed_session(
+    client: ServerClient,
+    cookies: Dict[str, str],
+    module_name="m0_gravity",
+    difficulty="easy",
+    system="vanilla_equation",
+    noise_level=0.0,
+    law_version="v0",
+):
     """
     Initialize a NewtonBench session for a specific physics module.
     """
@@ -52,7 +59,7 @@ async def seed_session(client: ServerClient, cookies: Dict[str, str], module_nam
             "noise_level": noise_level,
             "law_version": law_version,
         },
-        cookies=cookies
+        cookies=cookies,
     )
     response.raise_for_status()
     if response.cookies:
@@ -72,7 +79,7 @@ async def run_gravity_experiment(client: ServerClient, cookies: Dict[str, str], 
             "mass2": mass2,
             "distance": distance,
         },
-        cookies=cookies
+        cookies=cookies,
     )
 
     response.raise_for_status()
@@ -84,10 +91,7 @@ async def execute_python(client: ServerClient, cookies: Dict[str, str], code):
     Execute Python code in the sandboxed environment.
     """
     response = await client.post(
-        server_name="newton_bench",
-        url_path="/execute_python",
-        json={"code": code},
-        cookies=cookies
+        server_name="newton_bench", url_path="/execute_python", json={"code": code}, cookies=cookies
     )
     response.raise_for_status()
     return await response.json()
@@ -97,12 +101,7 @@ async def end_session(client: ServerClient, cookies: Dict[str, str]):
     """
     End the current session and clean up resources.
     """
-    response = await client.post(
-        server_name="newton_bench",
-        url_path="/end_session",
-        json={},
-        cookies=cookies
-    )
+    response = await client.post(server_name="newton_bench", url_path="/end_session", json={}, cookies=cookies)
     response.raise_for_status()
     return await response.json()
 
@@ -235,6 +234,7 @@ print(f"   C = F * r^1.5 / (m1 * m2) = {{C:.6e}}")
     print("=" * 60)
     print("Demo complete!")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     asyncio.run(demo_physics_discovery())

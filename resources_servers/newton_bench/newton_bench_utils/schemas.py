@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,16 +39,20 @@ class M1CoulombForceRequest(BaseModel):
     duration: Optional[float] = Field(None, description="Duration of the simulation. (optional)")
     time_step: Optional[float] = Field(None, description="Time step for the simulation. (optional)")
 
+
 class M2MagneticForceRequest(BaseModel):
     current1: float = Field(..., description="Current in the first wire. (positive real number)")
     current2: float = Field(..., description="Current in the second wire. (positive real number)")
     distance: float = Field(..., description="Distance between the two wires. (positive real number)")
 
     # for simple_system and complex_system
-    mass_wire: Optional[float] = Field(None, description="Mass per unit length of the moving wire (the second wire). (optional)")
+    mass_wire: Optional[float] = Field(
+        None, description="Mass per unit length of the moving wire (the second wire). (optional)"
+    )
     initial_velocity: Optional[float] = Field(None, description="Initial velocity of the second wire. (optional)")
     duration: Optional[float] = Field(None, description="Duration of the simulation. (optional)")
     time_step: Optional[float] = Field(None, description="Time step for the simulation. (optional)")
+
 
 class M3FourierLawRequest(BaseModel):
     k: float = Field(..., description="K constant (a physical constant). (positive real number)")
@@ -59,10 +63,17 @@ class M3FourierLawRequest(BaseModel):
     # for simple_system and complex_system
     num_points: Optional[int] = Field(None, description="Number of sampling points for simulation. (optional)")
 
+
 class M4SnellLawRequest(BaseModel):
-    refractive_index_1: Optional[float] = Field(None, description="Refractive index of the first medium. (positive real number, typically >= 1) (optional)")
-    refractive_index_2: Optional[float] = Field(None, description="Refractive index of the second medium. (positive real number, typically >= 1) (optional)")
-    incidence_angle: float = Field(..., description="Angle of incidence in degrees. (real number, typically between 0 and 90)")
+    refractive_index_1: Optional[float] = Field(
+        None, description="Refractive index of the first medium. (positive real number, typically >= 1) (optional)"
+    )
+    refractive_index_2: Optional[float] = Field(
+        None, description="Refractive index of the second medium. (positive real number, typically >= 1) (optional)"
+    )
+    incidence_angle: float = Field(
+        ..., description="Angle of incidence in degrees. (real number, typically between 0 and 90)"
+    )
 
     # for simple_system and complex_system
     refractive_index_3: Optional[float] = Field(None, description="Refractive index of the third medium. (optional)")
@@ -72,7 +83,9 @@ class M4SnellLawRequest(BaseModel):
 
 class M5RadioactiveDecayRequest(BaseModel):
     N0: Optional[float] = Field(None, description="Initial number of atoms. (positive real number) (optional)")
-    lambda_constant: Optional[float] = Field(None, description="Lambda constant (a physical constant). (positive real number) (optional)")
+    lambda_constant: Optional[float] = Field(
+        None, description="Lambda constant (a physical constant). (positive real number) (optional)"
+    )
     t: float = Field(..., description="Time elapsed. (positive real number)")
 
     # for simple_system and complex_system
@@ -94,7 +107,10 @@ class M6UnderdampedHarmonicRequest(BaseModel):
 
 class M7MalusLawRequest(BaseModel):
     I_0: float = Field(..., description="Initial intensity of the light. (positive real number)")
-    theta: float = Field(..., description="Angle between the polarization axis of the polarizer and the polarization direction of the incident light in radians. (real number between 0 and π/2)")
+    theta: float = Field(
+        ...,
+        description="Angle between the polarization axis of the polarizer and the polarization direction of the incident light in radians. (real number between 0 and π/2)",
+    )
 
 
 class M8SoundSpeedRequest(BaseModel):
@@ -104,7 +120,9 @@ class M8SoundSpeedRequest(BaseModel):
 
     # for simple_system and complex_system
     distance: Optional[float] = Field(None, description="Distance to the wall. (optional)")
-    driving_frequency: Optional[float] = Field(None, description="Driving frequency of the sound wave from the source. (optional)")
+    driving_frequency: Optional[float] = Field(
+        None, description="Driving frequency of the sound wave from the source. (optional)"
+    )
     tube_diameter: Optional[float] = Field(None, description="Internal diameter of the resonance tube. (optional)")
 
 
@@ -120,9 +138,15 @@ class M10BEDistributionRequest(BaseModel):
     temperature: float = Field(..., description="Temperature. (positive real number)")
 
     # for simple_system and complex_system
-    probe_frequency: Optional[float] = Field(None, description="Specific angular frequency at which to measure the radiation. (optional)")
-    center_frequency: Optional[float] = Field(None, description="Central angular frequency that the filter is tuned to. (optional)")
-    bandwidth: Optional[float] = Field(None, description="Width of the frequency band that the filter allows to pass. (optional)")
+    probe_frequency: Optional[float] = Field(
+        None, description="Specific angular frequency at which to measure the radiation. (optional)"
+    )
+    center_frequency: Optional[float] = Field(
+        None, description="Central angular frequency that the filter is tuned to. (optional)"
+    )
+    bandwidth: Optional[float] = Field(
+        None, description="Width of the frequency band that the filter allows to pass. (optional)"
+    )
 
 
 class M11HeatTransferRequest(BaseModel):
@@ -146,7 +170,7 @@ def get_tool_schema(module_name: str) -> dict:
 
     for prop_name, prop_info in schema.get("properties", {}).items():
         prop_type = prop_info.get("type", "number")
-        
+
         if prop_name not in schema.get("required", []):
             properties[prop_name] = {
                 "type": [prop_type, "null"],

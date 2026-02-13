@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import asyncio
+import importlib
+import inspect
+import logging
 import math
 import sys
 import time
@@ -20,7 +23,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field, PrivateAttr
 
 from nemo_gym.base_resources_server import (
@@ -33,16 +36,12 @@ from nemo_gym.base_resources_server import (
     SimpleResourcesServer,
 )
 from nemo_gym.server_utils import SESSION_ID_KEY
-
-import importlib
-import inspect
-import logging
-
-from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING
 from resources_servers.newton_bench.newton_bench_utils.sandbox import (
-    validate_python_code,
     SessionHandle,
+    validate_python_code,
 )
+from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING
+
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 NEWTON_BENCH_PATH = REPO_ROOT / "NewtonBench"
@@ -85,8 +84,8 @@ def _load_module(module_name: str):
 
 
 class NewtonBenchResourcesServerConfig(BaseResourcesServerConfig):
-    max_execution_time: int = 60    # 1 minute
-    session_ttl: int = 1800         # 30 minutes
+    max_execution_time: int = 60  # 1 minute
+    session_ttl: int = 1800  # 30 minutes
 
 
 class RunExperimentResponse(BaseModel):
@@ -156,16 +155,16 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             cleanup_task = asyncio.create_task(self._background_cleanup_task())
-            
+
             async with parent_lifespan(app):
                 yield
-            
+
             cleanup_task.cancel()
             try:
                 await cleanup_task
             except asyncio.CancelledError:
                 pass
-            
+
             for sid in list(self._sessions.keys()):
                 handle = self._sessions.pop(sid, None)
                 if handle:
@@ -193,9 +192,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
 
         return app
 
-    async def seed_session(
-        self, request: Request, body: NewtonBenchSeedSessionRequest
-    ) -> BaseSeedSessionResponse:
+    async def seed_session(self, request: Request, body: NewtonBenchSeedSessionRequest) -> BaseSeedSessionResponse:
         session_id = request.session[SESSION_ID_KEY]
         module_name = body.module_name
 
@@ -211,7 +208,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             "last_used": time.time(),
         }
         return BaseSeedSessionResponse()
-    
+
     async def execute_python(self, request: Request, body: ExecutePythonRequest) -> ExecutePythonResponse:
         """Execute Python code in a session-based environment."""
         sid = request.session[SESSION_ID_KEY]
@@ -235,9 +232,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 self._sessions.pop(sid, None)
 
             if sid not in self._sessions:
-                self._sessions[sid] = SessionHandle(
-                    self.config.max_execution_time
-                )
+                self._sessions[sid] = SessionHandle(self.config.max_execution_time)
             handle = self._sessions[sid]
 
             try:
@@ -256,7 +251,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 if sid in self._sessions and self._sessions[sid].is_closed:
                     self._sessions.pop(sid, None)
                 raise e
-                
+
         except Exception as e:
             return ExecutePythonResponse(
                 success=False,
@@ -309,7 +304,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             _mod = _load_module(module_name)
             core = _mod["core"]
             param_description = _mod.get("param_description", None)
-    
+
             eval_result = core.evaluate_law(
                 llm_function_str=extracted_law,
                 param_description=param_description,
@@ -323,9 +318,8 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             symbolic_missing = symbolic_equivalent_raw is None
 
             rmsle_raw = eval_result.get("rmsle")
-            rmsle_is_missing = (
-                rmsle_raw is None
-                or (isinstance(rmsle_raw, float) and (math.isnan(rmsle_raw) or math.isinf(rmsle_raw)))
+            rmsle_is_missing = rmsle_raw is None or (
+                isinstance(rmsle_raw, float) and (math.isnan(rmsle_raw) or math.isinf(rmsle_raw))
             )
             rmsle = rmsle_raw if not rmsle_is_missing else None
 
@@ -394,7 +388,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
         if handle:
             handle.close()
         self.session_metadata.pop(sid, None)
-    
+
     def _create_module_handler(self, module_name: str):
         model_cls = MODULE_REQUEST_CLASSES_MAPPING.get(module_name)
         if model_cls is None:
@@ -409,8 +403,8 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
             session_module_name = metadata.get("module_name")
             if session_module_name != module_name:
                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Session configured for '{session_module_name}', but received run_experiment call for '{module_name}'."
+                    status_code=400,
+                    detail=f"Session configured for '{session_module_name}', but received run_experiment call for '{module_name}'.",
                 )
 
             metadata["last_used"] = time.time()
@@ -470,7 +464,7 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
     def _cleanup_sessions(self):
         """Remove sessions that have been inactive for longer than session_ttl."""
         now = time.time()
-        
+
         for sid in list(self.session_metadata.keys()):
             last_activity = self.session_metadata[sid].get("last_used", 0)
 
@@ -494,9 +488,10 @@ class NewtonBenchResourcesServer(SimpleResourcesServer):
                 if end_index == -1:
                     continue
 
-                return text_content[start_index + len(start_tag):end_index].strip()
-            
+                return text_content[start_index + len(start_tag) : end_index].strip()
+
         return None
+
 
 if __name__ == "__main__":
     NewtonBenchResourcesServer.run_webserver()

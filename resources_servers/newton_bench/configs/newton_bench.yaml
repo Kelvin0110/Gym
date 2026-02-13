@@ -5,7 +5,7 @@ newton_bench:
       host: 127.0.0.1
       port: 8000
       domain: math
-
+      verified: false
 newton_bench_simple_agent:
   responses_api_agents:
     simple_agent:
@@ -19,11 +19,11 @@ newton_bench_simple_agent:
         type: responses_api_models
         name: policy_model
       datasets:
-        - name: train
-          type: train
-          jsonl_fpath: resources_servers/newton_bench/data/train.jsonl
-          license: Apache 2.0
-        - name: example
-          type: example
-          jsonl_fpath: resources_servers/newton_bench/data/example.jsonl
-          license: Apache 2.0
+      - name: train
+        type: train
+        jsonl_fpath: resources_servers/newton_bench/data/train.jsonl
+        license: Apache 2.0
+      - name: example
+        type: example
+        jsonl_fpath: resources_servers/newton_bench/data/example.jsonl
+        license: Apache 2.0

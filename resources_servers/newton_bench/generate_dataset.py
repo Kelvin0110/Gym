@@ -15,11 +15,10 @@
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING, get_tool_schema
 from resources_servers.newton_bench.newton_bench_utils.prompt_utils import get_physics_prompt
+from resources_servers.newton_bench.newton_bench_utils.schemas import MODULE_REQUEST_CLASSES_MAPPING, get_tool_schema
 
 
 def generate_record(
@@ -29,30 +28,29 @@ def generate_record(
     system: str,
     noise_level: float,
     law_version: str,
-    is_code_assisted: bool = True
+    is_code_assisted: bool = True,
 ):
     task_prompt = get_physics_prompt(
-        module_name=module_name,
-        system=system,
-        is_code_assisted=is_code_assisted,
-        noise_level=noise_level
+        module_name=module_name, system=system, is_code_assisted=is_code_assisted, noise_level=noise_level
     )
 
     tools = [get_tool_schema(module_name)]
 
     if is_code_assisted:
-        tools.append({
-            "type": "function",
-            "name": "execute_python",
-            "description": "Execute Python code for mathematical reasoning, hypothesis testing, and data analysis. Pre-imported libraries: numpy (as np), pandas (as pd), scipy, and math.",
-            "parameters": {
-                "type": "object",
-                "properties": {"code": {"type": "string", "description": "Python code to execute"}},
-                "required": ["code"],
-                "additionalProperties": False,
-            },
-            "strict": True,
-        })
+        tools.append(
+            {
+                "type": "function",
+                "name": "execute_python",
+                "description": "Execute Python code for mathematical reasoning, hypothesis testing, and data analysis. Pre-imported libraries: numpy (as np), pandas (as pd), scipy, and math.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"code": {"type": "string", "description": "Python code to execute"}},
+                    "required": ["code"],
+                    "additionalProperties": False,
+                },
+                "strict": True,
+            }
+        )
 
     record = {
         "id": record_id,
@@ -98,12 +96,9 @@ def generate_example_configs(is_code_assisted):
     ]
     configs = []
     for base_config in base_example_configs:
-        configs.append({
-            "module_name": "m0_gravity",
-            **base_config,
-            "law_version": "v0",
-            "is_code_assisted": is_code_assisted
-        })
+        configs.append(
+            {"module_name": "m0_gravity", **base_config, "law_version": "v0", "is_code_assisted": is_code_assisted}
+        )
     return configs
 
 
@@ -115,14 +110,16 @@ def generate_train_configs(target_modules, diff_list, sys_list, noise_list, is_c
             for system in sys_list:
                 for noise_level in noise_list:
                     for law_version in ["v0", "v1", "v2"]:
-                        configs.append({
-                            "module_name": module_name,
-                            "difficulty": difficulty,
-                            "system": system,
-                            "noise_level": noise_level,
-                            "law_version": law_version,
-                            "is_code_assisted": is_code_assisted
-                        })
+                        configs.append(
+                            {
+                                "module_name": module_name,
+                                "difficulty": difficulty,
+                                "system": system,
+                                "noise_level": noise_level,
+                                "law_version": law_version,
+                                "is_code_assisted": is_code_assisted,
+                            }
+                        )
     return configs
 
 
@@ -175,7 +172,7 @@ def main():
     args = parser.parse_args()
 
     is_code_assisted = args.code_assisted
-    
+
     if args.modules:
         target_modules = [m.strip() for m in args.modules.split(",")]
     else:
