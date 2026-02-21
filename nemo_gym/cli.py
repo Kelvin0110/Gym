@@ -21,7 +21,7 @@ import sys
 import tomllib
 from glob import glob
 from importlib.metadata import version as md_version
-from os import environ, makedirs
+from os import makedirs
 from os.path import exists
 from pathlib import Path
 from signal import SIGINT
@@ -39,15 +39,13 @@ from pydantic import Field
 from tqdm.auto import tqdm
 
 from nemo_gym import PARENT_DIR, __version__
+from nemo_gym.cli_setup_command import run_command, setup_env_command
 from nemo_gym.config_types import BaseNeMoGymCLIConfig
 from nemo_gym.global_config import (
-    HEAD_SERVER_DEPS_KEY_NAME,
+    DRY_RUN_KEY_NAME,
     NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME,
     NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME,
     NEMO_GYM_RESERVED_TOP_LEVEL_KEYS,
-    PIP_INSTALL_VERBOSE_KEY_NAME,
-    PYTHON_VERSION_KEY_NAME,
-    UV_PIP_SET_PYTHON_KEY_NAME,
     GlobalConfigDictParserConfig,
     get_global_config_dict,
 )
@@ -60,55 +58,6 @@ from nemo_gym.server_utils import (
     ServerStatus,
     initialize_ray,
 )
-
-
-def _setup_env_command(dir_path: Path, global_config_dict: DictConfig) -> str:  # pragma: no cover
-    head_server_deps = global_config_dict[HEAD_SERVER_DEPS_KEY_NAME]
-
-    uv_venv_cmd = f"uv venv --seed --allow-existing --python {global_config_dict[PYTHON_VERSION_KEY_NAME]} .venv"
-
-    has_pyproject_toml = exists(f"{dir_path / 'pyproject.toml'}")
-    has_requirements_txt = exists(f"{dir_path / 'requirements.txt'}")
-
-    # explicitly set python path if specified. In Google colab, ng_run fails due to uv pip install falls back to system python (/usr) without this and errors.
-    # not needed for most clusters. should be safe in all scenarios, but only minimally tested outside of colab.
-    # see discussion and examples here: https://github.com/NVIDIA-NeMo/Gym/pull/526#issuecomment-3676230383
-    uv_pip_set_python = global_config_dict.get(UV_PIP_SET_PYTHON_KEY_NAME, False)
-    uv_pip_python_flag = "--python .venv/bin/python " if uv_pip_set_python else ""
-
-    verbose_flag = "-v " if global_config_dict.get(PIP_INSTALL_VERBOSE_KEY_NAME) else ""
-
-    if has_pyproject_toml and has_requirements_txt:
-        raise RuntimeError(
-            f"Found both pyproject.toml and requirements.txt for uv venv setup in server dir: {dir_path}. Please only use one or the other!"
-        )
-    elif has_pyproject_toml:
-        install_cmd = f"""uv pip install {verbose_flag}{uv_pip_python_flag}'-e .' {" ".join(head_server_deps)}"""
-    elif has_requirements_txt:
-        install_cmd = (
-            f"""uv pip install {verbose_flag}{uv_pip_python_flag}-r requirements.txt {" ".join(head_server_deps)}"""
-        )
-    else:
-        raise RuntimeError(f"Missing pyproject.toml or requirements.txt for uv venv setup in server dir: {dir_path}")
-
-    cmd = f"""cd {dir_path} \\
-    && {uv_venv_cmd} \\
-    && source .venv/bin/activate \\
-    && {install_cmd} \\
-    """
-
-    return cmd
-
-
-def _run_command(command: str, working_dir_path: Path) -> Popen:  # pragma: no cover
-    work_dir = f"{working_dir_path.absolute()}"
-    custom_env = environ.copy()
-    py_path = custom_env.get("PYTHONPATH", None)
-    if py_path is not None:
-        custom_env["PYTHONPATH"] = f"{work_dir}:{py_path}"
-    else:
-        custom_env["PYTHONPATH"] = work_dir
-    return Popen(command, executable="/bin/bash", shell=True, env=custom_env)
 
 
 class RunConfig(BaseNeMoGymCLIConfig):
@@ -213,12 +162,12 @@ class RunHelper:  # pragma: no cover
 
             dir_path = PARENT_DIR / Path(first_key, second_key)
 
-            command = f"""{_setup_env_command(dir_path, global_config_dict)} \\
+            command = f"""{setup_env_command(dir_path, global_config_dict, top_level_path)} \\
     && {NEMO_GYM_CONFIG_DICT_ENV_VAR_NAME}={escaped_config_dict_yaml_str} \\
     {NEMO_GYM_CONFIG_PATH_ENV_VAR_NAME}={shlex.quote(top_level_path)} \\
     python {str(entrypoint_fpath)}"""
 
-            process = _run_command(command, dir_path)
+            process = run_command(command, dir_path)
             self._processes[top_level_path] = process
 
             host = server_config_dict.get("host")
@@ -263,7 +212,10 @@ class RunHelper:  # pragma: no cover
             sleep(3)
 
         print("Waiting for servers to spin up")
-        self.wait_for_spinup()
+        if global_config_dict[DRY_RUN_KEY_NAME]:
+            self.wait_for_dry_run_spinup()
+        else:
+            self.wait_for_spinup()
 
     def display_server_instance_info(self) -> None:
         if not self._server_instance_display_configs:
@@ -305,6 +257,18 @@ Process `{process_name}` stderr:
 {proc_err}"""
 
                 raise RuntimeError(print_str)
+
+    def wait_for_dry_run_spinup(self) -> None:
+        sleep_interval = 3
+
+        remaining_processes = list(self._processes.values())
+        while remaining_processes:
+            for i in reversed(range(len(remaining_processes))):
+                process = remaining_processes[i]
+                if process.poll() is not None:
+                    remaining_processes.pop(i)
+
+            sleep(sleep_interval)
 
     def wait_for_spinup(self) -> None:
         sleep_interval = 3
@@ -357,6 +321,10 @@ Process `{process_name}` stderr:
         print("NeMo Gym finished!")
 
     def run_forever(self) -> None:
+        if self._server_client.global_config_dict[DRY_RUN_KEY_NAME]:
+            self.shutdown()
+            return
+
         async def sleep():
             # Indefinitely
             while True:
@@ -484,7 +452,7 @@ ng_collect_rollouts +agent_name=example_multi_step_simple_agent \
     +limit=null
 
 # View your rollouts
-ng_viewer +jsonl_fpath=resources_servers/example_multi_step/data/example_rollouts.jsonl
+head -1 resources_servers/example_multi_step/data/example_rollouts.jsonl
 ```
 """
     with open(example_rollouts_fpath) as f:
@@ -496,8 +464,9 @@ ng_viewer +jsonl_fpath=resources_servers/example_multi_step/data/example_rollout
 
 def _test_single(test_config: TestConfig, global_config_dict: DictConfig) -> Popen:  # pragma: no cover
     # Eventually we may want more sophisticated testing here, but this is sufficient for now.
-    command = f"""{_setup_env_command(test_config.dir_path, global_config_dict)} && pytest"""
-    return _run_command(command, test_config.dir_path)
+    prefix = test_config.entrypoint.replace("/", "\\/")
+    command = f"""{setup_env_command(test_config.dir_path, global_config_dict, prefix)} && pytest"""
+    return run_command(command, test_config.dir_path)
 
 
 def test():  # pragma: no cover
@@ -862,7 +831,7 @@ def pip_list():  # pragma: no cover
     print(f"Virtual environment: {venv_path.absolute()}")
     print("-" * 72)
 
-    proc = _run_command(command, dir_path)
+    proc = run_command(command, dir_path)
     return_code = proc.wait()
     exit(return_code)
 
